@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require __DIR__.'/inc/bootstrap.php';
-?><!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ระบบจัดการกรีฑากลุ่มโรงเรียนบางละมุง 1</title><meta name="theme-color" content="#071323"><link rel="stylesheet" href="assets/app.css"></head><body>
+?><!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ระบบจัดการกรีฑากลุ่มโรงเรียนบางละมุง 1</title><meta name="theme-color" content="#071323"><link rel="stylesheet" href="assets/app.css?v=20261108-drivephoto"></head><body>
 <div id="app"><aside class="sidebar"><div class="brand"><span class="logo">🏃</span><div><strong>บางละมุง 1</strong><small>ระบบจัดการกรีฑา</small></div></div><div class="user" id="userbox">ยังไม่ได้เข้าสู่ระบบ</div><nav id="menu">
 <button data-page="runners">🏃 นักกรีฑา</button><button data-page="register">📝 สมัครแข่งขัน</button><button data-page="schedule">🏁 รายการจัดแข่งขัน</button><button data-page="print">🖨️ พิมพ์ใบสมัคร</button><button data-page="results">🏅 ผลการแข่งขัน</button><button data-page="certificates">🎖️ เกียรติบัตร</button><button data-page="admin" class="admin-only">✅ ตรวจสอบนักวิ่ง</button><button data-page="logs" class="admin-only">📋 ประวัติการใช้งาน</button></nav><button class="secondary logout" id="logout">ออกจากระบบ</button></aside>
 <main class="main"><header><div><strong>Banglamung 1 Athletics</strong><small>ระบบกรีฑากลุ่มโรงเรียนบางละมุง 1</small></div><span id="notice"></span></header>
@@ -15,4 +15,4 @@ require __DIR__.'/inc/bootstrap.php';
 <section class="page" id="page-admin"><h1>ตรวจสอบและยืนยันตัวตนนักวิ่ง</h1><div class="card"><div class="heading"><h2>สถานะนักวิ่ง</h2><input id="adminSearch" type="search" placeholder="ค้นหาชื่อหรือโรงเรียน"></div><div class="table-scroller"><table><thead><tr><th>ID</th><th>นักวิ่ง</th><th>โรงเรียน</th><th>รูป/หลักฐาน</th><th>สถานะ</th><th>บันทึก</th></tr></thead><tbody id="adminBody"></tbody></table></div></div></section>
 <section class="page" id="page-logs"><h1>ประวัติการใช้งาน</h1><div class="card"><div class="table-scroller"><table><thead><tr><th>เวลา</th><th>รายการ</th><th>ผู้ทำรายการ</th><th>โรงเรียน</th><th>รายละเอียด</th></tr></thead><tbody id="logsBody"></tbody></table></div></div></section>
 <footer>กลุ่มโรงเรียนบางละมุง 1 · ระบบกรีฑา</footer></main></div>
-<input type="file" id="uploadInput" accept="image/png,image/jpeg,application/pdf" hidden><div id="toast" role="status"></div><script src="assets/app.js" defer></script></body></html>
+<input type="file" id="uploadInput" accept="image/png,image/jpeg,application/pdf" hidden><div id="toast" role="status"></div><script src="assets/app.js?v=20261108-drivephoto" defer></script></body></html>
