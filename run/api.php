@@ -73,6 +73,7 @@ if($action==='original_results'){
 $u=require_user();
 authorize_athletics_action($u,$action);
 require __DIR__.'/admin-config.php';
+require __DIR__.'/event-management.php';
 if($action==='schools'){json_out(['success'=>true,'data'=>rows('SELECT id, name, nickname, active FROM schools ORDER BY name')]);}
 if($action==='runners'){
  $school=is_reviewer($u)?trim((string)($_GET['school']??'')):$u['schoolName'];
@@ -156,7 +157,7 @@ if($action==='save_registration'){
  $old=$id?single('SELECT * FROM registrations WHERE id=?',[$id]):null;
  if($id&&!$old)json_out(['success'=>false,'message'=>'ไม่พบใบสมัคร'],404);
  if($old)school_access($u,$old['school_name']);
- $dup=single('SELECT id FROM registrations WHERE event_id=? AND school_name=? AND id<>? LIMIT 1',[$ev['id'],$school,$id]);
+ $dup=single('SELECT id FROM registrations WHERE event_name=? AND category <=> ? AND level <=> ? AND school_name=? AND id<>? LIMIT 1',[$ev['name'],$ev['category'],$ev['level'],$school,$id]);
  if($dup)json_out(['success'=>false,'message'=>'โรงเรียนสมัครรายการนี้แล้ว'],409);
  $byId=[];foreach($runners as $r)$byId[$r['id']]=$r;
  $ordered=array_map(fn($rid)=>$byId[$rid],$ids);
