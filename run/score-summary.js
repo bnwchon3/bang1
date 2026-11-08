@@ -5,8 +5,8 @@ const $=s=>document.querySelector(s);
 const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&quot;'}[ch]));
 let inFlight=false;
 function permitted(){
-  const user=typeof currentUser!=='undefined'?currentUser:null;
-  return !!user&&['Admin','TopAdmin','Staff'].includes(user.role);
+  // School totals are public; editing results remains Staff-only elsewhere.
+  return true;
 }
 function message(text,error=false){
   const node=$('#bang1ScoreSummaryMessage');
@@ -33,8 +33,17 @@ async function load(){
     const schools=Array.isArray(response.schools)?response.schools:[];
     const header='<thead><tr><th scope="col" class="bang1-summary-corner">รุ่นอายุ</th>'+
       schools.map(s=>'<th scope="col">'+esc(s.schoolName)+'</th>').join('')+'</tr></thead>';
-    const rows=ages.map(age=>'<tr><th scope="row">รุ่นอายุ '+esc(age)+' ปี</th>'+
-      schools.map(s=>'<td>'+Number(s.byAge?.[String(age)]??0)+'</td>').join('')+'</tr>').join('');
+    const rows=ages.map(age=>{
+      const values=schools.map(s=>Number(s.byAge?.[String(age)]??0));
+      const highest=Math.max(0,...values);
+      return '<tr><th scope="row">รุ่นอายุ '+esc(age)+' ปี</th>'+
+        values.map(score=>{
+          // Highlight every shared maximum; avoid marking all-zero age groups.
+          const best=highest>0&&score===highest;
+          return '<td'+(best?' class="bang1-summary-best" title="คะแนนสูงสุดของรุ่นอายุ '+esc(age)+' ปี"':'')+'>'+
+            score+'</td>';
+        }).join('')+'</tr>';
+    }).join('');
     const total='<tr class="bang1-summary-total"><th scope="row">คะแนนรวม</th>'+
       schools.map(s=>'<td>'+Number(s.total||0)+'</td>').join('')+'</tr>';
     const rank='<tr class="bang1-summary-rank"><th scope="row">อันดับ</th>'+
