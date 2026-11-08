@@ -115,6 +115,7 @@
     touch-action:manipulation;
   }
   .app .sidebar > .bang1-mobile-logout #bang1LogoutButton[hidden] {display:none!important;}
+  .app .sidebar > .bang1-mobile-logout:has(#bang1LogoutButton[hidden]) {display:none;}
   body.bang1-drawer-open .app .sidebar {transform:translate3d(0,0,0);pointer-events:auto}
   #bang1MobileMenuBackdrop {
     position:fixed;inset:0;
@@ -213,7 +214,7 @@
   .app>.main .card {padding:12px}
 }
 @media(min-width:1200px){
-  .bang1-mobile-header,#bang1MobileMenuBackdrop {display:none!important}
+  .bang1-mobile-header,#bang1MobileMenuBackdrop,.bang1-mobile-logout {display:none!important}
 }
 @media (prefers-reduced-motion:reduce){
   .app .sidebar {transition:none}
