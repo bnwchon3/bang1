@@ -41,7 +41,7 @@
    tabs.className='btn-row admin-sheet-tabs';
    tabs.setAttribute('role','tablist');
    tabs.setAttribute('aria-label','แท็บผู้ดูแลระบบ');
-   var names=[['check','ตรวจสอบนักวิ่ง'],['settings','ตั้งค่าเปิด–ปิดระบบ'],['schools','โรงเรียน'],['coaches','ผู้ฝึกซ้อม'],['logs','ประวัติการใช้งาน'],['reset','รีเซ็ตข้อมูล']];
+   var names=[['check','ตรวจสอบนักวิ่ง'],['settings','ตั้งค่าเปิด–ปิดระบบ'],['schools','โรงเรียน'],['coaches','ผู้ฝึกซ้อม'],['logs','ประวัติการใช้งาน'],['reset','รีเซ็ตข้อมูล'],['backup','สำรองข้อมูล']];
    names.forEach(function(pair){
      var b=document.createElement('button');b.type='button';b.className='btn btn-outline btn-xs';
      b.dataset.adminTab=pair[0];b.textContent=pair[1];
@@ -101,9 +101,42 @@
       '<p id="admin-reset-summary" style="white-space:pre-line"></p>'+
       '<label>พิมพ์คำว่า <strong>ล้างข้อมูล</strong> เพื่อยืนยัน'+
       '<input type="text" id="admin-reset-phrase" class="input" autocomplete="off" placeholder="ล้างข้อมูล"></label>'+
+      '<label>รหัสผ่านเข้าสู่ระบบของ Admin'+
+      '<input type="password" id="admin-reset-login-password" class="input" autocomplete="current-password" placeholder="รหัสเข้าสู่ระบบ Admin"></label>'+
       '<div class="btn-row"><button type="button" id="admin-reset-execute" class="btn btn-primary" disabled>ยืนยันรีเซ็ตข้อมูลที่เลือก</button></div>'+
       '</div><p data-admin-message role="status" aria-live="polite"></p></div>';
-   [settings,schools,coaches,logs,reset].forEach(function(p){page.appendChild(p)});
+   // Explicitly requested backup and restore tab, using the same card and form styles.
+   const backup=document.createElement('div');
+   backup.id='admin-sheet-backup';
+   backup.dataset.adminSheetPanel='backup';
+   backup.hidden=true;
+   backup.innerHTML=
+      '<div class="card"><div class="card-header"><div class="card-title">สำรองข้อมูล</div></div>'+
+      '<p>ดาวน์โหลดไฟล์ Backup ของข้อมูล MariaDB แบบเข้ารหัส โดยไม่เก็บไฟล์ไว้บนเว็บไซต์</p>'+
+      '<form id="admin-backup-export-form" autocomplete="off">'+
+      '<div class="form-grid">'+
+      '<div class="field"><label>รหัสผ่านเข้าสู่ระบบ Admin</label><input type="password" class="input" name="adminPassword" required autocomplete="current-password"></div>'+
+      '<div class="field"><label>ตั้งรหัสป้องกันไฟล์ Backup (อย่างน้อย 12 ตัวอักษร)</label><input type="password" class="input" name="backupPassphrase" minlength="12" required autocomplete="new-password"></div>'+
+      '</div><div class="btn-row"><button type="submit" class="btn btn-primary">ดาวน์โหลดไฟล์ Backup</button></div></form>'+
+      '<p style="font-size:.84rem;color:#94a3b8">เก็บไฟล์และรหัสป้องกันไฟล์เป็นความลับ หากลืมรหัสไฟล์จะไม่สามารถกู้คืนได้ '+
+      'รูปภาพจริงใน Google Drive ไม่ได้รวมใน Backup มีเพียงลิงก์อ้างอิง</p>'+
+      '<p data-admin-message role="status" aria-live="polite"></p></div>'+
+      '<div class="card"><div class="card-header"><div class="card-title">กู้คืนข้อมูล (Restore)</div></div>'+
+      '<p>เลือกไฟล์ .bnwbackup แล้วตรวจสอบข้อมูลก่อนยืนยัน ระบบจะไม่แทนที่ฐานข้อมูลทันที</p>'+
+      '<form id="admin-backup-restore-form" autocomplete="off">'+
+      '<div class="form-grid">'+
+      '<div class="field"><label>ไฟล์ Backup</label><input type="file" class="input" name="backup" accept=".bnwbackup" required></div>'+
+      '<div class="field"><label>รหัสป้องกันไฟล์ Backup</label><input type="password" class="input" name="backupPassphrase" required autocomplete="off"></div>'+
+      '<div class="field"><label>รหัสผ่านเข้าสู่ระบบ Admin</label><input type="password" class="input" name="adminPassword" required autocomplete="current-password"></div>'+
+      '</div><div class="btn-row"><button type="button" id="admin-backup-check" class="btn btn-outline">ตรวจสอบไฟล์ก่อนกู้คืน</button></div>'+
+      '<div id="admin-backup-restore-confirm" hidden>'+
+      '<p id="admin-backup-restore-summary" style="white-space:pre-line"></p>'+
+      '<label>พิมพ์คำว่า <strong>กู้คืนข้อมูล</strong> เพื่อยืนยัน'+
+      '<input type="text" id="admin-backup-confirm-text" class="input" autocomplete="off" placeholder="กู้คืนข้อมูล"></label>'+
+      '<div class="btn-row"><button type="button" class="btn btn-primary" id="admin-backup-do-restore" disabled>ยืนยันกู้คืนข้อมูล</button></div>'+
+      '</div></form><p data-admin-message role="status" aria-live="polite"></p></div>';
+   [settings,schools,coaches,logs,reset,backup].forEach(function(p){page.appendChild(p)});
+
 
 
    // Filtering is limited to the coach tab; preserve the original Admin page layout.
@@ -167,6 +200,7 @@
      if(key==='coaches')await loadCoaches();
      if(key==='logs')await loadLogs(1);
      if(key==='reset')clearResetPreview();
+     if(key==='backup')clearRestorePreview();
    }
    tabs.addEventListener('click',function(e){
      var b=e.target.closest('[data-admin-tab]');if(!b)return;
@@ -340,17 +374,20 @@
    const resetConfirmation=el('#admin-reset-confirmation',reset);
    const resetPhrase=el('#admin-reset-phrase',reset);
    const resetExecute=el('#admin-reset-execute',reset);
+   const resetPassword=el('#admin-reset-login-password',reset);
    function clearResetPreview(){
      resetPreviewToken='';
      resetSelected=[];
      resetPhrase.value='';
+     resetPassword.value='';
      resetConfirmation.hidden=true;
      resetExecute.disabled=true;
      inform(reset,'');
    }
    reset.querySelectorAll('[data-reset-section]').forEach(c=>c.addEventListener('change',clearResetPreview));
+   resetPassword.addEventListener('input',()=>{resetExecute.disabled=!(resetPreviewToken && resetPhrase.value==='ล้างข้อมูล' && resetPassword.value.length)});
    resetPhrase.addEventListener('input',()=>{
-     resetExecute.disabled=!(resetPreviewToken && resetPhrase.value==='ล้างข้อมูล');
+     resetExecute.disabled=!(resetPreviewToken && resetPhrase.value==='ล้างข้อมูล' && resetPassword.value.length);
    });
    el('#admin-reset-preview',reset).addEventListener('click',async ()=>{
      const selected=all('[data-reset-section]:checked',reset).map(c=>c.dataset.resetSection);
@@ -374,20 +411,119 @@
      finally{btn.disabled=false}
    });
    resetExecute.addEventListener('click',async ()=>{
-     if(!resetPreviewToken||resetPhrase.value!=='ล้างข้อมูล')return;
+     if(!resetPreviewToken||resetPhrase.value!=='ล้างข้อมูล'||!resetPassword.value)return;
      if(!window.confirm('ยืนยันรีเซ็ตข้อมูลที่เลือกจริงหรือไม่?\nการทำรายการนี้ย้อนกลับไม่ได้'))return;
      const token=resetPreviewToken,selected=resetSelected.slice();
      // Invalidating the preview prevents double submission.
      resetPreviewToken='';
      resetExecute.disabled=true;
      try{
-       const result=await api('admin_reset_execute',{sections:selected,token,confirmation:'ล้างข้อมูล'});
+       const result=await api('admin_reset_execute',{sections:selected,token,confirmation:'ล้างข้อมูล',adminPassword:resetPassword.value});
        clearResetPreview();
        reset.querySelectorAll('[data-reset-section]').forEach(c=>c.checked=false);
        inform(reset,result.message||'รีเซ็ตข้อมูลสำเร็จ');
      }catch(error){
+       resetPassword.value='';
        inform(reset,error.message+'\nกรุณาตรวจสอบรายการอีกครั้งก่อนลองใหม่',true);
        resetConfirmation.hidden=true;
+     }
+   });
+
+
+   // Encrypted Backup: requires both the Admin login password and a separate archive passphrase.
+   const exportForm=el('#admin-backup-export-form',backup);
+   const restoreForm=el('#admin-backup-restore-form',backup);
+   const restoreConfirm=el('#admin-backup-restore-confirm',backup);
+   const restorePhrase=el('#admin-backup-confirm-text',backup);
+   const restoreButton=el('#admin-backup-do-restore',backup);
+   let restoreToken='';
+   let restoreChecksumKey='';
+   function archiveFormData(){
+     const data=new FormData();
+     const file=restoreForm.elements.backup.files[0];
+     if(!file)throw new Error('กรุณาเลือกไฟล์ Backup');
+     if(file.size>31457280)throw new Error('ไฟล์ Backup ต้องมีขนาดไม่เกิน 30 MB');
+     data.append('backup',file);
+     data.append('backupPassphrase',restoreForm.elements.backupPassphrase.value);
+     data.append('adminPassword',restoreForm.elements.adminPassword.value);
+     return data;
+   }
+   function clearRestorePreview(){
+     restoreToken='';
+     restoreChecksumKey='';
+     restorePhrase.value='';
+     restoreButton.disabled=true;
+     restoreConfirm.hidden=true;
+     inform(backup,'');
+   }
+   Array.from(restoreForm.elements).forEach(field=>field.addEventListener('change',clearRestorePreview));
+   restorePhrase.addEventListener('input',()=>{
+     restoreButton.disabled=!(restoreToken&&restorePhrase.value==='กู้คืนข้อมูล');
+   });
+   exportForm.addEventListener('submit',async function(e){
+     e.preventDefault();
+     const button=el('[type="submit"]',exportForm);
+     button.disabled=true;
+     try{
+       const pass=exportForm.elements.backupPassphrase.value;
+       if(pass.length<12)throw new Error('รหัสป้องกันไฟล์ต้องมีอย่างน้อย 12 ตัวอักษร');
+       const blob=await window.bang1Bridge.adminDownload({
+         adminPassword:exportForm.elements.adminPassword.value,
+         backupPassphrase:pass
+       });
+       const objectUrl=URL.createObjectURL(blob);
+       const link=document.createElement('a');
+       const stamp=new Date().toISOString().slice(0,19).replace(/[-:T]/g,'');
+       link.href=objectUrl;
+       link.download='bang1-backup-'+stamp+'.bnwbackup';
+       document.body.appendChild(link);
+       link.click();
+       link.remove();
+       setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
+       inform(backup,'ดาวน์โหลด Backup แบบเข้ารหัสแล้ว กรุณาเก็บรหัสไฟล์ไว้ในที่ปลอดภัย');
+     }catch(error){inform(backup,error.message,true)}
+     finally{
+       exportForm.elements.adminPassword.value='';
+       exportForm.elements.backupPassphrase.value='';
+       button.disabled=false;
+     }
+   });
+   el('#admin-backup-check',backup).addEventListener('click',async function(){
+     this.disabled=true;
+     clearRestorePreview();
+     try{
+       const data=await api('admin_backup_preview',archiveFormData());
+       restoreToken=String(data.token||'');
+       restoreChecksumKey=restoreForm.elements.backup.files[0]?.name||'';
+       const counts=Object.entries(data.counts||{}).map(([table,n])=>'• '+table+' : '+n+' แถว').join('\n');
+       el('#admin-backup-restore-summary',backup).textContent=
+         'Backup เมื่อ: '+(data.createdAt||'ไม่ระบุ')+'\n'+counts+'\n\n'+(data.note||'')+
+         '\n'+(data.driveNote||'')+'\n\nโปรดยืนยันภายใน 5 นาที';
+       restoreConfirm.hidden=false;
+     }catch(error){inform(backup,error.message,true)}
+     finally{this.disabled=false}
+   });
+   restoreButton.addEventListener('click',async function(){
+     if(!restoreToken||restorePhrase.value!=='กู้คืนข้อมูล')return;
+     if(!window.confirm('ยืนยันกู้คืนจากไฟล์ Backup จริงหรือไม่?\nระบบจะแทนที่ข้อมูลปัจจุบัน และไม่สามารถย้อนกลับได้'))return;
+     this.disabled=true;
+     const token=restoreToken;
+     restoreToken='';
+     try{
+       const data=archiveFormData();
+       data.append('token',token);
+       data.append('confirmation','กู้คืนข้อมูล');
+       const result=await api('admin_backup_restore',data);
+       clearRestorePreview();
+       restoreForm.reset();
+       inform(backup,result.message||'กู้คืนข้อมูลสำเร็จ');
+     }catch(error){
+       restoreConfirm.hidden=true;
+       inform(backup,error.message+' กรุณาตรวจสอบไฟล์ใหม่ก่อนกู้คืน',true);
+     }finally{
+       restoreForm.elements.adminPassword.value='';
+       restoreForm.elements.backupPassphrase.value='';
+       this.disabled=false;
      }
    });
 
