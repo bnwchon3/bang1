@@ -55,6 +55,16 @@ if($action==='me'){
 }
 if($action==='logout'){must_post();session_destroy();json_out(['success'=>true]);}
 
+// Public read-only school score report. No user session is required; only this
+// action is exposed here. Every other action still passes through require_user().
+if($action==='score_summary'){
+ if($_SERVER['REQUEST_METHOD']!=='GET')
+   json_out(['success'=>false,'message'=>'GET required'],405);
+ require __DIR__.'/event-management.php';
+ require __DIR__.'/staff-results.php';
+ require __DIR__.'/score-summary.php';
+}
+
 $u=require_user();
 authorize_athletics_action($u,$action);
 require __DIR__.'/admin-config.php';
