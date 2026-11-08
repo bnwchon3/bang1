@@ -153,12 +153,19 @@ function closeDialog(){
 }
 function updateOptions(){
   const selects=[...document.querySelectorAll('#bang1ScoreFields select')];
-  const chosen=new Set(selects.map(s=>s.value).filter(Boolean));
-  selects.forEach(select=>{
-    for(const option of select.options){
-      option.disabled=option.value!=='' && option.value!==select.value && chosen.has(option.value);
+  const chosen=new Set(selects.map(select=>select.value).filter(Boolean));
+  // Rebuild the menus so a selected school truly disappears from all other
+  // dropdowns (rather than merely becoming disabled).
+  for(const select of selects){
+    const current=select.value;
+    select.replaceChildren(new Option('-- เลือกโรงเรียน --',''));
+    for(const school of selected?.schools||[]){
+      if(!chosen.has(school)||school===current){
+        select.add(new Option(school,school));
+      }
     }
-  });
+    select.value=current;
+  }
 }
 async function save(){
   if(!isStaff()||!selected||submitting||selected.pendingDraw)return;
