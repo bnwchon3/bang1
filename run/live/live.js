@@ -22,8 +22,9 @@
     const key=f?.key||'';
     const teams=Array.isArray(payload.teams)?payload.teams:[];
     const checkedNow=new Set(teams.filter(t=>t.checkedAt).map(t=>Number(t.regId)));
+    let arrivals=[];
     if(initialized&&key===oldActive) {
-      const arrivals=teams.filter(t=>t.checkedAt&&!oldChecked.has(Number(t.regId)));
+      arrivals=teams.filter(t=>t.checkedAt&&!oldChecked.has(Number(t.regId)));
       if(arrivals.length){
         const last=arrivals[arrivals.length-1];
         const msg='✓ รายงานตัวแล้ว: '+last.school+' · ใบสมัคร #'+last.regId;
@@ -49,20 +50,12 @@
     $('rosterCount').textContent=f?(confirmed+' / '+total+' รายงานตัวแล้ว'):'ยังไม่เลือกรายการ';
     $('roster').innerHTML=f?(
       teams.length?teams.map(t=>
-        '<div class="school-card'+(t.checkedAt?' done':'')+'" data-reg="'+Number(t.regId)+'">'+
+        '<div class="school-card'+(t.checkedAt?' done':'')+(arrivals.some(x=>Number(x.regId)===Number(t.regId))?' flash':'')+'" data-reg="'+Number(t.regId)+'">'+
          '<div class="school-main"><strong>'+escapeHtml(t.school)+'</strong>'+
           '<small>ใบสมัคร #'+Number(t.regId)+(t.lane?' · ลู่วิ่ง '+Number(t.lane):'')+'</small></div>'+
          '<span class="school-state">'+(t.checkedAt?'✓ รายงานตัวแล้ว':'◷ รอรายงานตัว')+'</span>'+
         '</div>').join(''):'<div class="empty">ยังไม่มีใบสมัครสำหรับรายการนี้</div>'
     ):'<div class="empty">รอ Manager เปิดรายการ Active เพื่อเริ่มรายงานตัว</div>';
-    if(f) {
-      for(const t of teams)if(t.checkedAt){
-        const card=$('roster').querySelector('[data-reg="'+Number(t.regId)+'"]');
-        if(card&&oldChecked.has(Number(t.regId))) {
-          // Highlight only arrivals detected on the current refresh below.
-        }
-      }
-    }
     const recent=Array.isArray(payload.recent)?payload.recent:[];
     $('recent').innerHTML=recent.length?recent.map(t=>
        '<div class="recent-card"><div><strong>✓ '+escapeHtml(t.school)+'</strong>'+
