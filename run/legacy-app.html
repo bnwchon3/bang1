@@ -1752,13 +1752,13 @@ document.addEventListener('DOMContentLoaded',function(){
 
     <div class="runner-table-toolbar">
       <div class="pill-tabs">
-        <button data-runner-filter="all" class="active">ทั้งหมด</button>
-        <button data-runner-filter="male">เฉพาะเพศชาย</button>
-        <button data-runner-filter="female">เฉพาะเพศหญิง</button>
-        <button data-runner-filter="pending">รอตรวจสอบ</button>
-        <button data-runner-filter="recheckphoto">รอตรวจภาพอีกครั้ง</button>
-        <button data-runner-filter="pass">ผ่านการตรวจสอบ</button>
-        <button data-runner-filter="fail">ไม่ผ่านการตรวจสอบ</button>
+        <button data-runner-filter="all" class="active">ทั้งหมด (0)</button>
+        <button data-runner-filter="male">เฉพาะเพศชาย (0)</button>
+        <button data-runner-filter="female">เฉพาะเพศหญิง (0)</button>
+        <button data-runner-filter="pass">ผ่านการตรวจสอบ (0)</button>
+        <button data-runner-filter="pending">รอตรวจสอบ (0)</button>
+        <button data-runner-filter="recheckphoto">รอตรวจภาพอีกครั้ง (0)</button>
+        <button data-runner-filter="fail">ไม่ผ่านการตรวจสอบ (0)</button>
       </div>
 
       <div class="runner-search-box">
@@ -4338,6 +4338,39 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // Counts are calculated from the full school roster, not the currently filtered/search result.
+    // This keeps the numbers stable when users switch between filter pills.
+    function updateRunnerFilterCounts() {
+      const roster = Array.isArray(runnersData) ? runnersData : [];
+      const counts = { all: roster.length, male: 0, female: 0, pass: 0, pending: 0, recheckphoto: 0, fail: 0 };
+      const labels = {
+        all: 'ทั้งหมด',
+        male: 'เฉพาะเพศชาย',
+        female: 'เฉพาะเพศหญิง',
+        pass: 'ผ่านการตรวจสอบ',
+        pending: 'รอตรวจสอบ',
+        recheckphoto: 'รอตรวจภาพอีกครั้ง',
+        fail: 'ไม่ผ่านการตรวจสอบ'
+      };
+      roster.forEach(r => {
+        const gender = String(r.Gender || '').trim();
+        const status = String(r.Status || 'รอตรวจสอบ').trim() || 'รอตรวจสอบ';
+        if (gender === 'ชาย') counts.male++;
+        if (gender === 'หญิง') counts.female++;
+        if (status === 'ผ่านการตรวจสอบ') counts.pass++;
+        if (status === 'รอตรวจสอบ') counts.pending++;
+        if (status === 'รอตรวจภาพอีกครั้ง') counts.recheckphoto++;
+        if (status === 'ไม่ผ่านการตรวจสอบ') counts.fail++;
+      });
+      document.querySelectorAll('#page-runners [data-runner-filter]').forEach(btn => {
+        const key = btn.getAttribute('data-runner-filter') || 'all';
+        if (!Object.prototype.hasOwnProperty.call(labels, key)) return;
+        btn.textContent = labels[key] + ' (' + counts[key] + ')';
+        btn.classList.toggle('runner-filter-alert',
+          (key === 'recheckphoto' || key === 'fail') && counts[key] > 0);
+      });
+    }
+
     function setRunnerFilter(mode) {
       runnerFilterMode = mode || 'all';
       document.querySelectorAll('[data-runner-filter]').forEach(btn => {
@@ -4489,6 +4522,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const tbody = document.getElementById('runnerTableBody');
       if (!tbody) return;
 
+      updateRunnerFilterCounts();
       const searchInput = document.getElementById('runnerSearchInput');
       const q = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
@@ -7493,6 +7527,54 @@ document.addEventListener('DOMContentLoaded', function () {
   #runnerFilePreviewDialog { width: 100%; }
   .runner-file-preview-content { padding: 6px; }
   #runnerFilePreviewFrame { height: 72vh; }
+}
+</style>
+
+<style>
+/* Animated warning beams are restricted to the two requested runner filters. */
+@property --runner-beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+#page-runners .pill-tabs button.runner-filter-alert {
+  position: relative;
+  isolation: isolate;
+}
+#page-runners .pill-tabs button.runner-filter-alert[data-runner-filter="recheckphoto"] {
+  --runner-beam-color: #fb923c;
+  box-shadow: 0 0 8px rgba(251,146,60,.28);
+}
+#page-runners .pill-tabs button.runner-filter-alert[data-runner-filter="fail"] {
+  --runner-beam-color: #ef4444;
+  box-shadow: 0 0 8px rgba(239,68,68,.28);
+}
+#page-runners .pill-tabs button.runner-filter-alert::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  pointer-events: none;
+  background: conic-gradient(from var(--runner-beam-angle),
+    transparent 0deg, transparent 255deg,
+    var(--runner-beam-color) 298deg,
+    var(--runner-beam-color) 323deg,
+    transparent 360deg);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: runner-filter-beam 2s linear infinite;
+}
+@keyframes runner-filter-beam {
+  to { --runner-beam-angle: 360deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #page-runners .pill-tabs button.runner-filter-alert::before {
+    animation: none;
+    background: var(--runner-beam-color);
+  }
 }
 </style>
 </body>
