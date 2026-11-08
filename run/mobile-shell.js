@@ -13,19 +13,22 @@
     return !['hidden','checkbox','radio','file','button','submit','reset','range','color'].includes(el.type);
   }
   function updateVisibleHeight(){
-    if(!isMobile()){
+    const keyboardField=isMobile()&&editing(document.activeElement);
+    document.body.classList.toggle('bang1-keyboard-open',keyboardField);
+    if(!keyboardField){
+      // Browser toolbar changes must not trigger a full-screen relayout.
       document.documentElement.style.removeProperty('--bang1-visible-height');
       lastHeight=0;
-      document.body.classList.remove('bang1-keyboard-open');
       return;
     }
+    // Only the INNER content/modal viewport tracks the soft keyboard.
+    // The outer application is locked to 100svh by mobile-shell.css.
     const viewport=window.visualViewport;
     const value=Math.round(viewport?.height||window.innerHeight);
     if(value>0&&Math.abs(value-lastHeight)>2){
       lastHeight=value;
       document.documentElement.style.setProperty('--bang1-visible-height',value+'px');
     }
-    document.body.classList.toggle('bang1-keyboard-open',editing(document.activeElement));
   }
   function findScroller(input){
     let node=input.parentElement;
@@ -93,6 +96,13 @@
       sidebar.setAttribute('aria-hidden','true');
     }
   }
+  function blockNativeZoom(event){
+    if(isMobile()&&event.cancelable)event.preventDefault();
+  }
+  function blockMultiTouchZoom(event){
+    // Never cancel one-finger gestures: tables, popups and forms must scroll.
+    if(isMobile()&&event.touches?.length>1&&event.cancelable)event.preventDefault();
+  }
   function init(){
     main=document.querySelector('.app>.main');
     sidebar=document.querySelector('.app>.sidebar');
@@ -144,10 +154,17 @@
       clearTimeout(focusTimer);
       focusTimer=setTimeout(scheduleViewport,140);
     });
+    // iOS Safari/WebViews may ignore viewport zoom restrictions. Block
+    // native page pinch while keeping one-finger panel scrolling intact.
+    document.addEventListener('gesturestart',blockNativeZoom,{passive:false});
+    document.addEventListener('gesturechange',blockNativeZoom,{passive:false});
+    document.addEventListener('touchstart',blockMultiTouchZoom,{passive:false});
+    document.addEventListener('touchmove',blockMultiTouchZoom,{passive:false});
     window.addEventListener('resize',scheduleViewport,{passive:true});
     window.addEventListener('orientationchange',scheduleViewport,{passive:true});
     window.visualViewport?.addEventListener('resize',scheduleViewport,{passive:true});
-    window.visualViewport?.addEventListener('scroll',scheduleViewport,{passive:true});
+    // Ignore visualViewport scroll: iOS pans its visual viewport while typing,
+    // which previously made the entire form jump on every movement.
     if(media.addEventListener)media.addEventListener('change',applyMedia);
     else media.addListener(applyMedia);
     applyMedia();
