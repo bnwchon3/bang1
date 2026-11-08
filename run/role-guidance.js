@@ -84,6 +84,11 @@
        tabs.querySelector('[data-admin-tab="check"]')?.click();
      }
    }
+   const logoutButton=document.getElementById('bang1LogoutButton');
+   if(logoutButton){
+     logoutButton.hidden=!u;
+     logoutButton.style.display=u?'':'none';
+   }
    const dashboard=ensureDashboard();
    const form=document.querySelector('#page-login > .card:not(#bang1-login-guidance)');
    if(form)form.hidden=!!p;
