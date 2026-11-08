@@ -3,6 +3,45 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const state={user:null,csrf:'',page:'login',runners:[],events:[],regs:[],schedule:[],runnersAll:[],filter:'all',uploadId:null,uploadType:null};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const link=s=>typeof s==='string'&&/^https:\/\//i.test(s)?esc(s):'';
+
+/** Turn existing Google Drive viewer/download URLs into an image thumbnail URL. */
+function drivePhotoFileId(value) {
+ const raw=String(value??'').trim();
+ let url;try{url=new URL(raw)}catch{return ''}
+ if(url.protocol!=='https:'||!['drive.google.com','drive.usercontent.google.com'].includes(url.hostname.toLowerCase()))return '';
+ const match=url.pathname.match(/\/(?:file\/d|d)\/([A-Za-z0-9_-]{15,})(?:\/|$)/);
+ const id=url.searchParams.get('id')||(match&&match[1])||'';
+ return /^[A-Za-z0-9_-]{15,}$/.test(id)?id:'';
+}
+function photoUrl(value,size=320){
+ const raw=String(value??'').trim();
+ let url;try{url=new URL(raw)}catch{return ''}
+ if(url.protocol!=='https:')return '';
+ const fileId=drivePhotoFileId(raw);
+ return fileId?'https://drive.google.com/thumbnail?id='+encodeURIComponent(fileId)+'&sz=w'+size:url.href;
+}
+function avatarPhoto(r){
+ const src=photoUrl(r.Photo,320);
+ const id=drivePhotoFileId(r.Photo);
+ const fallback=String(r.FirstName||'?').trim().charAt(0)||'?';
+ return '<span class="runner-avatar">'+(src?'<img data-runner-photo data-drive-id="'+esc(id)+'" src="'+esc(src)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'')+
+ '<span class="avatar-fallback" '+(src?'hidden':'')+'>'+esc(fallback)+'</span></span>';
+}
+// If thumbnail is inaccessible try another Google image endpoint and then initials.
+document.addEventListener('error',event=>{
+ const img=event.target;
+ if(!(img instanceof HTMLImageElement)||!img.hasAttribute('data-runner-photo'))return;
+ const id=img.dataset.driveId||'';
+ if(id&&!img.dataset.triedFallback){
+   img.dataset.triedFallback='1';
+   img.src='https://lh3.googleusercontent.com/d/'+encodeURIComponent(id)+'=w320';
+   return;
+ }
+ img.hidden=true;
+ const placeholder=img.nextElementSibling;
+ if(placeholder&&placeholder.classList.contains('avatar-fallback'))placeholder.hidden=false;
+},true);
+
 const msg=(s,isError=false)=>{const el=$('#toast');el.textContent=s;el.style.background=isError?'#991b1b':'#155e75';el.style.display='block';clearTimeout(msg.timer);msg.timer=setTimeout(()=>el.style.display='none',4500)};
 async function api(action,data,form=false){
  const options={method:data==null?'GET':'POST',credentials:'same-origin',headers:{}};
@@ -53,7 +92,7 @@ async function loadRunners(){
 function renderRunners(){
  const q=$('#runnerSearch').value.trim().toLowerCase(),f=state.filter;
  const data=state.runners.filter(r=>(f==='all'||r.Gender===f||r.Status===f)&&[r.FirstName,r.LastName,r.RunnerID].join(' ').toLowerCase().includes(q));
- $('#runnersBody').innerHTML=data.length?data.map((r,i)=>`<tr data-runner="${esc(r.RunnerID)}"><td>${i+1}</td><td>${r.Photo&&link(r.Photo)?'<img loading="lazy" referrerpolicy="no-referrer" src="'+link(r.Photo)+'">':''}${esc(r.FirstName)} ${esc(r.LastName)}</td><td>${esc(r.Level)}</td><td>${esc(r.Gender)}</td><td>${esc(r.Age)}</td><td>${pill(r.Status)}</td><td><button type="button" class="secondary" data-upload="${esc(r.RunnerID)}:photo" ${r.Status==='ผ่านการตรวจสอบ'?'disabled':''}>${r.Photo?'📷 แก้ไข':'📷 แนบรูป'}</button></td><td><button type="button" class="secondary" data-upload="${esc(r.RunnerID)}:idproof" ${r.Status==='ผ่านการตรวจสอบ'?'disabled':''}>${r.IDProofURL?'📎 แก้ไข':'📎 แนบหลักฐาน'}</button></td></tr>`).join(''):'<tr><td colspan="8">ยังไม่มีข้อมูล</td></tr>';
+ $('#runnersBody').innerHTML=data.length?data.map((r,i)=>`<tr data-runner="${esc(r.RunnerID)}"><td>${i+1}</td><td>${avatarPhoto(r)}${esc(r.FirstName)} ${esc(r.LastName)}</td><td>${esc(r.Level)}</td><td>${esc(r.Gender)}</td><td>${esc(r.Age)}</td><td>${pill(r.Status)}</td><td><button type="button" class="secondary" data-upload="${esc(r.RunnerID)}:photo" ${r.Status==='ผ่านการตรวจสอบ'?'disabled':''}>${r.Photo?'📷 แก้ไข':'📷 แนบรูป'}</button></td><td><button type="button" class="secondary" data-upload="${esc(r.RunnerID)}:idproof" ${r.Status==='ผ่านการตรวจสอบ'?'disabled':''}>${r.IDProofURL?'📎 แก้ไข':'📎 แนบหลักฐาน'}</button></td></tr>`).join(''):'<tr><td colspan="8">ยังไม่มีข้อมูล</td></tr>';
  $$('#runnersBody tr[data-runner]').forEach(tr=>tr.onclick=()=>{const r=state.runners.find(x=>String(x.RunnerID)===tr.dataset.runner);if(r)fillRunner(r)});
  $$('#runnersBody button[data-upload]').forEach(btn=>btn.onclick=e=>{e.stopPropagation();const [id,type]=btn.dataset.upload.split(':');state.uploadId=id;state.uploadType=type;$('#uploadInput').value='';$('#uploadInput').accept=type==='photo'?'image/png,image/jpeg':'image/png,image/jpeg,application/pdf';$('#uploadInput').click()});
 }
@@ -126,7 +165,7 @@ function printRegs(regs){
  const w=window.open('','_blank');if(!w){msg('โปรดอนุญาตป๊อปอัป',true);return}
  const runnerMap=new Map(state.runners.map(r=>[String(r.RunnerID),r]));
  const printRows=regs.map(r=>{const rr=String(r.RunnerID||'').split(',').map(x=>runnerMap.get(x.trim())).filter(Boolean);
- return `<article><h2>ใบสมัครเข้าร่วมการแข่งขันกรีฑา</h2><h3>กลุ่มโรงเรียนบางละมุง 1</h3><p><b>RegID:</b> ${esc(r.RegID)}　<b>โรงเรียน:</b> ${esc(r.SchoolName)}</p><p><b>รายการ:</b> ${esc(r.EventName)}　<b>ประเภท:</b> ${esc(r.Category)}　<b>ระดับ:</b> ${esc(r.Level)}</p><p><b>ฮีท:</b> ${esc(r.Heat||'-')}　<b>ลู่:</b> ${esc(r.Lane||'-')}</p><table><thead><tr><th>ลำดับ</th><th>ชื่อ–สกุล</th><th>เพศ</th><th>อายุ</th><th>Verify</th></tr></thead><tbody>${rr.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.FirstName+' '+x.LastName)}</td><td>${esc(x.Gender)}</td><td>${esc(x.Age)}</td><td>${x.Status==='ผ่านการตรวจสอบ'?'✓':''}</td></tr>`).join('')}</tbody></table><div class="photos">${rr.map(x=>`<div>${link(x.Photo)?'<img src="'+link(x.Photo)+'">':''}<small>${esc(x.FirstName+' '+x.LastName)}</small></div>`).join('')}</div><p>ลงชื่อ .................................................... ครูผู้ฝึกซ้อม</p><p>ผลการแข่งขัน: ☐ ตกรอบ　☐ เข้ารอบชิง　☐ อันดับ 1　☐ อันดับ 2　☐ อันดับ 3</p></article>`}).join('');
+ return `<article><h2>ใบสมัครเข้าร่วมการแข่งขันกรีฑา</h2><h3>กลุ่มโรงเรียนบางละมุง 1</h3><p><b>RegID:</b> ${esc(r.RegID)}　<b>โรงเรียน:</b> ${esc(r.SchoolName)}</p><p><b>รายการ:</b> ${esc(r.EventName)}　<b>ประเภท:</b> ${esc(r.Category)}　<b>ระดับ:</b> ${esc(r.Level)}</p><p><b>ฮีท:</b> ${esc(r.Heat||'-')}　<b>ลู่:</b> ${esc(r.Lane||'-')}</p><table><thead><tr><th>ลำดับ</th><th>ชื่อ–สกุล</th><th>เพศ</th><th>อายุ</th><th>Verify</th></tr></thead><tbody>${rr.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.FirstName+' '+x.LastName)}</td><td>${esc(x.Gender)}</td><td>${esc(x.Age)}</td><td>${x.Status==='ผ่านการตรวจสอบ'?'✓':''}</td></tr>`).join('')}</tbody></table><div class="photos">${rr.map(x=>`<div>${photoUrl(x.Photo,800)?'<img src="'+esc(photoUrl(x.Photo,800))+'">':''}<small>${esc(x.FirstName+' '+x.LastName)}</small></div>`).join('')}</div><p>ลงชื่อ .................................................... ครูผู้ฝึกซ้อม</p><p>ผลการแข่งขัน: ☐ ตกรอบ　☐ เข้ารอบชิง　☐ อันดับ 1　☐ อันดับ 2　☐ อันดับ 3</p></article>`}).join('');
  w.document.write('<!doctype html><html lang="th"><meta charset="utf-8"><title>ใบสมัครกรีฑา</title><style>@page{size:A4;margin:12mm}body{font:16px Sarabun,sans-serif;color:#111}article{break-after:page}h2,h3{text-align:center}h2{margin:0}h3{margin:4px 0 20px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:8px}.photos{display:flex;gap:10px;margin:15px 0}.photos div{max-width:100px;flex:1;text-align:center}.photos img{width:100%;aspect-ratio:1;object-fit:cover}.photos small{display:block}</style>'+printRows+'</html>');w.document.close();w.focus();setTimeout(()=>w.print(),350);
 }
 $('#printAll').onclick=()=>printRegs(state.regs);
