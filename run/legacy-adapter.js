@@ -133,5 +133,18 @@
    },
    photoLink,
    adminRequest: (action,data)=>request(action,data),
+   adminDownload: async (data)=>{
+     const response=await fetch('api.php?action=admin_backup_export',{
+       method:'POST',credentials:'same-origin',
+       headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
+       body:JSON.stringify(data)
+     });
+     if(!response.ok){
+       let message='ไม่สามารถดาวน์โหลดไฟล์ Backup ได้';
+       try{const error=await response.json();message=error.message||message;}catch{}
+       throw new Error(message);
+     }
+     return response.blob();
+   },
  };
 })();
