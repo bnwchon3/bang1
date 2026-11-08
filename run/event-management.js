@@ -158,7 +158,7 @@ function createUI(){
     tbody.innerHTML=visible.map(row=>'<tr>'+
       '<td>'+htmlEscape(row.id)+'</td><td>'+htmlEscape(row.name)+'</td>'+
       '<td>'+htmlEscape([row.category,row.level,row.gender].filter(Boolean).join(' • '))+'</td>'+
-      '<td>'+htmlEscape(row.remark||row.stage||'')+'</td><td>'+htmlEscape(row.heat)+'</td>'+
+      '<td>'+htmlEscape(row.autoCancelled?'ยกเลิกรอบชิงอัตโนมัติ':(row.remark||row.stage||''))+'</td><td>'+htmlEscape(row.heat)+'</td>'+
       '<td>'+htmlEscape(row.schoolCount)+'</td><td>'+
       '<button class="btn btn-outline btn-xs" type="button" data-event-edit="'+htmlEscape(row.id)+'">แก้ไข</button> '+
       '<button class="btn btn-outline btn-xs" type="button" data-event-delete="'+htmlEscape(row.id)+'">ลบ</button></td></tr>').join('')||
