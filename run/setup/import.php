@@ -41,7 +41,10 @@ try {
    upsert('schools',['id'=>(int)$d['SchoolID'],'name'=>strv($d['SchoolName']??''),'nickname'=>strv($d['schoolnickname']??''),'active'=>strv($d['Active']??'')],['id']);
   } elseif($sheet==='ผู้ฝึกซ้อม' && intv($d['CoachID']??null)) {
    $hash=strv($d['PasswordHash']??'');
-   if(!$hash||!password_get_info($hash)['algo'])throw new RuntimeException('Missing hashed password');
+   // Spreadsheet includes 20 placeholder coach rows without credentials.
+   // Preserve them in source_rows but do not create unusable login records.
+   if(!strv($d['Email']??'') || !$hash)continue;
+   if(!password_get_info($hash)['algo'])throw new RuntimeException('Invalid password hash');
    upsert('coaches',['id'=>(int)$d['CoachID'],'name'=>strv($d['Name']??''),'email'=>strtolower(strv($d['Email']??'')),'school_name'=>strv($d['SchoolName']??''),'password_hash'=>$hash,'role'=>strv($d['Role']??'Teacher')],['id']);
   } elseif($sheet==='รายชื่อนักวิ่ง') {
    $id=intv($d['รหัสนักวิ่ง']??$d['RunnerID']??null);
