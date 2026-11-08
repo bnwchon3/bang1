@@ -69,6 +69,7 @@ if($action==='original_results'){
  json_out(['success'=>true,'data'=>$out]);
 }
 $u=require_user();
+require __DIR__.'/admin-config.php';
 if($action==='schools'){json_out(['success'=>true,'data'=>rows('SELECT id, name, nickname, active FROM schools ORDER BY name')]);}
 if($action==='runners'){
  $school=is_admin($u)?trim((string)($_GET['school']??'')):$u['schoolName'];
