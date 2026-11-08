@@ -48,7 +48,7 @@ $counts=reset_counts((int)$u['coachId']);
 $hasOrphans=in_array('runners',$selected,true)
  && !in_array('registrations',$selected,true) && $counts['registrations']>0;
 if ($hasOrphans) json_out(['success'=>false,
-  'message'=>'ต้องเลือกฐานข้อมูลรายการสมัครร่วมด้วย เนื่องจากมีใบสมัครที่อ้างอิงข้อมูลนักวิ่งอยู่'],422]);
+  'message'=>'ต้องเลือกฐานข้อมูลรายการสมัครร่วมด้วย เนื่องจากมีใบสมัครที่อ้างอิงข้อมูลนักวิ่งอยู่'],422);
 
 if ($action==='admin_reset_preview') {
     // Preview only. Never mutate data here.
