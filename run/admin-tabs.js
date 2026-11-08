@@ -41,7 +41,7 @@
    tabs.className='btn-row admin-sheet-tabs';
    tabs.setAttribute('role','tablist');
    tabs.setAttribute('aria-label','แท็บผู้ดูแลระบบ');
-   var names=[['check','ตรวจสอบนักวิ่ง'],['settings','ตั้งค่าเปิด–ปิดระบบ'],['schools','โรงเรียน'],['coaches','ผู้ฝึกซ้อม'],['logs','ประวัติการใช้งาน']];
+   var names=[['check','ตรวจสอบนักวิ่ง'],['settings','ตั้งค่าเปิด–ปิดระบบ'],['schools','โรงเรียน'],['coaches','ผู้ฝึกซ้อม'],['logs','ประวัติการใช้งาน'],['reset','รีเซ็ตข้อมูล']];
    names.forEach(function(pair){
      var b=document.createElement('button');b.type='button';b.className='btn btn-outline btn-xs';
      b.dataset.adminTab=pair[0];b.textContent=pair[1];
@@ -74,7 +74,37 @@
       ['Timestamp','ActionCode','ActionTextTH','Module','TargetType','TargetId','TargetName','RunnerID','RegID','EventName','UserEmail','UserName','UserRole','UserSchool','Detail'],
       '<div class="btn-row"><input id="admin-logs-search" class="input" type="search" placeholder="ค้นหาประวัติการใช้งาน">'+
       '<button id="admin-logs-find" type="button" class="btn btn-outline">ค้นหา</button></div>');
-   [settings,schools,coaches,logs].forEach(function(p){page.appendChild(p)});
+
+   // Separate administrative reset feature; nothing is deleted until a second confirmed action.
+   var reset=document.createElement('div');
+   reset.id='admin-sheet-reset';
+   reset.dataset.adminSheetPanel='reset';
+   reset.hidden=true;
+   var resetSections=[
+     ['runners','ฐานข้อมูลนักวิ่ง'],
+     ['coaches','ฐานข้อมูลครูผู้ฝึกซ้อม'],
+     ['registrations','ฐานข้อมูลรายการสมัคร'],
+     ['photos','เคลียร์รูปภาพหลักฐานนักวิ่ง'],
+     ['results','รีเซ็ตผลการแข่งขัน'],
+     ['logs','log การทำรายการ']
+   ];
+   reset.innerHTML='<div class="card"><div class="card-header"><div class="card-title">รีเซ็ตข้อมูล</div></div>'+
+      '<p>เลือกหมวดที่ต้องการล้างเท่านั้น ระบบจะไม่ลบข้อมูลจนกว่าจะตรวจสอบจำนวนและยืนยันอีกครั้ง</p>'+
+      '<div id="admin-reset-choices">'+resetSections.map(([value,label])=>
+         '<label style="display:flex;align-items:center;gap:10px;margin:10px 0;cursor:pointer">'+
+         '<input type="checkbox" data-reset-section="'+value+'"> '+escapeText(label)+'</label>').join('')+'</div>'+
+      '<p style="font-size:.84rem;color:#94a3b8">'+
+      'หมายเหตุ: การเคลียร์รูปและหลักฐานจะล้างลิงก์ใน MariaDB แต่ไม่ลบไฟล์ต้นฉบับออกจาก Google Drive '+
+      'และจะเก็บข้อมูลนำเข้าเดิมไว้ใน source_rows</p>'+
+      '<div class="btn-row"><button type="button" id="admin-reset-preview" class="btn btn-outline">ตรวจสอบรายการที่จะล้าง</button></div>'+
+      '<div id="admin-reset-confirmation" hidden>'+
+      '<p id="admin-reset-summary" style="white-space:pre-line"></p>'+
+      '<label>พิมพ์คำว่า <strong>ล้างข้อมูล</strong> เพื่อยืนยัน'+
+      '<input type="text" id="admin-reset-phrase" class="input" autocomplete="off" placeholder="ล้างข้อมูล"></label>'+
+      '<div class="btn-row"><button type="button" id="admin-reset-execute" class="btn btn-primary" disabled>ยืนยันรีเซ็ตข้อมูลที่เลือก</button></div>'+
+      '</div><p data-admin-message role="status" aria-live="polite"></p></div>';
+   [settings,schools,coaches,logs,reset].forEach(function(p){page.appendChild(p)});
+
 
    // Filtering is limited to the coach tab; preserve the original Admin page layout.
    const coachFilter=document.createElement('div');
@@ -136,6 +166,7 @@
      if(key==='schools')await loadSchools();
      if(key==='coaches')await loadCoaches();
      if(key==='logs')await loadLogs(1);
+     if(key==='reset')clearResetPreview();
    }
    tabs.addEventListener('click',function(e){
      var b=e.target.closest('[data-admin-tab]');if(!b)return;
@@ -302,6 +333,64 @@
      finally{save.disabled=false;coachForm.elements.password.value=''}
    });
    coachForm.addEventListener('reset',function(){setTimeout(function(){coachForm.elements.id.value=''},0)});
+
+   // Two-stage confirmation keeps a checkbox selection from deleting records by accident.
+   let resetPreviewToken='';
+   let resetSelected=[];
+   const resetConfirmation=el('#admin-reset-confirmation',reset);
+   const resetPhrase=el('#admin-reset-phrase',reset);
+   const resetExecute=el('#admin-reset-execute',reset);
+   function clearResetPreview(){
+     resetPreviewToken='';
+     resetSelected=[];
+     resetPhrase.value='';
+     resetConfirmation.hidden=true;
+     resetExecute.disabled=true;
+     inform(reset,'');
+   }
+   reset.querySelectorAll('[data-reset-section]').forEach(c=>c.addEventListener('change',clearResetPreview));
+   resetPhrase.addEventListener('input',()=>{
+     resetExecute.disabled=!(resetPreviewToken && resetPhrase.value==='ล้างข้อมูล');
+   });
+   el('#admin-reset-preview',reset).addEventListener('click',async ()=>{
+     const selected=all('[data-reset-section]:checked',reset).map(c=>c.dataset.resetSection);
+     if(!selected.length){inform(reset,'กรุณาเลือกหมวดที่ต้องการล้าง',true);return;}
+     const btn=el('#admin-reset-preview',reset);
+     btn.disabled=true;
+     clearResetPreview();
+     try{
+       const data=await api('admin_reset_preview',{sections:selected});
+       resetPreviewToken=String(data.token||'');
+       resetSelected=selected;
+       const summary='ตรวจสอบข้อมูลที่จะรีเซ็ต:\n'+selected.map(key=>{
+         const name=resetSections.find(x=>x[0]===key)?.[1]||key;
+         return '• '+name+' : '+(data.counts?.[key]??0)+' รายการ';
+       }).join('\n')+'\n\n'+(data.notes||[]).join('\n')+
+       '\n\nยืนยันภายใน 5 นาทีหลังการตรวจสอบ';
+       el('#admin-reset-summary',reset).textContent=summary;
+       resetConfirmation.hidden=false;
+       resetExecute.disabled=true;
+     }catch(error){inform(reset,error.message,true)}
+     finally{btn.disabled=false}
+   });
+   resetExecute.addEventListener('click',async ()=>{
+     if(!resetPreviewToken||resetPhrase.value!=='ล้างข้อมูล')return;
+     if(!window.confirm('ยืนยันรีเซ็ตข้อมูลที่เลือกจริงหรือไม่?\nการทำรายการนี้ย้อนกลับไม่ได้'))return;
+     const token=resetPreviewToken,selected=resetSelected.slice();
+     // Invalidating the preview prevents double submission.
+     resetPreviewToken='';
+     resetExecute.disabled=true;
+     try{
+       const result=await api('admin_reset_execute',{sections:selected,token,confirmation:'ล้างข้อมูล'});
+       clearResetPreview();
+       reset.querySelectorAll('[data-reset-section]').forEach(c=>c.checked=false);
+       inform(reset,result.message||'รีเซ็ตข้อมูลสำเร็จ');
+     }catch(error){
+       inform(reset,error.message+'\nกรุณาตรวจสอบรายการอีกครั้งก่อนลองใหม่',true);
+       resetConfirmation.hidden=true;
+     }
+   });
+
    var currentLogPage=1;
    async function loadLogs(pageNo){
      var rows=el('[data-admin-rows="logs"]');
