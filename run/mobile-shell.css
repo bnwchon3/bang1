@@ -1,12 +1,25 @@
 /* Bang1 mobile/tablet shell: existing desktop UI, colors and pages stay unchanged. */
 @media (max-width:1199px) {
-  html,body {width:100%;max-width:100%;overflow:hidden!important;overscroll-behavior:none}
-  body {position:fixed;inset:0;height:100%;touch-action:pan-y}
+  /* Lock the app frame; gestures scroll inner panels, never the document. */
+  html,body {
+    width:100%;max-width:100%;height:100%;margin:0;
+    overflow:hidden!important;overscroll-behavior:none;
+    -webkit-text-size-adjust:100%;text-size-adjust:100%;
+  }
+  html {touch-action:none}
+  body {
+    position:fixed;inset:0;max-width:100vw;
+    height:100svh;max-height:100svh;
+    overflow:hidden!important;touch-action:none;
+  }
   .app {
-    position:relative;
-    width:100%;
-    height:var(--bang1-visible-height,100svh);
+    position:fixed;
+    top:0;left:0;right:0;bottom:auto;
+    width:100%;max-width:100%;
+    height:100svh;max-height:100svh;
     min-height:0;
+    overscroll-behavior:none;
+    touch-action:none;
     padding:0!important;
     overflow:hidden;
     display:flex;
@@ -19,6 +32,8 @@
     overflow-y:auto;
     overflow-x:hidden;
     overscroll-behavior:contain;
+    touch-action:pan-y;
+    min-height:0;
     -webkit-overflow-scrolling:touch;
     padding:0 12px max(100px,env(safe-area-inset-bottom) + 70px)!important;
   }
@@ -26,7 +41,14 @@
   .app>.main .card,.app>.main .field,.app>.main .form-grid {
     min-width:0;max-width:100%;
   }
-  .app>.main .table-wrap {max-width:100%;overflow-x:auto}
+  /* Allow intentional scrolling of long tables and filter strips. */
+  .app>.main .table-wrap {max-width:100%;overflow-x:auto;touch-action:pan-x pan-y}
+  .app>.main .table-scroller,
+  .app>.main .bang1-summary-grid-scroll,
+  .app>.main .bang1-staff-filters {touch-action:pan-x pan-y}
+  .app button,.app a,.app input,.app select,.app textarea {
+    touch-action:manipulation;
+  }
   .app>.main .form-grid {grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
   /* Prevent mobile Safari auto-zoom from causing horizontal layout jumps. */
   input:not([type=checkbox]):not([type=radio]),select,textarea {
@@ -37,8 +59,8 @@
     position:fixed;
     top:0;bottom:0;left:0;
     width:min(300px,85vw);
-    max-height:var(--bang1-visible-height,100svh);
-    height:var(--bang1-visible-height,100svh);
+    max-height:100svh;
+    height:100svh;
     overflow-y:auto;
     overflow-x:hidden;
     z-index:1202;
@@ -49,6 +71,7 @@
     pointer-events:none;
     overscroll-behavior:contain;
     -webkit-overflow-scrolling:touch;
+    touch-action:pan-y;
   }
   body.bang1-drawer-open .app .sidebar {transform:translate3d(0,0,0);pointer-events:auto}
   #bang1MobileMenuBackdrop {
@@ -105,7 +128,11 @@
     overscroll-behavior:contain;
   }
   body.bang1-keyboard-open .site-footer {display:none!important}
+  /* A virtual keyboard only reduces the inner scroller, not the app frame.
+     Avoid the repeated full-screen relayout during Safari toolbar changes. */
   body.bang1-keyboard-open .app>.main {
+    height:min(100svh,var(--bang1-visible-height,100svh));
+    max-height:min(100svh,var(--bang1-visible-height,100svh));
     padding-bottom:max(32px,env(safe-area-inset-bottom) + 15px)!important;
   }
   .app>.main input,.app>.main textarea,.app>.main select {
