@@ -76,11 +76,20 @@ jobs:
           set ftp:ssl-protect-data yes
           set ssl:verify-certificate yes
           set cmd:fail-exit yes
-          mkdir -p run
-          mirror --reverse --verbose --only-newer --parallel=2 run run
-          mkdir -p .private
-          put .private/config.php -o .private/config.php
-          put .private/.htaccess -o .private/.htaccess
+          # On this DirectAdmin host, lftp mkdir -p exits 550 when the folder already exists.
+          # Allow the initial mkdir to fail, but require cd to succeed before uploading.
+          set cmd:fail-exit no
+          mkdir run
+          set cmd:fail-exit yes
+          cd run
+          mirror --reverse --verbose --only-newer --parallel=2 run .
+          cd ..
+          set cmd:fail-exit no
+          mkdir .private
+          set cmd:fail-exit yes
+          cd .private
+          put .private/config.php -o config.php
+          put .private/.htaccess -o .htaccess
           bye
           LFTP
       - name: Apply idempotent DB schema
