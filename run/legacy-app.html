@@ -5850,7 +5850,7 @@ function loadSchedule() {
         r._displayRemarkText = remarkText;
 
         tr.innerHTML = `
-          <td>${idx + 1}</td>
+          <td>${escSchedule(r.EventID || idx + 1)}</td>
           <td>${escSchedule(r.EventName  || '')}</td>
           <td>${escSchedule(r.Heat       || '')}</td>
           <td>${escSchedule(teamText)}</td>
