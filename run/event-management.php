@@ -10,11 +10,11 @@ function event_key(array $e): string {
     ]));
 }
 function event_is_final(array $e): bool {
+    // Original spreadsheet uses remark=คัดเลือก + stage=ชิงชนะเลิศ
+    // for the pre-set later final (e.g. EventID 40), so stage is authoritative.
     return trim((string)($e['remark']??''))==='ชิงชนะเลิศ'
       || trim((string)($e['heat_plan']??''))==='ชิง'
-      || (trim((string)($e['stage']??''))==='ชิงชนะเลิศ'
-          && trim((string)($e['remark']??''))!=='คัดเลือก'
-          && !preg_match('/^\d+$/',trim((string)($e['heat']??''))));
+      || trim((string)($e['stage']??''))==='ชิงชนะเลิศ';
 }
 function event_registration_rows(): array {
     return rows('SELECT id,event_id,event_name,category,level,school_name,runner_names,heat,lane FROM registrations ORDER BY id');
