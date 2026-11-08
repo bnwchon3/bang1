@@ -11,6 +11,7 @@ if (!isset($u, $action) || !is_array($u) || !function_exists('require_admin')) {
 }
 if (!str_starts_with((string)$action, 'admin_')) return;
 require_admin($u);
+if(in_array($action,['admin_account_applications','admin_account_review'],true)) require __DIR__.'/account-portal.php';
 require __DIR__.'/admin-security.php';
 require __DIR__.'/admin-reset.php';
 require __DIR__.'/admin-backup.php';
@@ -140,7 +141,7 @@ if ($action === 'admin_coach_save') {
     try {
         if($old){
             if($password!==''){
-                db()->prepare('UPDATE coaches SET name=?, email=?, school_name=?, role=?, password_hash=? WHERE id=?')
+                db()->prepare('UPDATE coaches SET name=?, email=?, school_name=?, role=?, password_hash=?,auth_version=auth_version+1 WHERE id=?')
                   ->execute([$name,$email,$school,$role,password_hash($password,PASSWORD_DEFAULT),$id]);
             }else{
                 db()->prepare('UPDATE coaches SET name=?, email=?, school_name=?, role=? WHERE id=?')
@@ -173,7 +174,7 @@ if ($action === 'admin_coach_reset_password') {
     $temporaryPassword = strtoupper(bin2hex(random_bytes(10)));
     $hash = password_hash($temporaryPassword, PASSWORD_DEFAULT);
     try {
-        db()->prepare('UPDATE coaches SET password_hash=? WHERE id=?')->execute([$hash,$id]);
+        db()->prepare('UPDATE coaches SET password_hash=?,auth_version=auth_version+1 WHERE id=?')->execute([$hash,$id]);
         log_action('ADMIN_COACH_PASSWORD_RESET',$u,'Coach',(string)$id,
             'Admin reset login password for '.$coach['email'].' (password not logged)');
     } catch(Throwable $e) {
