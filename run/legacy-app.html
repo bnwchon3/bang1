@@ -1545,6 +1545,7 @@ body{
         <button data-page="schedule"><span class="icon">📜</span> รายการจัดแข่งขัน</button>
         <button data-page="results"><span class="icon">🏅</span> ผลการแข่งขัน</button>
         <button data-page="admin"><span class="icon">🛠️</span> ผู้ดูแลระบบ</button>
+        <button type="button" id="bang1LogoutButton" onclick="handleLogout()" hidden><span class="icon">🚪</span> ออกจากระบบ</button>
       </div>
     </aside>
 
@@ -3831,7 +3832,7 @@ function printRegSummary() {
 
     /*********************** DOM READY ***********************/
     document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.menu button').forEach(btn => {
+      document.querySelectorAll('.menu button[data-page]').forEach(btn => {
         btn.addEventListener('click', () => navigate(btn.getAttribute('data-page')));
       });
 
@@ -4132,6 +4133,24 @@ function clearSavedLogin() {
     localStorage.removeItem(LOGIN_STORAGE_KEY);
   } catch (e) {
     console.log('clearSavedLogin error', e);
+  }
+}
+
+// End the server session, clear the saved email, then reload the original login screen.
+let bang1LogoutInProgress = false;
+async function handleLogout() {
+  if (bang1LogoutInProgress) return;
+  const btn = document.getElementById('bang1LogoutButton');
+  bang1LogoutInProgress = true;
+  if (btn) btn.disabled = true;
+  try {
+    await window.bang1Bridge.logout();
+    clearSavedLogin();
+    window.location.reload();
+  } catch (error) {
+    alert('ออกจากระบบไม่สำเร็จ: ' + (error && error.message ? error.message : 'โปรดลองอีกครั้ง'));
+    bang1LogoutInProgress = false;
+    if (btn) btn.disabled = false;
   }
 }
 
