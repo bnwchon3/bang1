@@ -14,6 +14,31 @@
    }
    const parts=String(action).split('&');
    const endpoint='api.php?action='+encodeURIComponent(parts.shift())+(parts.length?'&'+parts.join('&'):'');
+   // Authentication must never remain blocked forever by a stalled network call.
+   if(action==='login' || action==='me') {
+     const controller=new AbortController();
+     options.signal=controller.signal;
+     // Keep the limit specific to short authentication requests; uploads and
+     // backups remain unrestricted.
+     try {
+       const response=await Promise.race([
+         fetch(endpoint,options),
+         new Promise((_,reject)=>{
+           options._authTimeout=setTimeout(()=>{
+             controller.abort();
+             reject(new Error('การเชื่อมต่อใช้เวลานาน กรุณาลองเข้าสู่ระบบอีกครั้ง'));
+           },20000);
+         })
+       ]);
+       clearTimeout(options._authTimeout);
+       let result;
+       try{result=await response.json()}catch{throw new Error('Server HTTP '+response.status);}
+       if(response.status>=400||result.success===false)throw new Error(result.message||'ทำรายการไม่สำเร็จ');
+       return result;
+     } finally {
+       clearTimeout(options._authTimeout);
+     }
+   }
    const response=await fetch(endpoint,options);
    let result;
    try{result=await response.json()}catch{throw new Error('Server HTTP '+response.status);}
@@ -72,11 +97,17 @@
    loginCoach:async(email,password)=>{
      const result=await request('login',{email,password});
      csrf=result.csrf||'';sessionUser=result.user;
-     // Managers may verify athletes only; they must not request competition event APIs.
-     if(result.user?.role!=='Manager') {
-       const events=await allEvents();
-       if(typeof eventsData!=='undefined')eventsData=events;
-       if(typeof buildEventDropdown==='function')buildEventDropdown();
+     // Role-specific bootstrap: Manager/Staff must never request the Teacher/Admin
+     // events API. A secondary event-list failure must not turn a valid login into
+     // a permanently blocking loading overlay.
+     if(['Teacher','Admin','TopAdmin'].includes(result.user?.role)) {
+       try {
+         const events=await allEvents();
+         if(typeof eventsData!=='undefined')eventsData=events;
+         if(typeof buildEventDropdown==='function')buildEventDropdown();
+       } catch(error) {
+         console.warn('Bang1: optional event preload unavailable',errorText(error));
+       }
      }
      window.dispatchEvent(new CustomEvent('bang1:login'));
      return {...result,message:'เข้าสู่ระบบสำเร็จ'};
