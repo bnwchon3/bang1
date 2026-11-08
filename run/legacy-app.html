@@ -2634,18 +2634,6 @@ function buildRegSummaryHtml(list, schoolName, printedAt) {
     พิมพ์เมื่อ: ${safePrinted}
   </div>
   ${itemsHtml}
-<style>
-/* Functional Admin tabs only. Original screen styling is unchanged. */
-#page-admin .admin-sheet-tabs { display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0; }
-#page-admin [data-admin-sheet-panel][hidden] { display:none!important; }
-#page-admin [data-admin-sheet-panel] .table-wrap { overflow-x:auto; }
-#page-admin [data-admin-sheet-panel] td input,
-#page-admin [data-admin-sheet-panel] td select { min-width:130px;max-width:280px; }
-#page-admin #admin-sheet-logs .table-scroller { max-height:520px;overflow:auto; }
-#page-admin #admin-coach-form { margin-bottom:1rem; }
-#page-admin #admin-logs-search { max-width:340px; }
-</style>
-<script src="admin-tabs.js?v=20261108-1"></script>
 </body>
 </html>`;
 }
@@ -7317,5 +7305,17 @@ document.addEventListener('DOMContentLoaded', function () {
   </div>
 </div>
 
+<style>
+/* Functional Admin tabs only. Original screen styling is unchanged. */
+#page-admin .admin-sheet-tabs { display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0; }
+#page-admin [data-admin-sheet-panel][hidden] { display:none!important; }
+#page-admin [data-admin-sheet-panel] .table-wrap { overflow-x:auto; }
+#page-admin [data-admin-sheet-panel] td input,
+#page-admin [data-admin-sheet-panel] td select { min-width:130px;max-width:280px; }
+#page-admin #admin-sheet-logs .table-scroller { max-height:520px;overflow:auto; }
+#page-admin #admin-coach-form { margin-bottom:1rem; }
+#page-admin #admin-logs-search { max-width:340px; }
+</style>
+<script src="admin-tabs.js?v=20261108-1"></script>
 </body>
 </html>
