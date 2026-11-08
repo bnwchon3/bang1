@@ -116,7 +116,9 @@ function event_schedule_data(): array {
         if(!$directFinal){
             foreach($finals as $ev){
                 $line=event_map_schedule($ev);
-                $line['Remark']='ชิงชนะเลิศ';
+                // Original schedule UI interprets Remark=คัดเลือก + Stage=ชิงชนะเลิศ
+                // as an upcoming final that must wait for qualifying results.
+                $line['Remark']='คัดเลือก';
                 $line['Stage']='ชิงชนะเลิศ';
                 $line['TeamCount']=null;
                 $line['TotalTeams']=$teams;
@@ -153,7 +155,9 @@ if($action==='manage_events'){
             'heat'=>$ev['heat'],'heat_plan'=>$ev['heat_plan'],'stage'=>$ev['stage'],
             'schoolCount'=>count(event_schools($matched)),
             'registrationCount'=>count($matched),
-            'isFinalSlot'=>event_is_final($ev)
+            'isFinalSlot'=>event_is_final($ev),
+            'autoCancelled'=>event_is_final($ev) && count(event_schools($matched))>0 &&
+                count(event_schools($matched))<=8 && count(event_group_rows($ev))>1
         ];
     }
     json_out(['success'=>true,'data'=>$out]);
