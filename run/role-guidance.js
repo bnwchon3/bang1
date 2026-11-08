@@ -4,7 +4,7 @@
  'use strict';
  const policies={
   Admin:{
-   pages:['login','runners','register','print','schedule','results','admin'],
+   pages:['login','runners','register','print','schedule','results','score-summary','admin'],
    name:'Admin',
    permission:'จัดการและตั้งค่าระบบได้ทุกส่วน รวมถึงโรงเรียน ผู้ฝึกซ้อม การตรวจสอบนักวิ่ง และรายการแข่งขัน',
    steps:[
@@ -24,7 +24,7 @@
    ]
   },
   Staff:{
-   pages:['login','results'],
+   pages:['login','results','score-summary'],
    name:'Staff',
    permission:'บันทึกและแก้ไขผลการแข่งขันเฉพาะรายการที่โรงเรียนสมัครไว้ โดยไม่สามารถแก้ข้อมูลนักกรีฑา ใบสมัคร หรือการตั้งค่าระบบ',
    steps:[
