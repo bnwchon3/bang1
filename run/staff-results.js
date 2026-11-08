@@ -98,7 +98,9 @@ function drawList(){
   });
   const visible=fixtures.filter(f=>tab==='all'||(tab==='saved'?f.isSaved:!f.isSaved));
   const list=$('#bang1StaffResultList');
-  list.innerHTML=visible.map(f=>'<button type="button" class="bang1-staff-fixture" data-fixture="'+esc(f.fixtureKey)+'">'+
+  list.innerHTML=visible.map(f=>'<button type="button" class="bang1-staff-fixture'+
+    (f.round==='ชิงชนะเลิศ'?' bang1-staff-final':'')+
+    '" data-fixture="'+esc(f.fixtureKey)+'">'+
     '<span class="bang1-fixture-main"><strong>'+esc(f.eventName)+'</strong>'+
     '<small>'+esc(f.round)+' • ฮีท '+esc(f.heat)+' • '+esc(f.registeredSchools)+' โรงเรียน</small></span>'+
     '<span class="bang1-fixture-right">'+
@@ -120,7 +122,7 @@ function openDialog(item){
     :'เลือกโรงเรียนตามอันดับ โดยโรงเรียนที่เลือกแล้วจะไม่สามารถเลือกซ้ำในอันดับอื่นได้';
   const fields=$('#bang1ScoreFields');
   fields.replaceChildren();
-  for(let rank=1;rank<=10;rank++){
+  for(let rank=1;rank<=8;rank++){
     const row=document.createElement('label');
     row.className='bang1-score-row';
     const name=document.createElement('span');name.textContent='อันดับ '+rank;
