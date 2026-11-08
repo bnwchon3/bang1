@@ -4211,7 +4211,7 @@ function printRegSummary() {
           loadRaceResults();
         }
 
-      } else if (pageName === 'score-summary' && currentUser) {
+      } else if (pageName === 'score-summary') {
         if (typeof window.loadBang1ScoreSummary === 'function') {
           window.loadBang1ScoreSummary();
         }
@@ -7549,7 +7549,7 @@ document.addEventListener('DOMContentLoaded', function () {
 #page-admin #admin-logs-search { max-width:340px; }
 </style>
 <script src="admin-tabs.js?v=20261108-backup-restore"></script>
-<script src="role-guidance.js?v=20261108-score-summary"></script>
+<script src="role-guidance.js?v=20261108-score-summary-public"></script>
 
 <style>
 /* Popup ดูไฟล์แนบเท่านั้น — ใช้โทนเดียวกับหน้าต่างเดิม ไม่เปลี่ยนหน้าจออื่น */
@@ -7674,9 +7674,9 @@ document.addEventListener('DOMContentLoaded', function () {
 }
 </style>
 <link rel="stylesheet" href="staff-results.css?v=20261108-staff-results">
-<link rel="stylesheet" href="score-summary.css?v=20261108-scores-v1">
+<link rel="stylesheet" href="score-summary.css?v=20261108-scores-best-green">
 <script src="staff-results.js?v=20261108-staff-results-unique"></script>
-<script src="score-summary.js?v=20261108-scores-v1"></script>
+<script src="score-summary.js?v=20261108-scores-best-public"></script>
 <script src="event-management.js?v=20261108-events-dropdowns-sync"></script>
 <script src="mobile-shell.js?v=20261108-mobile-keyboard-1"></script>
 </body>
