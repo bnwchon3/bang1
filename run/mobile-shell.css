@@ -113,6 +113,32 @@
   #bang1MobileMenuToggle:focus-visible {outline:2px solid #38bdf8;outline-offset:2px}
   /* Footer never hides an input while the virtual keyboard is up. */
   /* Popup entry panels follow the visible area, not the area behind the keyboard. */
+  /* Dialogs outside .app must obey the same no-zoom policy as the app shell. */
+  #checkModalBackdrop,
+  .mod.open,
+  #bang1StaffScoreBackdrop {
+    touch-action:none;
+    overscroll-behavior:none;
+  }
+  #checkModalBackdrop .check-modal-dialog,
+  .mod.open .mod__panel,
+  #bang1StaffScoreDialog {
+    touch-action:pan-y;
+    overscroll-behavior:contain;
+  }
+  #checkModalBackdrop .check-modal-dialog input,
+  #checkModalBackdrop .check-modal-dialog select,
+  #checkModalBackdrop .check-modal-dialog textarea,
+  #checkModalBackdrop .check-modal-dialog button,
+  .mod.open .mod__panel input,
+  .mod.open .mod__panel select,
+  .mod.open .mod__panel textarea,
+  .mod.open .mod__panel button,
+  #bang1StaffScoreDialog select,
+  #bang1StaffScoreDialog button {
+    touch-action:manipulation;
+    font-size:16px!important;
+  }
   .check-modal-backdrop,
   .mod.open,
   body.bang1-keyboard-open #bang1StaffScoreBackdrop {
