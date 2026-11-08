@@ -1,6 +1,7 @@
 /* Bang1 mobile/tablet shell: existing desktop UI, colors and pages stay unchanged. */
 @media (max-width:1199px) {
   html,body {width:100%;max-width:100%;overflow:hidden!important;overscroll-behavior:none}
+  body {position:fixed;inset:0;height:100%;touch-action:pan-y}
   .app {
     position:relative;
     width:100%;
@@ -88,6 +89,21 @@
   }
   #bang1MobileMenuToggle:focus-visible {outline:2px solid #38bdf8;outline-offset:2px}
   /* Footer never hides an input while the virtual keyboard is up. */
+  /* Popup entry panels follow the visible area, not the area behind the keyboard. */
+  .check-modal-backdrop,
+  .mod.open,
+  body.bang1-keyboard-open #bang1StaffScoreBackdrop {
+    height:var(--bang1-visible-height,100svh);
+    max-height:var(--bang1-visible-height,100svh);
+    top:0;bottom:auto;
+  }
+  .check-modal,
+  .mod.open .mod__panel,
+  body.bang1-keyboard-open #bang1StaffScoreDialog {
+    max-height:calc(var(--bang1-visible-height,100svh) - 18px)!important;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+  }
   body.bang1-keyboard-open .site-footer {display:none!important}
   body.bang1-keyboard-open .app>.main {
     padding-bottom:max(32px,env(safe-area-inset-bottom) + 15px)!important;
