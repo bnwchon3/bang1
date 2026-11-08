@@ -88,7 +88,7 @@ function authorize_athletics_action(array $u,string $action): void {
     $teacher=['schools','runners','save_runner','delete_runner','upload','events','registrations',
       'save_registration','delete_registration','features'];
     $manager=['runners','update_status','features'];
-    $staff=['staff_results_list','staff_results_save'];
+    $staff=['staff_results_list','staff_results_save','score_summary'];
     $allowed=($u['role']??'')==='Manager'?$manager:(($u['role']??'')==='Teacher'?$teacher:(($u['role']??'')==='Staff'?$staff:[]));
     if(!in_array($action,$allowed,true)) json_out(['success'=>false,'message'=>'ไม่มีสิทธิ์เข้าใช้งานส่วนนี้'],403);
 }
