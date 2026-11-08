@@ -31,7 +31,7 @@ function feature_allowed(string $name):bool {
 }
 function require_feature(string $name):void{if(!feature_allowed($name))json_out(['success'=>false,'message'=>'ขณะนี้ปิดการทำรายการ'],403);}
 if($action==='login'){
- must_post();
+ if($_SERVER['REQUEST_METHOD']!=='POST')json_out(['success'=>false],405);
  $email=strtolower(trim((string)($input['email']??'')));
  $pass=(string)($input['password']??'');
  $u=single('SELECT * FROM coaches WHERE email=?',[$email]);
