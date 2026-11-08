@@ -46,6 +46,8 @@ if($action==='login'){
  session_regenerate_id(true);
  $_SESSION['user']=['coachId'=>$u['id'],'name'=>$u['name'],'email'=>$u['email'],'role'=>$u['role'],'schoolName'=>$school];
  $_SESSION['csrf']=bin2hex(random_bytes(24));
+ $_SESSION['login_started_at']=time();
+ $_SESSION['user']['authVersion']=(int)($u['auth_version']??1);
  log_action('LOGIN_SUCCESS',$_SESSION['user'],'User',$email);
  json_out(['success'=>true,'user'=>$_SESSION['user'],'csrf'=>$_SESSION['csrf']]);
 }
@@ -54,6 +56,10 @@ if($action==='me'){
  json_out(['success'=>true,'user'=>$me,'csrf'=>$me?($_SESSION['csrf']??null):null]);
 }
 if($action==='logout'){must_post();session_destroy();json_out(['success'=>true]);}
+// Public account directory, verified password reset and signup request endpoints.
+if(in_array($action,['account_portal','account_signup','account_reset_request','account_reset_verify','account_reset_complete'],true)) {
+ require __DIR__.'/account-portal.php';
+}
 
 // Public read-only school score report. No user session is required; only this
 // action is exposed here. Every other action still passes through require_user().
