@@ -1,0 +1,40 @@
+/* Manager/Admin reporting console, integrated with the original Bang1 UI */
+#page-checkin .bang1-checkin-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.9fr);gap:16px;align-items:stretch}
+#page-checkin .bang1-checkin-panel{min-width:0;border:1px solid #334f69;background:#0b1b31;border-radius:14px;padding:15px}
+#page-checkin .bang1-checkin-heading{font-size:1.02rem;font-weight:800;margin-bottom:10px;color:#c5edfb}
+#page-checkin .bang1-checkin-caption{color:#9dbac9;font-size:.84rem;line-height:1.55;margin:8px 0}
+#page-checkin .bang1-checkin-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+#page-checkin select,#page-checkin input{box-sizing:border-box;width:100%;font:inherit;font-size:16px;min-height:44px;background:#071226;border:1px solid #516477;border-radius:10px;padding:8px 10px;color:#eef9ff}
+#page-checkin .bang1-active-banner{margin-top:15px;border-radius:12px;padding:16px;background:linear-gradient(90deg,#0d4552,#0c2338);border:1px solid #15798c;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+#page-checkin .bang1-active-banner b{display:block;font-size:1.06rem}
+#page-checkin .bang1-active-banner small{color:#92dcdd;display:block;margin-top:4px}
+#page-checkin .bang1-camera{position:relative;width:100%;aspect-ratio:4/3;background:#010914;overflow:hidden;border-radius:14px;border:1px solid #306787;display:grid;place-items:center}
+#page-checkin .bang1-camera video{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+#page-checkin .bang1-camera .bang1-qr-outline{height:min(60%,260px);aspect-ratio:1;pointer-events:none;position:absolute;z-index:2;border:3px solid #34f49c;border-radius:18px;box-shadow:0 0 18px #26f8a177,inset 0 0 18px #1ced8633}
+#page-checkin #bang1CameraEmpty{position:relative;z-index:3;text-align:center;color:#a7c3d8;padding:14px}
+#page-checkin #bang1CameraEmpty[hidden]{display:none}
+#page-checkin .bang1-scan-status{border:1px solid #355a73;border-radius:11px;background:#0e2b41;padding:12px;margin-top:10px;min-height:46px;font-size:.95rem;line-height:1.5}
+#page-checkin .bang1-scan-status.is-success{background:#064b35;border-color:#26ae74;color:#b9f7d5}
+#page-checkin .bang1-scan-status.is-duplicate{background:#533911;border-color:#b88932;color:#ffe2a1}
+#page-checkin .bang1-scan-status.is-error{background:#531d2d;border-color:#bc4b6b;color:#ffd1d7}
+#page-checkin .bang1-scan-status.is-info{color:#aad9ec}
+#page-checkin .bang1-manager-manual{margin-top:16px}
+#page-checkin .bang1-manager-manual label{font-size:.83rem;color:#9fb9cb;display:block;margin-bottom:8px}
+#page-checkin .bang1-manager-manual form{display:flex;gap:7px}
+#page-checkin .bang1-manager-manual form input{flex:1;min-width:0}
+#page-checkin .bang1-manager-manual form button{white-space:nowrap}
+#page-checkin .bang1-checkin-table{width:100%;border-collapse:collapse;min-width:760px;font-size:.86rem}
+#page-checkin .bang1-checkin-table th,#page-checkin .bang1-checkin-table td{padding:10px;text-align:left;border-bottom:1px solid #2c4359}
+#page-checkin .bang1-checkin-table th{position:sticky;top:0;background:#0d2841;color:#b7e7ff;z-index:1}
+#page-checkin .bang1-checked{color:#74efb0;font-weight:700}
+#page-checkin .bang1-pending{color:#fcd08b}
+#page-checkin .bang1-undo-btn{border:1px solid #d9a14c;border-radius:8px;background:#453015;padding:7px 11px;color:#ffe4ad;cursor:pointer}
+#page-checkin .bang1-checkin-table-scroll{overflow:auto;max-height:480px;overscroll-behavior:contain}
+#page-checkin .bang1-checkin-link{color:#72dcff;text-decoration:none}
+#page-checkin button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:900px){
+ #page-checkin .bang1-checkin-grid{grid-template-columns:minmax(0,1fr)}
+ #page-checkin .bang1-checkin-actions .btn{min-height:43px}
+ #page-checkin .bang1-manager-manual form{flex-wrap:wrap}
+ #page-checkin .bang1-manager-manual form button{width:100%}
+}
