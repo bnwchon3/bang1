@@ -4187,7 +4187,11 @@ function printRegSummary() {
         });
 
       } else if (pageName === 'results' && currentUser) {
-        loadRaceResults();
+        if(currentUser.role==='Staff' && typeof window.refreshStaffResults==='function'){
+          window.refreshStaffResults();
+        }else{
+          loadRaceResults();
+        }
 
       } else if (pageName === 'schedule') {
         loadSchedule();
@@ -4304,7 +4308,7 @@ function tryAutoLoginOnLoad() {
     updateUserInfoBox();
     const rs=document.getElementById('runnerSchool');if(rs)rs.value=user.schoolName||'';
     const reg=document.getElementById('regSchool');if(reg)reg.value=user.schoolName||'';
-    if(user.role!=='Manager'){
+    if(['Admin','TopAdmin','Teacher'].includes(user.role)){
       google.script.run.withSuccessHandler(function(evts){
         eventsData=evts||[];buildEventDropdown();
       }).getEvents();
@@ -7478,7 +7482,7 @@ function loadRaceResults() {
 }
 // โหลดผลการแข่งขันอัตโนมัติเมื่อหน้า ready
 document.addEventListener('DOMContentLoaded', function () {
-  if (document.getElementById('resultsTableBody')) {
+  if (document.getElementById('resultsTableBody') && currentUser && currentUser.role!=='Staff') {
     loadRaceResults();
   }
 });
@@ -7513,7 +7517,7 @@ document.addEventListener('DOMContentLoaded', function () {
 #page-admin #admin-logs-search { max-width:340px; }
 </style>
 <script src="admin-tabs.js?v=20261108-backup-restore"></script>
-<script src="role-guidance.js?v=20261108-logout"></script>
+<script src="role-guidance.js?v=20261108-staff-results"></script>
 
 <style>
 /* Popup ดูไฟล์แนบเท่านั้น — ใช้โทนเดียวกับหน้าต่างเดิม ไม่เปลี่ยนหน้าจออื่น */
@@ -7637,6 +7641,8 @@ document.addEventListener('DOMContentLoaded', function () {
   #bang1EventControls { margin-right: 0; }
 }
 </style>
+<link rel="stylesheet" href="staff-results.css?v=20261108-staff-results">
+<script src="staff-results.js?v=20261108-staff-results"></script>
 <script src="event-management.js?v=20261108-events-dropdowns-sync"></script>
 </body>
 </html>
