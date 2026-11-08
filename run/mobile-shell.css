@@ -6,11 +6,11 @@
     overflow:hidden!important;overscroll-behavior:none;
     -webkit-text-size-adjust:100%;text-size-adjust:100%;
   }
-  html {touch-action:none}
+  html {touch-action:pan-x pan-y}
   body {
     position:fixed;inset:0;max-width:100vw;
     height:100svh;max-height:100svh;
-    overflow:hidden!important;touch-action:none;
+    overflow:hidden!important;touch-action:pan-x pan-y;
   }
   .app {
     position:fixed;
@@ -19,7 +19,7 @@
     height:100svh;max-height:100svh;
     min-height:0;
     overscroll-behavior:none;
-    touch-action:none;
+    touch-action:pan-x pan-y;
     padding:0!important;
     overflow:hidden;
     display:flex;
@@ -75,47 +75,44 @@
     overscroll-behavior:contain;
     touch-action:pan-y;
   }
-  /* Only the menu list scrolls; keep the logo/user box and logout accessible. */
-  .app .sidebar > .brand,
-  .app .sidebar > .user-info {
-    flex:0 0 auto;
+  /* Compact brand and account row stay above an independently scrolling menu. */
+  .app .sidebar > .brand {flex:0 0 auto;min-height:0;}
+  .app .sidebar > .brand .brand-banner {
+    height:clamp(54px,12svh,90px);
+    object-fit:cover;
   }
+  .app .sidebar > .bang1-mobile-user-row {
+    flex:0 0 auto;min-width:0;
+    display:flex;align-items:center;gap:8px;
+  }
+  .app .sidebar > .bang1-mobile-user-row > .user-info {
+    flex:1 1 auto;min-width:0;overflow-wrap:anywhere;
+  }
+  /* Original logout button alongside user name, icon-only on mobile. */
+  .app .sidebar > .bang1-mobile-user-row > #bang1LogoutButton:not([hidden]) {
+    display:inline-flex;align-items:center;justify-content:center;
+    flex:0 0 44px;width:44px;height:44px;min-height:44px;
+    padding:0;border:1px solid #64748b;border-radius:12px;
+    background:#1e293b;color:#f8fafc;font-size:0;line-height:1;
+    cursor:pointer;touch-action:manipulation;
+  }
+  .app .sidebar > .bang1-mobile-user-row > #bang1LogoutButton .icon {
+    font-size:22px;line-height:1;opacity:1;
+  }
+  .app .sidebar > .bang1-mobile-user-row > #bang1LogoutButton:focus-visible {
+    outline:2px solid #38bdf8;outline-offset:2px;
+  }
+  .app .sidebar > .bang1-mobile-user-row > #bang1LogoutButton[hidden] {display:none!important;}
   .app .sidebar > .menu {
-    flex:1 1 auto;
-    min-height:0;
-    margin-top:0;
-    overflow-y:auto;
-    overflow-x:hidden;
+    flex:1 1 0;min-height:0;margin-top:0;
+    overflow-y:auto;overflow-x:hidden;
     overscroll-behavior:contain;
     -webkit-overflow-scrolling:touch;
     touch-action:pan-y;
-    padding:3px 4px 12px 0;
-    scrollbar-width:thin;
-    scrollbar-color:#64748b transparent;
+    padding:3px 4px max(18px,env(safe-area-inset-bottom) + 10px) 0;
+    scrollbar-width:thin;scrollbar-color:#64748b transparent;
   }
   .app .sidebar > .menu > button {flex:0 0 auto;}
-  .app .sidebar > .bang1-mobile-logout {
-    flex:0 0 auto;
-    padding-top:9px;
-    border-top:1px solid rgba(148,163,184,.25);
-  }
-  .app .sidebar > .bang1-mobile-logout #bang1LogoutButton:not([hidden]) {
-    display:flex;
-    align-items:center;
-    gap:8px;
-    width:100%;
-    min-height:44px;
-    padding:10px 12px;
-    border:1px solid #475569;
-    border-radius:10px;
-    background:#1e293b;
-    color:#f1f5f9;
-    font-size:.9rem;
-    text-align:left;
-    touch-action:manipulation;
-  }
-  .app .sidebar > .bang1-mobile-logout #bang1LogoutButton[hidden] {display:none!important;}
-  .app .sidebar > .bang1-mobile-logout:has(#bang1LogoutButton[hidden]) {display:none;}
   body.bang1-drawer-open .app .sidebar {transform:translate3d(0,0,0);pointer-events:auto}
   #bang1MobileMenuBackdrop {
     position:fixed;inset:0;
@@ -214,7 +211,7 @@
   .app>.main .card {padding:12px}
 }
 @media(min-width:1200px){
-  .bang1-mobile-header,#bang1MobileMenuBackdrop,.bang1-mobile-logout {display:none!important}
+  .bang1-mobile-header,#bang1MobileMenuBackdrop,.bang1-mobile-user-row {display:none!important}
 }
 @media (prefers-reduced-motion:reduce){
   .app .sidebar {transition:none}

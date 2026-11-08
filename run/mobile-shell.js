@@ -4,7 +4,7 @@
   'use strict';
   const media=window.matchMedia('(max-width:1199px)');
   let mobileButton=null,backdrop=null,sidebar=null,main=null,lastHeight=0;
-  let menu=null,logoutButton=null,logoutDock=null;
+  let menu=null,logoutButton=null,userInfo=null,userRow=null;
   let frame=0,focusTimer=0;
   function isMobile(){return media.matches}
   function editing(el){
@@ -85,20 +85,27 @@
     const first=sidebar.querySelector('.menu button:not([hidden]):not([style*="display: none"])');
     (first||sidebar).focus({preventScroll:true});
   }
-  function syncLogoutDock(){
-    if(!menu||!logoutButton||!logoutDock)return;
-    // Move the original button; no clone and no duplicate logout handlers.
-    // Restore it inside the original menu on desktop.
-    if(isMobile()&&logoutButton.parentElement!==logoutDock){
-      logoutDock.appendChild(logoutButton);
-    }else if(!isMobile()&&logoutButton.parentElement!==menu){
-      menu.appendChild(logoutButton);
+  function syncLogoutHeader(){
+    if(!menu||!logoutButton||!userInfo||!userRow)return;
+    // Reuse the real logout button and live user details. No cloned handler.
+    if(isMobile()){
+      if(userInfo.parentElement!==userRow)userRow.prepend(userInfo);
+      if(logoutButton.parentElement!==userRow)userRow.appendChild(logoutButton);
+      logoutButton.classList.add('bang1-mobile-logout-icon');
+      logoutButton.setAttribute('aria-label','ออกจากระบบ');
+      logoutButton.title='ออกจากระบบ';
+    }else{
+      if(userInfo.parentElement!==sidebar)sidebar.insertBefore(userInfo,userRow);
+      if(logoutButton.parentElement!==menu)menu.appendChild(logoutButton);
+      logoutButton.classList.remove('bang1-mobile-logout-icon');
+      logoutButton.removeAttribute('aria-label');
+      logoutButton.removeAttribute('title');
     }
   }
   function applyMedia(){
     updateVisibleHeight();
     if(!sidebar)return;
-    syncLogoutDock();
+    syncLogoutHeader();
     if(!isMobile()){
       closeMenu();
       sidebar.inert=false;
@@ -123,11 +130,12 @@
     sidebar.tabIndex=-1;
     menu=sidebar.querySelector('.menu');
     logoutButton=document.getElementById('bang1LogoutButton');
-    if(menu&&logoutButton){
-      logoutDock=document.createElement('div');
-      logoutDock.className='bang1-mobile-logout';
-      logoutDock.setAttribute('aria-label','บัญชีผู้ใช้');
-      sidebar.appendChild(logoutDock);
+    userInfo=document.getElementById('userInfoBox');
+    if(menu&&logoutButton&&userInfo){
+      userRow=document.createElement('div');
+      userRow.className='bang1-mobile-user-row';
+      userRow.setAttribute('aria-label','บัญชีผู้ใช้');
+      sidebar.insertBefore(userRow,menu);
     }
     const bar=document.createElement('div');
     bar.className='bang1-mobile-header';
