@@ -156,10 +156,21 @@
     });
     // iOS Safari/WebViews may ignore viewport zoom restrictions. Block
     // native page pinch while keeping one-finger panel scrolling intact.
-    document.addEventListener('gesturestart',blockNativeZoom,{passive:false});
-    document.addEventListener('gesturechange',blockNativeZoom,{passive:false});
-    document.addEventListener('touchstart',blockMultiTouchZoom,{passive:false});
-    document.addEventListener('touchmove',blockMultiTouchZoom,{passive:false});
+    // Capture gestures before standalone modals or native select controls
+    // can trigger the browser's pinch zoom. One-finger scrolling stays enabled.
+    document.addEventListener('gesturestart',blockNativeZoom,{passive:false,capture:true});
+    document.addEventListener('gesturechange',blockNativeZoom,{passive:false,capture:true});
+    document.addEventListener('gestureend',blockNativeZoom,{passive:false,capture:true});
+    document.addEventListener('touchstart',blockMultiTouchZoom,{passive:false,capture:true});
+    document.addEventListener('touchmove',blockMultiTouchZoom,{passive:false,capture:true});
+    document.addEventListener('dblclick',event=>{
+      if(isMobile()&&event.target?.closest?.('#bang1StaffScoreBackdrop,#checkModalBackdrop,.mod.open')&&event.cancelable)
+        event.preventDefault();
+    },{passive:false,capture:true});
+    document.addEventListener('wheel',event=>{
+      if(isMobile()&&event.ctrlKey&&event.target?.closest?.('#bang1StaffScoreBackdrop,#checkModalBackdrop,.mod.open')&&event.cancelable)
+        event.preventDefault();
+    },{passive:false,capture:true});
     window.addEventListener('resize',scheduleViewport,{passive:true});
     window.addEventListener('orientationchange',scheduleViewport,{passive:true});
     window.visualViewport?.addEventListener('resize',scheduleViewport,{passive:true});
