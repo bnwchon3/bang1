@@ -3,7 +3,7 @@ declare(strict_types=1);
 // Encrypted, authenticated in-memory backup/restore. No exports saved to public directories.
 if(!in_array($action,['admin_backup_export','admin_backup_preview','admin_backup_restore'],true))return;
 must_post();
-const BACKUP_TABLES=['source_rows','schools','coaches','runners','events','registrations','heats','feature_config','audit_logs','race_results','certificates','import_batches'];
+const BACKUP_TABLES=['source_rows','schools','coaches','runners','events','registrations','heats','feature_config','audit_logs','race_results','certificates','import_batches','event_results'];
 const BACKUP_MAX_BYTES=31457280;
 const BACKUP_MAX_PLAINTEXT=83886080;
 function backup_columns(string $table): array {
@@ -45,8 +45,16 @@ function backup_decrypt(string $bytes,string $passphrase): array {
     try{$decoded=json_decode($json,true,512,JSON_THROW_ON_ERROR);}
     catch(Throwable $e){json_out(['success'=>false,'message'=>'รูปแบบข้อมูล Backup ไม่รองรับ'],422);}
     if(!is_array($decoded)||($decoded['format']??'')!=='bang1-snapshot'||($decoded['version']??null)!==1||
-       !isset($decoded['tables'])||!is_array($decoded['tables'])||array_keys($decoded['tables'])!==BACKUP_TABLES)
+       !isset($decoded['tables'])||!is_array($decoded['tables']))
         json_out(['success'=>false,'message'=>'ไฟล์ Backup ไม่ตรงกับระบบบางละมุง 1'],422);
+    // Allow older encrypted backups from before Staff scoring was introduced.
+    // Restoring an old snapshot will correctly restore an empty scores table.
+    if(!array_key_exists('event_results',$decoded['tables']) &&
+       array_keys($decoded['tables'])===array_slice(BACKUP_TABLES,0,-1)){
+        $decoded['tables']['event_results']=['columns'=>backup_columns('event_results'),'rows'=>[]];
+    }
+    if(array_keys($decoded['tables'])!==BACKUP_TABLES)
+        json_out(['success'=>false,'message'=>'จำนวนตารางในไฟล์ Backup ไม่ตรงกับระบบ'],422);
     $counts=[];
     foreach(BACKUP_TABLES as $table){
         $entry=$decoded['tables'][$table];
