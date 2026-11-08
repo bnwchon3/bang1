@@ -12,7 +12,9 @@
      if(data instanceof FormData)options.body=data;
      else {options.headers['Content-Type']='application/json';options.body=JSON.stringify(data);}
    }
-   const response=await fetch('api.php?action='+encodeURIComponent(action),options);
+   const parts=String(action).split('&');
+   const endpoint='api.php?action='+encodeURIComponent(parts.shift())+(parts.length?'&'+parts.join('&'):'');
+   const response=await fetch(endpoint,options);
    let result;
    try{result=await response.json()}catch{throw new Error('Server HTTP '+response.status);}
    if(response.status>=400||result.success===false)throw new Error(result.message||'ทำรายการไม่สำเร็จ');
@@ -126,5 +128,6 @@
      try{await request('logout',{})}finally{sessionUser=null;csrf='';}
    },
    photoLink,
+   adminRequest: (action,data)=>request(action,data),
  };
 })();
