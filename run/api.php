@@ -39,7 +39,7 @@ if($action==='login'){
   log_action('LOGIN_FAIL',['email'=>$email],'User',$email,'Invalid credentials');
   json_out(['success'=>false,'message'=>'อีเมลหรือรหัสผ่านไม่ถูกต้อง'],401);
  }
- if(!in_array($u['role'],['Teacher','Admin','TopAdmin','Guest'],true))json_out(['success'=>false,'message'=>'ไม่มีสิทธิ์ใช้งาน'],403);
+ if(!in_array($u['role'],['Teacher','Manager','Admin','TopAdmin'],true))json_out(['success'=>false,'message'=>'ไม่มีสิทธิ์ใช้งาน'],403);
  $school=$u['school_name'];
  $mapped=single('SELECT name FROM schools WHERE nickname=? AND (active IN ("Active","ใช้งาน","1") OR active IS NULL) LIMIT 1',[$school]);
  if($mapped)$school=$mapped['name'];
@@ -49,11 +49,15 @@ if($action==='login'){
  log_action('LOGIN_SUCCESS',$_SESSION['user'],'User',$email);
  json_out(['success'=>true,'user'=>$_SESSION['user'],'csrf'=>$_SESSION['csrf']]);
 }
-if($action==='me'){json_out(['success'=>true,'user'=>$_SESSION['user']??null,'csrf'=>$_SESSION['csrf']??null]);}
+if($action==='me'){
+ $me=isset($_SESSION['user'])?require_user():null;
+ json_out(['success'=>true,'user'=>$me,'csrf'=>$me?($_SESSION['csrf']??null):null]);
+}
 if($action==='logout'){must_post();session_destroy();json_out(['success'=>true]);}
 
 if($action==='original_results'){
  $u=require_user();
+ authorize_athletics_action($u,$action);
  $out=[['EventName','รอบการแข่ง','ฮีท','อันดับ 1','อันดับ 2','อันดับ 3','อันดับ 4','อันดับ 5','อันดับ 6','อันดับ 7','อันดับ 8']];
  $q=db()->prepare('SELECT payload FROM source_rows WHERE sheet_name=? ORDER BY source_row');
  $q->execute(['รายการวิ่ง']);
@@ -69,14 +73,15 @@ if($action==='original_results'){
  json_out(['success'=>true,'data'=>$out]);
 }
 $u=require_user();
+authorize_athletics_action($u,$action);
 require __DIR__.'/admin-config.php';
 if($action==='schools'){json_out(['success'=>true,'data'=>rows('SELECT id, name, nickname, active FROM schools ORDER BY name')]);}
 if($action==='runners'){
- $school=is_admin($u)?trim((string)($_GET['school']??'')):$u['schoolName'];
+ $school=is_reviewer($u)?trim((string)($_GET['school']??'')):$u['schoolName'];
  $p=[];$sql='SELECT * FROM runners WHERE 1=1';
  if($school!==''){$sql.=' AND school_name=?';$p[]=$school;}
  $sql.=' ORDER BY id DESC';
- $data=array_map(fn($r)=>runner_map($r,is_admin($u)||$r['school_name']===$u['schoolName']),rows($sql,$p));
+ $data=array_map(fn($r)=>runner_map($r,is_reviewer($u)||$r['school_name']===$u['schoolName']),rows($sql,$p));
  json_out(['success'=>true,'data'=>$data]);
 }
 if($action==='save_runner'){
@@ -114,7 +119,7 @@ if($action==='delete_runner'){
  db()->prepare('DELETE FROM runners WHERE id=?')->execute([$id]);log_action('RUNNER_DELETE',$u,'Runner',(string)$id);json_out(['success'=>true]);
 }
 if($action==='update_status'){
- must_post();require_admin($u);
+ must_post();require_reviewer($u);
  $id=(int)($input['id']??0);$status=trim((string)($input['status']??''));
  if(!in_array($status,['รอตรวจสอบ','รอตรวจภาพอีกครั้ง','ผ่านการตรวจสอบ','ไม่ผ่านการตรวจสอบ'],true))json_out(['success'=>false,'message'=>'สถานะไม่ถูกต้อง'],422);
  $reason=trim((string)($input['reason']??''));
