@@ -45,7 +45,7 @@
       .map(r=>({...r,Label:String(r.EventName||'')+(r.Level?' | '+r.Level:'')+(r.Gender?' | '+r.Gender:'')}));
    });
  }
- const config=()=>request('features').then(r=>{
+ const config=()=>(!sessionUser?new Promise(resolve=>window.addEventListener('bang1:login',()=>config().then(resolve),{once:true})):request('features').then(r=>{
    const names={'รับลงทะเบียนนักวิ่ง':'runnerReg','รับสมัครรายการวิ่ง':'eventReg','แก้ไขรูปภาพ':'photoEdit','แก้ไขหลักฐาน':'proofEdit'};
    const features={};
    for(const f of toList(r)) {
@@ -54,7 +54,8 @@
        openAtEpochMs:f.opens_at?new Date(f.opens_at.replace(' ','T')+'+07:00').getTime():null,
        closeAtEpochMs:f.closes_at?new Date(f.closes_at.replace(' ','T')+'+07:00').getTime():null};
    }
-   return {serverTimeEpochMs:r.serverTimeEpochMs||Date.now(),features};
+   const print=toList(r).find(x=>x.name==='ปุ่มพิมพ์');
+   return {serverTimeEpochMs:r.serverTimeEpochMs||Date.now(),features,_printStatus:print?print.status:null};
  });
  const methods={
    loginCoach:async(email,password)=>{
@@ -94,7 +95,7 @@
    autoAssignHeatsAndLanes:()=>request('auto_heats',{}).then(r=>({...r,message:'จัดฮีทและลู่เรียบร้อย'})),
    getAdminConfig:config,
    getUploadSystemStatus:()=>config().then(r=>({photo:r.features.photoEdit?.isOpen!==false,idproof:r.features.proofEdit?.isOpen!==false})),
-   getPrintButtonsEnabled:()=>request('features').then(r=>{const f=toList(r).find(x=>x.name==='ปุ่มพิมพ์');return !f||f.status==='เปิดระบบ';}),
+   getPrintButtonsEnabled:()=>config().then(r=>{const f=r._printStatus;return f===null||f==='เปิดระบบ';}),
    getRaceResults:()=>sessionUser?request('original_results').then(r=>toList(r)):Promise.resolve([]),
  };
  const build=(onSuccess,onFailure)=>new Proxy({},{
