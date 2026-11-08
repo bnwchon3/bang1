@@ -28,7 +28,7 @@
   font-variant-numeric:tabular-nums;
 }
 #page-score-summary .bang1-summary-grid thead th {
-  background:#f8fafc;
+  background:#38bdf8;
   color:#111827;
   position:sticky;top:0;z-index:2;
   min-width:145px;
@@ -65,9 +65,19 @@
 #page-score-summary .bang1-summary-grid .bang1-summary-total td {
   background:#fff000;color:#111827;font-weight:800;
 }
+/* Show green ONLY for first place (including ties), not the entire rank row. */
 #page-score-summary .bang1-summary-grid .bang1-summary-rank th,
-#page-score-summary .bang1-summary-grid .bang1-summary-rank td{
-  background:#13e311;color:#061b09;font-weight:800;
+#page-score-summary .bang1-summary-grid .bang1-summary-rank td {
+  background:#fff;
+  color:#111827;
+  font-weight:800;
+}
+#page-score-summary .bang1-summary-grid .bang1-summary-rank th {
+  background:#f8fafc;
+}
+#page-score-summary .bang1-summary-grid .bang1-summary-rank td.bang1-summary-first {
+  background:#13e311 !important;
+  color:#061b09 !important;
 }
 #page-score-summary #bang1ScoreSummaryMessage {
   font-size:.82rem;line-height:1.5;color:#94a3b8;
