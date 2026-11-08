@@ -10,7 +10,7 @@
      return Promise.reject(Error('ไม่พบการเชื่อมต่อระบบ Admin'));
    return window.bang1Bridge.adminRequest(action,data);
  }
- function isAdmin(){var user=typeof currentUser==='undefined'?null:currentUser;return !!(user && ['Admin','TopAdmin'].includes(user.role))}
+ function isAdmin(){var user=typeof currentUser==='undefined'?null:currentUser;return !!(user && ['Admin','TopAdmin','Manager'].includes(user.role))}
  function inform(panel,text,error){
    var box=el('[data-admin-message]',panel);
    if(box){box.textContent=text||'';box.style.color=error?'#fca5a5':'#a7f3d0';}
@@ -64,7 +64,7 @@
          '<div class="field"><label>ชื่อผู้ฝึกซ้อม</label><input name="name" class="input" required></div>'+
          '<div class="field"><label>Email</label><input name="email" type="email" class="input" required></div>'+
          '<div class="field"><label>SchoolName</label><select name="schoolName" class="input" required></select></div>'+
-         '<div class="field"><label>Role</label><select name="role" class="input"><option value="Teacher">Teacher</option><option value="Guest">Guest</option></select></div>'+
+         '<div class="field"><label>Role</label><select name="role" class="input"><option value="Admin">Admin</option><option value="Manager">Manager</option><option value="Teacher">Teacher</option></select></div>'+
          '<div class="field"><label>รหัสผ่านใหม่ (ไม่กรอกหากไม่เปลี่ยน)</label><input name="password" type="password" class="input" autocomplete="new-password" minlength="8"></div>'+
        '</div>'+
        '<div class="btn-row"><button class="btn btn-primary" type="submit">บันทึกผู้ฝึกซ้อม</button>'+
@@ -85,6 +85,8 @@
    var active='check';
    async function selectTab(key){
      if(!isAdmin())return;
+     var user=typeof currentUser==='undefined'?null:currentUser;
+     if(user&&user.role==='Manager'&&key!=='check')return;
      active=key;
      all('[data-admin-sheet-panel]',page).forEach(function(p){p.hidden=p.dataset.adminSheetPanel!==key});
      all('[data-admin-tab]',tabs).forEach(function(btn){
@@ -174,7 +176,7 @@
        schoolNames.map(function(s){return '<option value="'+escapeText(s)+'">'+escapeText(s)+'</option>'}).join('');
      rows.innerHTML=coachList.map(function(x){
        var user=typeof currentUser==='undefined'?null:currentUser;
-       var restricted=['Admin','TopAdmin'].includes(x.role)&&(!user||user.role!=='TopAdmin');
+       var restricted=user&&user.role==='Manager';
        return '<tr><td>'+escapeText(x.id)+'</td><td>'+escapeText(x.name)+'</td>'+
          '<td>'+escapeText(x.email)+'</td><td>'+escapeText(x.school_name)+'</td><td>'+escapeText(x.role)+'</td>'+
          '<td>'+(restricted?'บัญชีผู้ดูแลระบบ':'<button type="button" data-edit-coach="'+escapeText(x.id)+'" class="btn btn-outline btn-xs">แก้ไข</button>')+'</td></tr>';
