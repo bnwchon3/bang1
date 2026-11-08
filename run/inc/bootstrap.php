@@ -58,11 +58,39 @@ function session_open(): void {
 function require_user(): array {
     session_open();
     if (!isset($_SESSION['user'])) json_out(['success'=>false,'message'=>'กรุณาเข้าสู่ระบบ'],401);
+    // Synchronize permissions with the account on every request so promotions/revocations take effect immediately.
+    $id=(int)($_SESSION['user']['coachId']??0);
+    $q=db()->prepare('SELECT id,name,email,school_name,role FROM coaches WHERE id=? LIMIT 1');
+    $q->execute([$id]);
+    $coach=$q->fetch();
+    if(!$coach || !in_array($coach['role'],['Admin','TopAdmin','Manager','Teacher'],true)) {
+        $_SESSION=[];
+        json_out(['success'=>false,'message'=>'บัญชีนี้ไม่มีสิทธิ์ใช้งาน กรุณาเข้าสู่ระบบใหม่'],401);
+    }
+    $school=$coach['school_name'];
+    $s=db()->prepare('SELECT name FROM schools WHERE nickname=? LIMIT 1');
+    $s->execute([$school]);
+    $mapped=$s->fetchColumn();
+    if($mapped) $school=$mapped;
+    $_SESSION['user']=['coachId'=>(int)$coach['id'],'name'=>$coach['name'],'email'=>$coach['email'],
+      'role'=>$coach['role'],'schoolName'=>$school];
     return $_SESSION['user'];
 }
 function is_admin(array $u): bool { return in_array(($u['role']??''),['Admin','TopAdmin'],true); }
-function require_editor(array $u): void { if(($u['role']??'')==='Guest') json_out(['success'=>false,'message'=>'บัญชี Guest ไม่มีสิทธิ์แก้ไข'],403); }
+function is_reviewer(array $u): bool { return is_admin($u)||($u['role']??'')==='Manager'; }
+function require_reviewer(array $u): void { if(!is_reviewer($u)) json_out(['success'=>false,'message'=>'เฉพาะผู้ดูแลระบบหรือผู้ตรวจสอบ'],403); }
+function require_editor(array $u): void {
+    if(!is_admin($u)&&($u['role']??'')!=='Teacher') json_out(['success'=>false,'message'=>'ไม่มีสิทธิ์ทำรายการนี้'],403);
+}
 function require_admin(array $u): void { if(!is_admin($u)) json_out(['success'=>false,'message'=>'เฉพาะ Admin'],403); }
+function authorize_athletics_action(array $u,string $action): void {
+    if(is_admin($u))return;
+    $teacher=['schools','runners','save_runner','delete_runner','upload','events','registrations',
+      'save_registration','delete_registration','features'];
+    $manager=['runners','update_status','features'];
+    $allowed=($u['role']??'')==='Manager'?$manager:(($u['role']??'')==='Teacher'?$teacher:[]);
+    if(!in_array($action,$allowed,true)) json_out(['success'=>false,'message'=>'ไม่มีสิทธิ์เข้าใช้งานส่วนนี้'],403);
+}
 function csrf_check(): void {
     session_open();
     if(!hash_equals((string)($_SESSION['csrf']??''),(string)($_SERVER['HTTP_X_CSRF_TOKEN']??''))) json_out(['success'=>false,'message'=>'CSRF token ไม่ถูกต้อง'],403);
