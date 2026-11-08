@@ -1,0 +1,52 @@
+/* Staff scoring UI only. Existing competition and admin styling stays unchanged. */
+#bang1StaffResults[hidden],
+#bang1StaffScoreBackdrop[hidden],
+#bang1ResultsReadOnly[hidden] {display:none!important}
+#bang1StaffResults .card {padding:14px}
+.bang1-staff-filters {display:flex;gap:7px;overflow-x:auto;white-space:nowrap;scrollbar-width:thin;padding:3px 0 10px}
+.bang1-staff-filters .btn {flex:0 0 auto;border:1px solid #334155;font-size:.8rem}
+.bang1-staff-filters .btn.active {background:#0e7490;color:#fff;border-color:#22d3ee}
+.bang1-staff-result-list {display:flex;flex-direction:column;gap:8px}
+.bang1-staff-fixture {display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:67px;
+  text-align:left;border:1px solid #334155;background:#0f172a;border-radius:12px;color:#e5e7eb;padding:12px;cursor:pointer}
+.bang1-staff-fixture:focus-visible {outline:2px solid #22d3ee;outline-offset:2px}
+.bang1-staff-fixture:active {background:#172b42}
+.bang1-fixture-main {min-width:0;display:flex;flex-direction:column;gap:5px}
+.bang1-fixture-main strong {font-size:.9rem;line-height:1.3}
+.bang1-fixture-main small {color:#94a3b8;font-size:.76rem}
+.bang1-fixture-right {display:flex;align-items:center;gap:7px;flex-shrink:0}
+.bang1-fixture-right>span:last-child {font-size:1.4rem;color:#94a3b8}
+.bang1-fixture-state {font-size:.73rem;white-space:nowrap;border-radius:99px;padding:3px 8px}
+.bang1-fixture-state.saved {color:#a7f3d0;background:#064e3b}
+.bang1-fixture-state.pending {color:#fde68a;background:#422006}
+.bang1-empty-fixtures {padding:25px 8px;text-align:center;color:#94a3b8}
+body.bang1-score-modal-open {overflow:hidden}
+#bang1StaffScoreBackdrop {position:fixed;inset:0;z-index:15000;background:rgba(2,6,23,.85);
+  display:flex;justify-content:center;align-items:center;padding:14px}
+#bang1StaffScoreDialog {width:min(580px,100%);max-height:min(92dvh,870px);display:flex;flex-direction:column;
+  background:#0f172a;color:#e2e8f0;border:1px solid #475569;border-radius:15px;box-shadow:0 24px 80px #000a;overflow:hidden}
+.bang1-score-head {padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-bottom:1px solid #334155}
+.bang1-score-head h2 {margin:0;font-size:1.02rem;line-height:1.45}
+.bang1-score-head p {margin:4px 0 0;color:#94a3b8;font-size:.8rem}
+.bang1-score-close {background:transparent;color:#fff;font-size:1.6rem;border:1px solid #475569;border-radius:50%;width:35px;height:35px;cursor:pointer;flex-shrink:0}
+.bang1-score-body {padding:10px 16px;overflow-y:auto;overscroll-behavior:contain}
+#bang1ScoreHint {margin:0 0 10px;color:#94a3b8;font-size:.83rem}
+#bang1ScoreFields {display:grid;grid-template-columns:1fr;gap:8px}
+.bang1-score-row {display:grid;grid-template-columns:75px minmax(0,1fr);align-items:center;gap:10px;font-size:.85rem}
+.bang1-score-row select {width:100%;min-width:0;min-height:40px;color:#e5e7eb;background:#020617;border:1px solid #475569;border-radius:9px;padding:7px;font-size:16px}
+.bang1-score-row select:disabled {opacity:.65}
+.bang1-score-foot {padding:10px 16px 14px;border-top:1px solid #334155;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+#bang1ScoreNotice {flex:1 1 100%;font-size:.8rem;color:#fca5a5;min-height:1em}
+.bang1-score-foot .btn {min-height:38px}
+@media(max-width:600px){
+  #bang1StaffScoreBackdrop {padding:0;align-items:flex-end}
+  #bang1StaffScoreDialog {width:100%;border-radius:16px 16px 0 0;max-height:94dvh}
+  .bang1-staff-fixture {padding:10px}
+  .bang1-fixture-main strong {font-size:.85rem}
+  .bang1-fixture-state {font-size:.68rem}
+  .bang1-score-head {padding:13px}
+  .bang1-score-body {padding:10px 13px}
+  .bang1-score-row {grid-template-columns:65px minmax(0,1fr);gap:8px}
+  .bang1-score-foot {padding:10px 13px max(12px,env(safe-area-inset-bottom))}
+}
+@media(prefers-reduced-motion:reduce){.bang1-staff-fixture {transition:none}}
