@@ -98,3 +98,15 @@ jobs:
           BASE="${PUBLIC_BASE_URL:-https://www.bannawang.ac.th/bang1/run}"
           curl --fail-with-body --silent --show-error --retry 2 --connect-timeout 15 --max-time 90 \
             -X POST -H "X-Deploy-Token: ${DEPLOY_TOKEN}" "${BASE%/}/setup/migrate.php"
+
+      - name: Verify imported records in MariaDB (aggregate counts only)
+        shell: bash
+        run: |
+          BASE="${PUBLIC_BASE_URL:-https://www.bannawang.ac.th/bang1/run}"
+          curl --fail-with-body --silent --show-error --retry 2 --connect-timeout 15 --max-time 90 \
+            -X POST -H "X-Deploy-Token: ${DEPLOY_TOKEN}" "${BASE%/}/setup/verify.php" > /tmp/bang1-import-check.json
+          jq -e '.success == true and (.source_rows_total | type == "number")' /tmp/bang1-import-check.json >/dev/null
+          jq '{source_rows_total,table_counts,quality_counts,coach_roles,alerts}' /tmp/bang1-import-check.json
+          if [ "$(jq -r '.source_rows_total' /tmp/bang1-import-check.json)" -lt 1 ]; then
+            echo "::warning::There are no imported records in MariaDB yet"
+          fi
