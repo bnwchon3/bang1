@@ -141,6 +141,12 @@ if($action==='save_registration'){
  $id=(int)($input['regId']??0);
  $ev=single('SELECT * FROM events WHERE id=?',[(int)($input['eventId']??0)]);
  if(!$ev)json_out(['success'=>false,'message'=>'ไม่พบรายการแข่งขัน'],422);
+ // A pre-seeded final is a fixture, never another independent sign-up form.
+ if(event_is_final($ev)){
+    $others=rows("SELECT id FROM events WHERE name=? AND category <=> ? AND level <=> ? AND gender <=> ? AND id<>? LIMIT 1",
+        [$ev['name'],$ev['category'],$ev['level'],$ev['gender'],$ev['id']]);
+    if($others)json_out(['success'=>false,'message'=>'รายการนี้เป็นรอบชิงที่ตั้งไว้ กรุณาสมัครผ่านรายการหลัก'],422);
+ }
  $ids=array_unique(array_values(array_filter(array_map('intval',(array)($input['runnerIds']??[])))));
  $max=$ev['category']==='วิ่งผลัด'?6:2;
  if(count($ids)<1||count($ids)>$max)json_out(['success'=>false,'message'=>'จำนวนผู้สมัครไม่ถูกต้อง'],422);
