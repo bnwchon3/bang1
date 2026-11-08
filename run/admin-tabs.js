@@ -10,7 +10,7 @@
      return Promise.reject(Error('ไม่พบการเชื่อมต่อระบบ Admin'));
    return window.bang1Bridge.adminRequest(action,data);
  }
- function isAdmin(){return !!(window.currentUser && ['Admin','TopAdmin'].includes(window.currentUser.role))}
+ function isAdmin(){var user=typeof currentUser==='undefined'?null:currentUser;return !!(user && ['Admin','TopAdmin'].includes(user.role))}
  function inform(panel,text,error){
    var box=el('[data-admin-message]',panel);
    if(box){box.textContent=text||'';box.style.color=error?'#fca5a5':'#a7f3d0';}
@@ -173,7 +173,8 @@
      schoolSelect.innerHTML='<option value="">-- เลือกโรงเรียน --</option>'+
        schoolNames.map(function(s){return '<option value="'+escapeText(s)+'">'+escapeText(s)+'</option>'}).join('');
      rows.innerHTML=coachList.map(function(x){
-       var restricted=['Admin','TopAdmin'].includes(x.role)&&window.currentUser.role!=='TopAdmin';
+       var user=typeof currentUser==='undefined'?null:currentUser;
+       var restricted=['Admin','TopAdmin'].includes(x.role)&&(!user||user.role!=='TopAdmin');
        return '<tr><td>'+escapeText(x.id)+'</td><td>'+escapeText(x.name)+'</td>'+
          '<td>'+escapeText(x.email)+'</td><td>'+escapeText(x.school_name)+'</td><td>'+escapeText(x.role)+'</td>'+
          '<td>'+(restricted?'บัญชีผู้ดูแลระบบ':'<button type="button" data-edit-coach="'+escapeText(x.id)+'" class="btn btn-outline btn-xs">แก้ไข</button>')+'</td></tr>';
