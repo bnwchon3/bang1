@@ -4,7 +4,7 @@
  'use strict';
  const policies={
   Admin:{
-   pages:['login','runners','register','print','schedule','results','score-summary','admin'],
+   pages:['login','runners','register','print','schedule','results','score-summary','checkin','admin'],
    name:'Admin',
    permission:'จัดการและตั้งค่าระบบได้ทุกส่วน รวมถึงโรงเรียน ผู้ฝึกซ้อม การตรวจสอบนักวิ่ง และรายการแข่งขัน',
    steps:[
@@ -14,9 +14,9 @@
    ]
   },
   Manager:{
-   pages:['login','admin'],
+   pages:['login','checkin','admin'],
    name:'Manager',
-   permission:'ตรวจสอบข้อมูลนักวิ่ง รูปถ่ายและหลักฐาน พร้อมอนุมัติหรือไม่อนุมัตินักวิ่งเท่านั้น',
+   permission:'ตรวจสอบและอนุมัตินักวิ่ง สแกน QR ใบสมัครเพื่อเช็กอินรายงานตัว และควบคุมรายการ Active บนจอ Live',
    steps:[
     {icon:'🔎',title:'เปิดตรวจสอบนักวิ่ง',detail:'เลือกเมนูตรวจสอบนักวิ่ง',page:'admin'},
     {icon:'🪪',title:'ตรวจข้อมูลและหลักฐาน',detail:'ตรวจรูปถ่ายและเอกสารของนักวิ่ง',page:'admin'},
