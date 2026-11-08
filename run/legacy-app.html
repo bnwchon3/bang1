@@ -4100,7 +4100,7 @@ function handleLogin() {
 
       const regSchool = document.getElementById('regSchool');
       if (regSchool) {
-        if (isAdminClient()) {
+        if (['Admin','TopAdmin'].includes(currentUser.role)) {
           loadSchoolDropdownForAdmin('');
         } else {
           regSchool.value = currentUser.schoolName;
