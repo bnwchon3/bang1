@@ -110,3 +110,15 @@ jobs:
           if [ "$(jq -r '.source_rows_total' /tmp/bang1-import-check.json)" -lt 1 ]; then
             echo "::warning::There are no imported records in MariaDB yet"
           fi
+
+      - name: Smoke-test live dashboard and public check-in state
+        shell: bash
+        run: |
+          BASE="${PUBLIC_BASE_URL:-https://www.bannawang.ac.th/bang1/run}"
+          curl --fail-with-body --location --silent --show-error --retry 2 \
+            --connect-timeout 15 --max-time 45 "${BASE%/}/live/" > /tmp/bang1-live-page.html
+          grep -q 'ศูนย์รายงานตัวนักกรีฑา' /tmp/bang1-live-page.html
+          curl --fail-with-body --silent --show-error --retry 2 \
+            --connect-timeout 15 --max-time 45 "${BASE%/}/api.php?action=live_state" > /tmp/bang1-live-check.json
+          jq -e '.success == true and (.fixtures | type == "array") and (.teams | type == "array") and (.recent | type == "array")' /tmp/bang1-live-check.json >/dev/null
+          jq '{success,active,fixture_count:(.fixtures|length),teams_in_active:(.teams|length)}' /tmp/bang1-live-check.json
