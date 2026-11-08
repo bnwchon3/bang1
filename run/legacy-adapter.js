@@ -63,10 +63,12 @@
    loginCoach:async(email,password)=>{
      const result=await request('login',{email,password});
      csrf=result.csrf||'';sessionUser=result.user;
-     // Populate the original event picker before the original login success handler executes.
-     const events=await allEvents();
-     if(typeof eventsData!=='undefined')eventsData=events;
-     if(typeof buildEventDropdown==='function')buildEventDropdown();
+     // Managers may verify athletes only; they must not request competition event APIs.
+     if(result.user?.role!=='Manager') {
+       const events=await allEvents();
+       if(typeof eventsData!=='undefined')eventsData=events;
+       if(typeof buildEventDropdown==='function')buildEventDropdown();
+     }
      window.dispatchEvent(new CustomEvent('bang1:login'));
      return {...result,message:'เข้าสู่ระบบสำเร็จ'};
    },
