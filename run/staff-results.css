@@ -9,6 +9,27 @@
 .bang1-staff-result-list {display:flex;flex-direction:column;gap:8px}
 .bang1-staff-fixture {display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:67px;
   text-align:left;border:1px solid #334155;background:#0f172a;border-radius:12px;color:#e5e7eb;padding:12px;cursor:pointer}
+/* Final-round fixtures are lightly green to distinguish them from qualifiers. */
+#bang1StaffResults .bang1-staff-fixture.bang1-staff-final {
+  background:#c9f7df;
+  border-color:#4ade80;
+  color:#064e3b;
+}
+#bang1StaffResults .bang1-staff-fixture.bang1-staff-final .bang1-fixture-main small,
+#bang1StaffResults .bang1-staff-fixture.bang1-staff-final .bang1-fixture-right>span:last-child {
+  color:#166534;
+}
+#bang1StaffResults .bang1-staff-fixture.bang1-staff-final:active {
+  background:#a7efcb;
+}
+#bang1StaffResults .bang1-staff-fixture.bang1-staff-final .bang1-fixture-state.saved {
+  background:#166534;
+  color:#f0fdf4;
+}
+#bang1StaffResults .bang1-staff-fixture.bang1-staff-final .bang1-fixture-state.pending {
+  background:#fef3c7;
+  color:#78350f;
+}
 .bang1-staff-fixture:focus-visible {outline:2px solid #22d3ee;outline-offset:2px}
 .bang1-staff-fixture:active {background:#172b42}
 .bang1-fixture-main {min-width:0;display:flex;flex-direction:column;gap:5px}
