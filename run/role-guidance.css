@@ -1,0 +1,20 @@
+/* Only the requested post-login 3-step infographic is styled. All other UI uses the existing theme. */
+#bang1-login-guidance[hidden], #page-login > .card[hidden], .menu button[hidden], .admin-sheet-tabs button[hidden] {display:none!important}
+#bang1-login-guidance {margin-top:18px;overflow:hidden}
+#bang1-login-guidance .role-guidance-header {display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+#bang1-login-guidance .role-guidance-header h2 {font-size:1.18rem;margin:3px 0 0}
+#bang1-login-guidance .role-guidance-overline {color:#86efac;font-weight:700;font-size:.88rem}
+#bang1-login-guidance .role-guidance-role {border:1px solid #22c55e66;border-radius:40px;padding:6px 15px;background:#052e1666;color:#bbf7d0;font-weight:700}
+#bang1-login-guidance .role-guidance-subtitle {padding:12px 14px;background:#0b2440;border:1px solid #1d4d70;border-radius:12px;margin:0 0 20px}
+#bang1-login-guidance .role-guidance-subtitle strong {color:#f8fafc}
+#bang1-login-guidance .role-guidance-subtitle p {margin:6px 0 0;color:#cbd5e1;line-height:1.65}
+#bang1-login-guidance .role-guidance-title {font-size:1rem;margin:0 0 12px;color:#e2e8f0}
+#bang1-login-guidance .role-guidance-steps {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#bang1-login-guidance .role-guidance-step {width:100%;display:flex;flex-direction:column;text-align:left;gap:10px;min-height:160px;padding:14px;border-radius:14px;border:1px solid #34516e;background:linear-gradient(135deg,#12243e,#0b192d);color:#e2e8f0;box-shadow:none}
+#bang1-login-guidance .role-guidance-step:hover {border-color:#22c55e;background:linear-gradient(135deg,#143a4b,#0b192d)}
+#bang1-login-guidance .role-guidance-step-top {display:flex;align-items:center;justify-content:space-between}
+#bang1-login-guidance .role-guidance-number {background:linear-gradient(135deg,#2563eb,#059669);color:white;border-radius:50%;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem}
+#bang1-login-guidance .role-guidance-icon {font-size:1.5rem}
+#bang1-login-guidance .role-guidance-step strong {font-size:.95rem;color:#f8fafc}
+#bang1-login-guidance .role-guidance-step small {font-size:.8rem;color:#cbd5e1;line-height:1.5;font-weight:400}
+@media (max-width:700px) {#bang1-login-guidance .role-guidance-steps {grid-template-columns:1fr}#bang1-login-guidance .role-guidance-step {min-height:auto}}
