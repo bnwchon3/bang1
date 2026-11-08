@@ -62,7 +62,7 @@ function staff_result_fixture_rows(): array {
         }
         $cleanRanks=[];
         $used=[];
-        for($rank=1;$rank<=10;$rank++){
+        for($rank=1;$rank<=8;$rank++){
             $school=trim((string)($ranks[$rank]??$ranks[(string)$rank]??''));
             if($school!=='' && in_array($school,$schools,true) && !isset($used[$school])){
                 $cleanRanks[(string)$rank]=$school;
@@ -100,10 +100,10 @@ if($action==='staff_results_save'){
     if($id<=0||$heat<=0||$heat>99||!in_array($round,['คัดเลือก','ชิงชนะเลิศ'],true)
        ||!is_array($raw))
         json_out(['success'=>false,'message'=>'ข้อมูลรายการแข่งขันไม่ถูกต้อง'],422);
-    // Only rank 1..10. No arbitrary keys, no duplicated schools.
+    // Only rank 1..8. No arbitrary keys, no duplicated schools.
     $ranking=[];$used=[];
     foreach($raw as $k=>$v){
-        if(!ctype_digit((string)$k)||(int)$k<1||(int)$k>10||!is_string($v))
+        if(!ctype_digit((string)$k)||(int)$k<1||(int)$k>8||!is_string($v))
             json_out(['success'=>false,'message'=>'ลำดับผลการแข่งขันไม่ถูกต้อง'],422);
         $school=trim($v);
         if(strlen($school)>255)
