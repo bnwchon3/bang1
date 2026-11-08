@@ -56,7 +56,7 @@
    }
    const print=toList(r).find(x=>x.name==='ปุ่มพิมพ์');
    return {serverTimeEpochMs:r.serverTimeEpochMs||Date.now(),features,_printStatus:print?print.status:null};
- });
+ }));
  const methods={
    loginCoach:async(email,password)=>{
      const result=await request('login',{email,password});
