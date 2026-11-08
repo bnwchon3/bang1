@@ -1,0 +1,26 @@
+name: Validate Bang1 source
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: find run -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: JavaScript syntax
+        run: node --check run/assets/app.js
+      - name: Check public repository for accidentally committed sensitive files
+        shell: bash
+        run: |
+          if find . -path './.git' -prune -o -type f \
+            \( -name '*.xlsx' -o -name '*.xls' -o -name '*.json.gz' -o -name '*.sql.gz' -o -name '*.env' \) -print | grep -q .; then
+            echo '::error::Sensitive data or environment file found in public repository'
+            exit 1
+          fi
