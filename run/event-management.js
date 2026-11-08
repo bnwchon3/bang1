@@ -7,6 +7,12 @@ let loadedEvents=[];
 let manageVisible=false;
 function actor(){return typeof currentUser==='undefined'?null:currentUser}
 function isAdmin(){const user=actor();return !!(user&&['Admin','TopAdmin'].includes(user.role))}
+async function refreshRelatedViews(){
+  const result=await window.bang1Bridge.adminRequest('events');
+  if(typeof eventsData!=='undefined')eventsData=Array.isArray(result.data)?result.data:[];
+  if(typeof buildEventDropdown==='function')buildEventDropdown();
+  if(typeof loadSchedule==='function')loadSchedule();
+}
 function notice(message,isError=false){
   const node=$('#bang1EventManagementMessage');
   if(node){node.textContent=message||'';node.style.color=isError?'#fca5a5':'#a7f3d0'}
@@ -87,7 +93,7 @@ function createUI(){
       const result=await window.bang1Bridge.adminRequest('manage_event_save',payload);
       clear();
       await loadEvents();
-      if(typeof loadSchedule==='function')loadSchedule();
+      await refreshRelatedViews();
       notice(result.message||'บันทึกรายการแข่งขันสำเร็จ');
     }catch(err){notice(err.message,true)}
     finally{btn.disabled=false}
@@ -127,7 +133,7 @@ function createUI(){
     try{
       const result=await window.bang1Bridge.adminRequest('manage_event_delete',{id:item.id,confirmation});
       await loadEvents();
-      if(typeof loadSchedule==='function')loadSchedule();
+      await refreshRelatedViews();
       notice(result.message+(result.keptRegistrations?' (เก็บข้อมูลใบสมัครเดิมไว้)':''));
     }catch(err){notice(err.message,true);del.disabled=false}
   });
