@@ -60,6 +60,10 @@
    loginCoach:async(email,password)=>{
      const result=await request('login',{email,password});
      csrf=result.csrf||'';sessionUser=result.user;
+     // Populate the original event picker before the original login success handler executes.
+     const events=await allEvents();
+     if(typeof eventsData!=='undefined')eventsData=events;
+     if(typeof buildEventDropdown==='function')buildEventDropdown();
      window.dispatchEvent(new CustomEvent('bang1:login'));
      return {...result,message:'เข้าสู่ระบบสำเร็จ'};
    },
@@ -82,7 +86,7 @@
    registerEvent:(form)=>request('save_registration',{regId:form.regId,eventId:form.eventId,runnerIds:form.runnerIds,schoolName:form.schoolName}).then(r=>({...r,message:form.regId?'บันทึกการแก้ไขรายการวิ่งสำเร็จ':'สมัครรายการวิ่งสำเร็จ',regId:r.id})),
    deleteRegistration:(id)=>request('delete_registration',{id}).then(r=>({...r,message:'ลบรายการสมัครเรียบร้อยแล้ว'})),
    getAvailableEventsForDropdown:(user,school)=>availableEvents(user,school),
-   getEventsForSchedule:()=>request('schedule').then(r=>toList(r)),
+   getEventsForSchedule:()=>sessionUser?request('schedule').then(r=>toList(r)):Promise.resolve([]),
    getEventRunnersForSchedule:(eventName,heat)=>request('schedule').then(r=>
      toList(r).filter(e=>e.EventName===eventName&&String(e.Heat||'')===String(heat||''))
       .flatMap(e=>e.entries||[]).map(x=>({SchoolName:x.SchoolName,RunnerName:x.RunnerName,Lane:x.Lane}))
@@ -91,7 +95,7 @@
    getAdminConfig:config,
    getUploadSystemStatus:()=>config().then(r=>({photo:r.features.photoEdit?.isOpen!==false,idproof:r.features.proofEdit?.isOpen!==false})),
    getPrintButtonsEnabled:()=>request('features').then(r=>{const f=toList(r).find(x=>x.name==='ปุ่มพิมพ์');return !f||f.status==='เปิดระบบ';}),
-   getRaceResults:()=>request('original_results').then(r=>toList(r)),
+   getRaceResults:()=>sessionUser?request('original_results').then(r=>toList(r)):Promise.resolve([]),
  };
  const build=(onSuccess,onFailure)=>new Proxy({},{
    get(_target,key){
