@@ -167,6 +167,8 @@ function updateOptions(){
       }
     }
     select.value=current;
+    // A filled rank remains visibly green, including values loaded from MariaDB.
+    select.closest('.bang1-score-row')?.classList.toggle('bang1-score-selected',Boolean(current));
   }
 }
 async function save(){
