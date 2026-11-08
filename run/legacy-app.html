@@ -2,7 +2,7 @@
 <html>
 <head>
   <!-- Original Apps Script UI preserved; only the backend transport is changed. -->
-  <script src="legacy-adapter.js?v=20261108-backup-restore"></script>
+  <script src="legacy-adapter.js?v=20261108-login-staff-fix"></script>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>ระบบจัดการกรีฑากลุ่มโรงเรียนบางละมุง 1</title>
@@ -3978,12 +3978,9 @@ function printRegSummary() {
         btn.addEventListener('click', () => navigate(btn.getAttribute('data-page')));
       });
 
-      showGlobalLoading(true);
-      google.script.run.withSuccessHandler(evts => {
-        eventsData = evts || [];
-        buildEventDropdown();
-        showGlobalLoading(false);
-      }).getEvents();
+      // Public boot must not block the entire screen on a role-restricted API.
+      // Login and restored sessions preload events only for Teacher/Admin.
+      showGlobalLoading(false);
 
       const eventSelect = document.getElementById('regEventName');
       if (eventSelect) eventSelect.addEventListener('change', handleEventChange);
@@ -4215,9 +4212,18 @@ function handleLogin() {
     return;
   }
 
+  if (window.bang1LoginBusy) return;
+  window.bang1LoginBusy=true;
   showGlobalLoading(true);
   google.script.run
+    .withFailureHandler(err => {
+      showGlobalLoading(false);
+      window.bang1LoginBusy=false;
+      autoLoginInProgress=false;
+      alert('เข้าสู่ระบบไม่สำเร็จ: ' + (err && err.message ? err.message : 'กรุณาลองใหม่อีกครั้ง'));
+    })
     .withSuccessHandler(res => {
+      window.bang1LoginBusy=false;
       showGlobalLoading(false);
 
       if (!res || !res.success) {
