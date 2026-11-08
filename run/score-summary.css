@@ -51,6 +51,16 @@
 #page-score-summary .bang1-summary-grid tbody th:first-child{
   position:sticky;left:0;z-index:3;min-width:135px;
 }
+/* Keep body score cells legible even when the main app uses dark zebra rows. */
+#page-score-summary .bang1-summary-grid tbody tr:not(.bang1-summary-total):not(.bang1-summary-rank) td {
+  background:#fff;
+  color:#111827;
+}
+#page-score-summary .bang1-summary-grid tbody tr:not(.bang1-summary-total):not(.bang1-summary-rank) td.bang1-summary-best {
+  background:#34d399 !important;
+  color:#052e16 !important;
+  font-weight:800;
+}
 #page-score-summary .bang1-summary-grid .bang1-summary-total th,
 #page-score-summary .bang1-summary-grid .bang1-summary-total td {
   background:#fff000;color:#111827;font-weight:800;
