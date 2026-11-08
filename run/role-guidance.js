@@ -107,6 +107,10 @@
    const dashboard=ensureDashboard();
    const form=document.querySelector('#page-login > .card:not(#bang1-login-guidance)');
    if(form)form.hidden=!!p;
+   // Once a user is authenticated, the public member directory no longer
+   // belongs on their landing page; keep the role summary intact.
+   const memberDirectory=document.getElementById('bang1AccountPortal');
+   if(memberDirectory)memberDirectory.hidden=!!u;
    if(!dashboard)return;
    dashboard.hidden=!p;
    if(!p){dashboard.replaceChildren();return}

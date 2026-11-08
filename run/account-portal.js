@@ -29,6 +29,9 @@
    var portal=document.createElement('section');
    portal.id='bang1AccountPortal';
    portal.className='card bang1-account-card';
+   // Session restoration can finish before this script initializes.
+   // Match the authenticated state at creation time to avoid a roster flash.
+   portal.hidden=typeof currentUser!=='undefined'&&!!currentUser;
    portal.innerHTML=
      '<div class="bang1-account-heading"><div><h2>รายชื่อผู้มีสิทธิเข้าใช้งาน</h2>'+
      '<p>ตรวจสอบชื่อ โรงเรียน และอีเมลที่ลงทะเบียน โดยระบบปกปิดอีเมลบางส่วนเพื่อความปลอดภัย</p></div>'+
