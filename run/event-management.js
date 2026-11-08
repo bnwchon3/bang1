@@ -85,6 +85,13 @@ function createUI(){
     form.querySelectorAll('option[data-bang1-existing]').forEach(option=>option.remove());
     form.reset();form.elements.id.value='';notice('');
   };
+  // In ordinary heats both values refer to the same lane-assignment heat.
+  // Keep them separate in storage because imported final fixtures may use 'ชิง'.
+  form.elements.heat.addEventListener('change',()=>{
+    const heat=form.elements.heat.value;
+    if(heat===''||heat==='1'||heat==='2')setSelectFromRecord(form.elements.heatPlan,heat);
+  });
+
   $('#bang1NewEvent').addEventListener('click',clear);
   $('#bang1EventSearch').addEventListener('input',renderTable);
   $('#bang1EventRefresh').addEventListener('click',()=>loadEvents());
