@@ -172,6 +172,8 @@
      var form=el('#admin-coach-form');
      var schoolSelect=el('[name="schoolName"]',form);
      var schoolNames=(rs[1].data||[]).map(function(x){return x.name});
+     // Existing administrator accounts use this SchoolName even though it is not a school row.
+     if(!schoolNames.includes('ผู้ดูแลระบบ'))schoolNames.unshift('ผู้ดูแลระบบ');
      schoolSelect.innerHTML='<option value="">-- เลือกโรงเรียน --</option>'+
        schoolNames.map(function(s){return '<option value="'+escapeText(s)+'">'+escapeText(s)+'</option>'}).join('');
      rows.innerHTML=coachList.map(function(x){
