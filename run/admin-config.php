@@ -59,6 +59,7 @@ if ($action === 'admin_schools') {
 if ($action === 'admin_school_save') {
     must_post();
     $id = (int)($input['id'] ?? 0);
+    $isNewSchool = $id === 0;
     $name = trim((string)($input['name'] ?? ''));
     $nickname = trim((string)($input['nickname'] ?? ''));
     $active = trim((string)($input['active'] ?? 'Active'));
@@ -98,7 +99,7 @@ if ($action === 'admin_school_save') {
         error_log('Bang1 admin school: '.$e->getMessage());
         json_out(['success'=>false,'message'=>'บันทึกข้อมูลโรงเรียนไม่สำเร็จ'],500);
     }
-    log_action($id>0?'ADMIN_SCHOOL_SAVE':'ADMIN_SCHOOL_CREATE',$u,'School',(string)$id,$name);
+    log_action($isNewSchool?'ADMIN_SCHOOL_CREATE':'ADMIN_SCHOOL_SAVE',$u,'School',(string)$id,$name);
     json_out(['success'=>true,'id'=>$id,'message'=>'บันทึกโรงเรียนเรียบร้อย']);
 }
 
