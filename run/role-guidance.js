@@ -1,0 +1,113 @@
+/* Role guidance appears on the original login page AFTER successful sign-in.
+   Nothing else in the existing Apps Script page design is changed. */
+(function () {
+ 'use strict';
+ const policies={
+  Admin:{
+   pages:['login','runners','register','print','schedule','results','admin'],
+   name:'Admin',
+   permission:'จัดการและตั้งค่าระบบได้ทุกส่วน รวมถึงโรงเรียน ผู้ฝึกซ้อม การตรวจสอบนักวิ่ง และรายการแข่งขัน',
+   steps:[
+    {icon:'⚙️',title:'ตั้งค่าระบบ',detail:'ตรวจสอบเวลาเปิด–ปิด และบัญชีผู้ใช้งาน',page:'admin'},
+    {icon:'🏫',title:'จัดการข้อมูล',detail:'ตรวจสอบโรงเรียน ผู้ฝึกซ้อม และข้อมูลนักกรีฑา',page:'admin'},
+    {icon:'✅',title:'ตรวจสอบและติดตาม',detail:'อนุมัตินักวิ่งและติดตามการสมัครแข่งขัน',page:'admin'}
+   ]
+  },
+  Manager:{
+   pages:['login','admin'],
+   name:'Manager',
+   permission:'ตรวจสอบข้อมูลนักวิ่ง รูปถ่ายและหลักฐาน พร้อมอนุมัติหรือไม่อนุมัตินักวิ่งเท่านั้น',
+   steps:[
+    {icon:'🔎',title:'เปิดตรวจสอบนักวิ่ง',detail:'เลือกเมนูตรวจสอบนักวิ่ง',page:'admin'},
+    {icon:'🪪',title:'ตรวจข้อมูลและหลักฐาน',detail:'ตรวจรูปถ่ายและเอกสารของนักวิ่ง',page:'admin'},
+    {icon:'✅',title:'อนุมัติผล',detail:'เลือกผ่านหรือไม่ผ่านการตรวจสอบ',page:'admin'}
+   ]
+  },
+  Teacher:{
+   pages:['login','runners','register','print'],
+   name:'Teacher',
+   permission:'🧾 2) ลงทะเบียนนักกรีฑา  •  ✅ 3) สมัครรายการกรีฑา  •  🖨️ 4) พิมพ์ใบสมัครกรีฑา',
+   steps:[
+    {icon:'🧾',title:'ลงทะเบียนนักกรีฑา',detail:'เพิ่มและตรวจข้อมูลนักกรีฑาของโรงเรียน',page:'runners'},
+    {icon:'✅',title:'สมัครรายการกรีฑา',detail:'เลือกรายการแข่งขันและนักกรีฑา',page:'register'},
+    {icon:'🖨️',title:'พิมพ์ใบสมัครกรีฑา',detail:'ตรวจสอบใบสมัครแล้วพิมพ์เอกสาร',page:'print'}
+   ]
+  }
+ };
+ function user(){return typeof currentUser!=='undefined'?currentUser:null;}
+ function normRole(role){return role==='TopAdmin'?'Admin':role;}
+ function policyFor(u){return u?policies[normRole(u.role)]||null:null;}
+ function can(page,u){return !!(page==='login'||(policyFor(u)&&policyFor(u).pages.includes(page)));}
+ function escapeHTML(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));}
+ function ensureDashboard(){
+   const page=document.getElementById('page-login');if(!page)return null;
+   let board=document.getElementById('bang1-login-guidance');
+   if(!board){
+    board=document.createElement('div');
+    board.id='bang1-login-guidance';
+    board.className='card';
+    board.hidden=true;
+    page.appendChild(board);
+   }
+   return board;
+ }
+ function apply(){
+   const u=user(),p=policyFor(u);
+   document.querySelectorAll('.menu button[data-page]').forEach(b=>{
+     const page=b.dataset.page;
+     const show=can(page,u);
+     b.hidden=!show;
+     b.style.display=show?'':'none';
+     if(page==='admin'){
+       const label=b.querySelector('.role-menu-label');
+       if(label)label.remove();
+       if(u&&normRole(u.role)==='Manager'){
+          const span=document.createElement('span');
+          span.className='role-menu-label';
+          span.textContent=' ตรวจสอบนักวิ่ง';
+          b.childNodes.forEach(n=>{if(n.nodeType===Node.TEXT_NODE)n.textContent=''});
+          b.appendChild(span);
+       }else{
+          // Restore the pre-existing menu text exactly.
+          b.innerHTML='<span class="icon">🛠️</span> ผู้ดูแลระบบ';
+       }
+     }
+   });
+   const tabs=document.getElementById('admin-sheet-tabs');
+   if(tabs){
+     tabs.querySelectorAll('[data-admin-tab]').forEach(b=>{
+       const show=!!p&&(normRole(u.role)==='Admin'||b.dataset.adminTab==='check');
+       b.hidden=!show;
+       b.style.display=show?'':'none';
+     });
+     if(u&&normRole(u.role)==='Manager'){
+       tabs.querySelector('[data-admin-tab="check"]')?.click();
+     }
+   }
+   const dashboard=ensureDashboard();
+   const form=document.querySelector('#page-login > .card:not(#bang1-login-guidance)');
+   if(form)form.hidden=!!p;
+   if(!dashboard)return;
+   dashboard.hidden=!p;
+   if(!p){dashboard.replaceChildren();return}
+   dashboard.innerHTML=
+    '<div class="role-guidance-header"><div><div class="role-guidance-overline">เข้าสู่ระบบเรียบร้อย</div>'+
+    '<h2>สิทธิ์การใช้งาน: '+escapeHTML(p.name)+'</h2></div>'+
+    '<div class="role-guidance-role">'+escapeHTML(p.name)+'</div></div>'+
+    '<div class="role-guidance-subtitle"><strong>สิทธิ์ของคุณ</strong><p>'+escapeHTML(p.permission)+'</p></div>'+
+    '<h3 class="role-guidance-title">ลำดับการทำงาน 1 → 2 → 3</h3>'+
+    '<div class="role-guidance-steps">'+p.steps.map((s,i)=>
+      '<button type="button" class="role-guidance-step" data-role-go="'+escapeHTML(s.page)+'">'+
+      '<div class="role-guidance-step-top"><span class="role-guidance-number">'+(i+1)+'</span>'+
+      '<span class="role-guidance-icon" aria-hidden="true">'+s.icon+'</span></div>'+
+      '<strong>'+escapeHTML(s.title)+'</strong><small>'+escapeHTML(s.detail)+'</small></button>').join('')+
+    '</div>';
+   dashboard.querySelectorAll('[data-role-go]').forEach(b=>b.addEventListener('click',()=>{
+     if(typeof navigate==='function')navigate(b.dataset.roleGo);
+   }));
+ }
+ window.bang1Role={can,apply};
+ window.applyBang1Permissions=apply;
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);
+ else apply();
+})();
