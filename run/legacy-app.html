@@ -6814,7 +6814,20 @@ function handleAutoHeats() {
 
  function buildPrintSheetHtml(reg, printedAt) {
   const runnersForPrint = buildRunnersForPrint(reg);
-  const qrSrc = reg.QRURL || '';
+  // Every newly printed application carries a locally generated, unambiguous
+  // registration ID QR. Historical printed QR values are still accepted by
+  // the Manager scanner (registration_key lookup on the server).
+  const qrSrc = (() => {
+    try {
+      if (typeof window.qrcode === 'function' && Number.isSafeInteger(Number(reg.RegID))) {
+        const code = window.qrcode(0, 'M');
+        code.addData('BNWREG:' + String(reg.RegID));
+        code.make();
+        return code.createDataURL(4, 2);
+      }
+    } catch (err) { console.warn('QR generation unavailable', err); }
+    return reg.QRURL || '';
+  })();
 
   // ---------- ตารางนักวิ่ง ----------
   const runnerRowsHtml = runnersForPrint.map(r => `
@@ -7738,6 +7751,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <script src="event-management.js?v=20261108-events-dropdowns-sync"></script>
 <script src="mobile-shell.js?v=20261109-account-icon-v6"></script>
 <script src="account-portal.js?v=20261109-hide-directory-auth"></script>
+<script src="vendor/qrcode.js?v=20261109-print-qr"></script>
 <script src="live-manager.js?v=20261109-scan1"></script>
 </body>
 </html>
