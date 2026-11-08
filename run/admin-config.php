@@ -11,6 +11,7 @@ if (!isset($u, $action) || !is_array($u) || !function_exists('require_admin')) {
 }
 if (!str_starts_with((string)$action, 'admin_')) return;
 require_admin($u);
+require __DIR__.'/admin-reset.php';
 
 function admin_date($value): ?string {
     $value = trim((string)($value ?? ''));
@@ -233,7 +234,7 @@ if ($action === 'admin_logs') {
     $page=min($page,max(1,(int)ceil($total/20)));
     $offset=($page-1)*20;
     $sql='SELECT id,event_time,action_code,action_text,module,target_type,target_id,target_name,runner_id,reg_id,event_name,user_email,user_name,user_role,user_school,detail FROM audit_logs'
-         .$where.' ORDER BY id DESC LIMIT 20 OFFSET '.$offset;
+         .$where.' ORDER BY event_time DESC, id DESC LIMIT 20 OFFSET '.$offset;
     json_out(['success'=>true,'page'=>$page,'perPage'=>20,'total'=>$total,
         'data'=>rows($sql,$params)]);
 }
