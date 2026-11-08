@@ -60,6 +60,7 @@ authorize_athletics_action($u,$action);
 require __DIR__.'/admin-config.php';
 require __DIR__.'/event-management.php';
 require __DIR__.'/staff-results.php';
+require __DIR__.'/score-summary.php';
 // The read-only results table uses the same live schedule/rankings as Staff entry.
 if($action==='original_results'){
   $out=[array_merge(['EventName','รอบการแข่ง','ฮีท'],
