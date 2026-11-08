@@ -1580,10 +1580,19 @@ document.addEventListener('DOMContentLoaded',function(){
    if(e.key==='Backspace'){e.preventDefault();value=value.slice(0,-1);paint(false);return}
    if(e.key==='Enter'){e.preventDefault();handleLogin();return}
    if(e.key==='Tab')return;
+   // Allow Ctrl+V / Cmd+V to reach the paste event on desktop.
+   if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='v')return;
    if(e.key==='Delete'||['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)||e.metaKey||e.ctrlKey||e.altKey){e.preventDefault();return}
    if(e.key.length===1){e.preventDefault();value+=e.key;paint(true)}
  });
- display.addEventListener('paste',e=>e.preventDefault());
+ display.addEventListener('paste',function(e){
+   e.preventDefault();
+   // The clipboard value is only copied to the actual password input; never save to localStorage.
+   const pasted=e.clipboardData?.getData('text/plain')||'';
+   if(!pasted)return;
+   value+=pasted;
+   paint(false);
+ });
  display.addEventListener('focus',()=>paint(false));
  window.__syncLoginPassword=()=>{value=real.value||'';paint(false)};
 });
@@ -7441,7 +7450,7 @@ document.addEventListener('DOMContentLoaded', function () {
 #page-admin #admin-coach-form { margin-bottom:1rem; }
 #page-admin #admin-logs-search { max-width:340px; }
 </style>
-<script src="admin-tabs.js?v=20261108-coach-management"></script>
+<script src="admin-tabs.js?v=20261108-data-reset"></script>
 <script src="role-guidance.js?v=20261108-logout"></script>
 
 <style>
