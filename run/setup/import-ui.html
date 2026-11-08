@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>นำเข้าข้อมูลส่วนตัว — ระบบกรีฑาบางละมุง 1</title><style>body{font:16px system-ui,sans-serif;background:#071323;color:#e2e8f0;max-width:680px;margin:40px auto;padding:20px}main{background:#0f172a;border:1px solid #334155;border-radius:16px;padding:24px}input{display:block;box-sizing:border-box;width:100%;padding:12px;margin:10px 0 20px;background:#020617;color:#fff;border:1px solid #475569;border-radius:8px}button{background:#22c55e;color:#064e3b;border:0;border-radius:8px;padding:12px 20px;font-weight:bold;cursor:pointer}.warn{color:#fbbf24}#output{white-space:pre-wrap;overflow-wrap:anywhere}</style></head><body>
+<main><h1>นำเข้า Excel ไป MariaDB</h1>
+<p>นำเข้าข้อมูลชุดเดิมจากไฟล์ <code>bang1_private_import.json.gz</code> โดยตรงเข้าสู่ฐานข้อมูลส่วนตัวของ Host</p>
+<p class="warn">ไฟล์มีข้อมูลนักเรียนและข้อมูลส่วนบุคคล ห้ามอัปโหลดไป GitHub สาธารณะ</p>
+<form id="form">
+<label>DEPLOY_TOKEN (คีย์ส่วนตัว ไม่จัดเก็บในเบราว์เซอร์)
+<input id="token" type="password" autocomplete="off" required placeholder="กรอกโทเค็นเดียวกับ GitHub Secret DEPLOY_TOKEN"></label>
+<label>ไฟล์นำเข้า JSONL gzip
+<input id="data" type="file" accept=".gz,application/gzip" required></label>
+<button type="submit">นำเข้าข้อมูลไป MariaDB</button>
+</form><p id="output" role="status"></p>
+</main><script>
+document.getElementById('form').addEventListener('submit', async e => {
+e.preventDefault(); const button=e.target.querySelector('button');
+const token=document.getElementById('token').value;
+const file=document.getElementById('data').files[0];
+if(!token||!file)return;
+button.disabled=true;document.getElementById('output').textContent='กำลังนำเข้า...';
+try{
+const f=new FormData();f.append('data',file);
+const r=await fetch('import.php',{method:'POST',headers:{'X-Deploy-Token':token},body:f,credentials:'omit'});
+const body=await r.json();
+document.getElementById('output').textContent=body.success?'สำเร็จ: นำเข้าข้อมูล '+body.imported_rows+' แถว\nจำนวนแถวที่พบข้อผิดพลาดสูตร '+body.formula_warning_rows:body.message||'ไม่สำเร็จ';
+}catch(err){document.getElementById('output').textContent='เกิดข้อผิดพลาด: '+err.message}
+finally{button.disabled=false;document.getElementById('token').value='';}
+});</script></body></html>
