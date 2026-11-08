@@ -56,6 +56,8 @@ if($action==='me'){
  json_out(['success'=>true,'user'=>$me,'csrf'=>$me?($_SESSION['csrf']??null):null]);
 }
 if($action==='logout'){must_post();session_destroy();json_out(['success'=>true]);}
+// Public live scoreboard uses no session and never exposes athlete names.
+if($action==='live_state') require __DIR__.'/live-api.php';
 // Public account directory, verified password reset and signup request endpoints.
 if(in_array($action,['account_portal','account_signup','account_reset_request','account_reset_verify','account_reset_complete'],true)) {
  require __DIR__.'/account-portal.php';
@@ -72,6 +74,9 @@ if($action==='score_summary'){
 }
 
 $u=require_user();
+// Only Manager/Admin can activate events or check in applications.
+if(in_array($action,['live_manager_data','live_select','live_scan','live_undo'],true))
+    require __DIR__.'/live-api.php';
 authorize_athletics_action($u,$action);
 require __DIR__.'/admin-config.php';
 require __DIR__.'/event-management.php';
