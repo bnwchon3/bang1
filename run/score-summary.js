@@ -47,7 +47,11 @@ async function load(){
     const total='<tr class="bang1-summary-total"><th scope="row">คะแนนรวม</th>'+
       schools.map(s=>'<td>'+Number(s.total||0)+'</td>').join('')+'</tr>';
     const rank='<tr class="bang1-summary-rank"><th scope="row">อันดับ</th>'+
-      schools.map(s=>'<td>'+(s.rank==null?'–':Number(s.rank))+'</td>').join('')+'</tr>';
+      schools.map(s=>{
+        const place=s.rank==null?null:Number(s.rank);
+        return '<td'+(place===1?' class="bang1-summary-first" title="อันดับ 1"':'')+'>'+
+          (place==null?'–':place)+'</td>';
+      }).join('')+'</tr>';
     table.innerHTML=header+'<tbody>'+rows+total+rank+'</tbody>';
     const completed=Number(response.scoredFixtures||0);
     const all=Number(response.finalFixtures||0);
