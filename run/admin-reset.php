@@ -75,6 +75,8 @@ if (!is_array($confirmed)
     || (string)($input['confirmation']??'')!=='ล้างข้อมูล') {
     json_out(['success'=>false,'message'=>'การยืนยันไม่ถูกต้องหรือหมดเวลา กรุณาตรวจสอบใหม่'],403);
 }
+// Re-verify the current Admin's actual login password before destructive data changes.
+admin_verify_password($u,$input['adminPassword']??null);
 
 try {
     db()->beginTransaction();
@@ -116,6 +118,9 @@ try {
     // Audit the destructive action even when logs are among the selected sections.
     log_action('ADMIN_DATA_RESET',$u,'System','',
       'รีเซ็ตข้อมูล: '.implode(', ',array_map(fn($key)=>$labels[$key],$selected)));
+    // This audit table is intentionally never cleared by the reset selector.
+    admin_security_log($u,'ADMIN_DATA_RESET',
+      'หมวด: '.implode(', ',$selected).'; จำนวน: '.json_encode($affected,JSON_UNESCAPED_UNICODE));
     db()->commit();
     json_out(['success'=>true,'message'=>'รีเซ็ตข้อมูลเฉพาะหมวดที่เลือกสำเร็จ',
       'affected'=>$affected,'sections'=>$selected]);
