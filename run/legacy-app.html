@@ -572,6 +572,34 @@ td.actions {
   color: #ecfdf5;
 }
 
+/* ตารางนักกรีฑา: คงช่องค้นหาในแถวเดียวกับตัวกรองบน Desktop */
+@media (min-width: 721px) {
+  #page-runners .runner-table-toolbar {
+    flex-wrap: nowrap;
+    gap: 0.45rem;
+  }
+  #page-runners .runner-table-toolbar .pill-tabs {
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    gap: 0.28rem;
+    padding: 2px;
+  }
+  #page-runners .runner-table-toolbar .pill-tabs button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 0.3rem 0.68rem;
+  }
+  #page-runners .runner-search-box {
+    flex: 0 0 210px;
+    width: 210px;
+    min-width: 210px;
+    max-width: 210px;
+  }
+}
+
 /* กล่องค้นหา */
 .runner-search-box {
   min-width: 230px;
@@ -1753,8 +1781,8 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="runner-table-toolbar">
       <div class="pill-tabs">
         <button data-runner-filter="all" class="active">ทั้งหมด (0)</button>
-        <button data-runner-filter="male">เฉพาะเพศชาย (0)</button>
-        <button data-runner-filter="female">เฉพาะเพศหญิง (0)</button>
+        <button data-runner-filter="male">ชาย (0)</button>
+        <button data-runner-filter="female">หญิง (0)</button>
         <button data-runner-filter="pass">ผ่านการตรวจสอบ (0)</button>
         <button data-runner-filter="pending">รอตรวจสอบ (0)</button>
         <button data-runner-filter="recheckphoto">รอตรวจภาพอีกครั้ง (0)</button>
@@ -4345,8 +4373,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const counts = { all: roster.length, male: 0, female: 0, pass: 0, pending: 0, recheckphoto: 0, fail: 0 };
       const labels = {
         all: 'ทั้งหมด',
-        male: 'เฉพาะเพศชาย',
-        female: 'เฉพาะเพศหญิง',
+        male: 'ชาย',
+        female: 'หญิง',
         pass: 'ผ่านการตรวจสอบ',
         pending: 'รอตรวจสอบ',
         recheckphoto: 'รอตรวจภาพอีกครั้ง',
