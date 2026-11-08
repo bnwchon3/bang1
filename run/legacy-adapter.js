@@ -41,8 +41,17 @@
  function availableEvents(user,school){
    return Promise.all([request('events'),request('registrations')]).then(([ev,regs])=>{
      const fullSchool=(user?.role==='Admin'||user?.role==='TopAdmin')?(school||user?.schoolName):user?.schoolName;
-     const taken=new Set(toList(regs).filter(r=>r.SchoolName===fullSchool).map(r=>[r.EventName,r.Level,r.Category,r.Gender].join('|')));
-     return toList(ev).filter(r=>!taken.has([r.EventName,r.Level,r.Category,r.Gender].join('|')))
+     const key=r=>[r.EventName||'',r.Level||'',r.Category||''].join('|');
+     const taken=new Set(toList(regs).filter(r=>r.SchoolName===fullSchool).map(key));
+     // An imported program may contain several preliminary heat slots plus a later
+     // final for the same race. Teachers register once per competition, not per slot.
+     const chosen=new Map();
+     const finalSlot=r=>r.Remark==='ชิงชนะเลิศ'||r.HeatPlan==='ชิง';
+     for(const e of toList(ev)){
+       const k=key(e),prior=chosen.get(k);
+       if(!prior||(finalSlot(prior)&&!finalSlot(e)))chosen.set(k,e);
+     }
+     return [...chosen.values()].filter(r=>!taken.has(key(r)))
       .sort((a,b)=>String(a.EventName).localeCompare(String(b.EventName),'th',{numeric:true,sensitivity:'base'}))
       .map(r=>({...r,Label:String(r.EventName||'')+(r.Level?' | '+r.Level:'')+(r.Gender?' | '+r.Gender:'')}));
    });
