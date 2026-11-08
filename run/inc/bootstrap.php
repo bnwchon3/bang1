@@ -60,12 +60,18 @@ function require_user(): array {
     if (!isset($_SESSION['user'])) json_out(['success'=>false,'message'=>'กรุณาเข้าสู่ระบบ'],401);
     // Synchronize permissions with the account on every request so promotions/revocations take effect immediately.
     $id=(int)($_SESSION['user']['coachId']??0);
-    $q=db()->prepare('SELECT id,name,email,school_name,role FROM coaches WHERE id=? LIMIT 1');
+    $q=db()->prepare('SELECT id,name,email,school_name,role,auth_version FROM coaches WHERE id=? LIMIT 1');
     $q->execute([$id]);
     $coach=$q->fetch();
     if(!$coach || !in_array($coach['role'],['Admin','TopAdmin','Manager','Teacher','Staff'],true)) {
         $_SESSION=[];
         json_out(['success'=>false,'message'=>'บัญชีนี้ไม่มีสิทธิ์ใช้งาน กรุณาเข้าสู่ระบบใหม่'],401);
+    }
+    // Any password change invalidates sessions issued before it (including other devices).
+    if(!isset($_SESSION['user']['authVersion']) ||
+       (int)$_SESSION['user']['authVersion']!==(int)$coach['auth_version']){
+        $_SESSION=[];
+        json_out(['success'=>false,'message'=>'บัญชีมีการเปลี่ยนรหัสผ่าน กรุณาเข้าสู่ระบบใหม่'],401);
     }
     $school=$coach['school_name'];
     $s=db()->prepare('SELECT name FROM schools WHERE nickname=? LIMIT 1');
@@ -73,7 +79,7 @@ function require_user(): array {
     $mapped=$s->fetchColumn();
     if($mapped) $school=$mapped;
     $_SESSION['user']=['coachId'=>(int)$coach['id'],'name'=>$coach['name'],'email'=>$coach['email'],
-      'role'=>$coach['role'],'schoolName'=>$school];
+      'role'=>$coach['role'],'schoolName'=>$school,'authVersion'=>(int)$coach['auth_version']];
     return $_SESSION['user'];
 }
 function is_admin(array $u): bool { return in_array(($u['role']??''),['Admin','TopAdmin'],true); }
