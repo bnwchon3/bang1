@@ -14,7 +14,23 @@ function live_gender(string $gender): string {
     $first=trim(explode(',',str_replace('，',',',$gender))[0]);
     return $first;
 }
+/**
+ * Match the official "รายการจัดแข่งขัน" roster. event_matching_regs()
+ * compares event name, category and level, never the raw gender values
+ * in registrations: these can be blank, mixed, or comma-delimited for relays.
+ * Heat distinguishes the reporting stations within that same competition.
+ */
 function live_group_key(array $row): string {
+    $values=[
+        trim((string)($row['event_name']??'')),
+        trim((string)($row['category']??'')),
+        trim((string)($row['level']??'')),
+        (int)($row['heat']??0),
+    ];
+    return hash('sha256',json_encode($values,JSON_UNESCAPED_UNICODE|JSON_INVALID_UTF8_SUBSTITUTE));
+}
+/** Previous deployed key: used only to keep an already-active event selected. */
+function live_legacy_group_key(array $row): string {
     $values=[
         trim((string)($row['event_name']??'')),
         trim((string)($row['category']??'')),
@@ -29,7 +45,6 @@ function live_event_order_key(array $row): string {
         trim((string)($row['event_name']??$row['name']??'')),
         trim((string)($row['category']??'')),
         trim((string)($row['level']??'')),
-        live_gender((string)($row['gender']??'')),
     ]);
 }
 function live_dataset(bool $manager=false): array {
@@ -44,6 +59,7 @@ function live_dataset(bool $manager=false): array {
             $order[$k]=[
                 'order'=>(int)($e['source_order']??999999),
                 'eventId'=>(int)$e['id'],
+                'gender'=>trim((string)($e['gender']??'')),
                 'isFinal'=>(string)($e['stage']??'')==='ชิงชนะเลิศ'||
                     (string)($e['remark']??'')==='ชิงชนะเลิศ',
             ];
@@ -54,8 +70,12 @@ function live_dataset(bool $manager=false): array {
         $checked[(int)$r['registration_id']]=$r;
     $fixtures=[];
     $teamsByKey=[];
+    // Map old active keys to the corrected group without changing database
+    // check-ins or causing a visible "no active event" gap during deployment.
+    $legacyToCurrent=[];
     foreach(rows('SELECT id,event_id,event_name,category,level,school_name,runner_names,gender,heat,lane,registration_key FROM registrations ORDER BY id') as $r){
         $key=live_group_key($r);
+        $legacyToCurrent[live_legacy_group_key($r)]=$key;
         if(!isset($fixtures[$key])) {
             $ord=$order[live_event_order_key($r)]??null;
             $fixtures[$key]=[
@@ -64,7 +84,7 @@ function live_dataset(bool $manager=false): array {
                 'eventName'=>(string)$r['event_name'],
                 'category'=>(string)$r['category'],
                 'level'=>(string)$r['level'],
-                'gender'=>live_gender((string)$r['gender']),
+                'gender'=>(string)($ord['gender']??live_gender((string)$r['gender'])),
                 'heat'=>(int)$r['heat'],
                 'order'=>(int)($ord['order']??999999),
                 'total'=>0,
@@ -95,7 +115,8 @@ function live_dataset(bool $manager=false): array {
             ?:($a['heat']<=>$b['heat']);
     });
     $state=single('SELECT fixture_key,updated_at,updated_by FROM race_live_state WHERE id=1');
-    $activeKey=(string)($state['fixture_key']??'');
+    $storedKey=(string)($state['fixture_key']??'');
+    $activeKey=$legacyToCurrent[$storedKey]??$storedKey;
     $active=null;
     $currentIndex=-1;
     foreach($fixtures as $index=>$f)if($f['key']===$activeKey){
@@ -184,8 +205,9 @@ if($action==='live_scan'){
     }
     if(!$registration)json_out(['success'=>false,'message'=>'ไม่พบใบสมัครที่ตรงกับ QR Code กรุณาตรวจสอบรหัส'],404);
     $key=live_group_key($registration);
-    $state=single('SELECT fixture_key FROM race_live_state WHERE id=1');
-    $active=(string)($state['fixture_key']??'');
+    // Resolve the former (gender-split) Active key as well, so scans against
+    // the current Active event continue working during the transition.
+    $active=(string)(live_dataset(false)['active']['key']??'');
     if($active==='')
         json_out(['success'=>false,'message'=>'กรุณาเลือกรายการแข่งขัน Active ก่อนสแกนรายงานตัว'],409);
     if(!hash_equals($active,$key))
@@ -217,7 +239,7 @@ if($action==='live_undo'){
     if($id<1)json_out(['success'=>false,'message'=>'รหัสใบสมัครไม่ถูกต้อง'],422);
     $reg=single('SELECT * FROM registrations WHERE id=?',[$id]);
     if(!$reg)json_out(['success'=>false,'message'=>'ไม่พบใบสมัคร'],404);
-    $active=(string)(single('SELECT fixture_key FROM race_live_state WHERE id=1')['fixture_key']??'');
+    $active=(string)(live_dataset(false)['active']['key']??'');
     if($active===''||!hash_equals($active,live_group_key($reg)))
         json_out(['success'=>false,'message'=>'สามารถยกเลิกเช็กอินได้เฉพาะรายการ Active'],403);
     $delete=db()->prepare('DELETE FROM race_checkins WHERE registration_id=?');
