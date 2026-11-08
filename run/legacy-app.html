@@ -6200,7 +6200,7 @@ function handleAutoHeats() {
         alert('กรุณากรอกอีเมลและรหัสผ่าน');
         return;
       }
-      if (currentUser.role !== 'TopAdmin' && currentUser.role !== 'Admin') {
+      if (!isAdminClient()) {
         alert('ไม่มีสิทธิ์');
         return;
       }
