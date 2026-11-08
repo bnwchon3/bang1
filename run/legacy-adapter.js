@@ -118,6 +118,7 @@
      try{
        const r=await request('me');
        sessionUser=r.user||null;csrf=r.csrf||'';
+       if(sessionUser)window.dispatchEvent(new CustomEvent('bang1:login'));
        return sessionUser;
      }catch{return null;}
    },
