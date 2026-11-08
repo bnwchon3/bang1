@@ -12,17 +12,51 @@
 <button type="submit">นำเข้าข้อมูลไป MariaDB</button>
 </form><p id="output" role="status"></p>
 </main><script>
-document.getElementById('form').addEventListener('submit', async e => {
-e.preventDefault(); const button=e.target.querySelector('button');
-const token=document.getElementById('token').value;
-const file=document.getElementById('data').files[0];
-if(!token||!file)return;
-button.disabled=true;document.getElementById('output').textContent='กำลังนำเข้า...';
-try{
-const f=new FormData();f.append('data',file);
-const r=await fetch('import.php',{method:'POST',headers:{'X-Deploy-Token':token},body:f,credentials:'omit'});
-const body=await r.json();
-document.getElementById('output').textContent=body.success?'สำเร็จ: นำเข้าข้อมูล '+body.imported_rows+' แถว\nจำนวนแถวที่พบข้อผิดพลาดสูตร '+body.formula_warning_rows:body.message||'ไม่สำเร็จ';
-}catch(err){document.getElementById('output').textContent='เกิดข้อผิดพลาด: '+err.message}
-finally{button.disabled=false;document.getElementById('token').value='';}
-});</script></body></html>
+'use strict';
+const resultEl=document.getElementById('output');
+const form=document.getElementById('form');
+form.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const btn=form.querySelector('button[type="submit"]');
+  const token=document.getElementById('token').value.trim();
+  const file=document.getElementById('data').files[0];
+  if(!token||!file)return;
+  btn.disabled=true;
+  let processed=0,warnings=0;
+  try{
+    const canChunk=typeof DecompressionStream==='function'&&typeof CompressionStream==='function';
+    const files=[];
+    if(canChunk) {
+      const text=await new Response(file.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+      const lines=text.split(/\\r?\\n/).filter(s=>s.trim().length>0);
+      if(!lines.length)throw Error('ไฟล์ไม่มีข้อมูลนำเข้า');
+      // Splitting protects small shared-host PHP workers from timeouts on 7,000+ records.
+      const chunkSize=400;
+      for(let i=0;i<lines.length;i+=chunkSize)files.push(lines.slice(i,i+chunkSize).join('\\n')+'\\n');
+    } else {
+      files.push(file);
+    }
+    resultEl.textContent='ตรวจสอบไฟล์แล้ว เริ่มนำเข้าข้อมูล ...';
+    for(let i=0;i<files.length;i++){
+      let uploadFile=files[i];
+      if(typeof uploadFile==='string'){
+        const stream=new Blob([uploadFile],{type:'application/x-ndjson'}).stream().pipeThrough(new CompressionStream('gzip'));
+        uploadFile=await new Response(stream).blob();
+      }
+      const body=new FormData();
+      body.append('data',uploadFile,'bang1_private_import_part_'+(i+1)+'.json.gz');
+      const response=await fetch('import.php',{method:'POST',headers:{'X-Deploy-Token':token},body,credentials:'same-origin'});
+      let r;try{r=await response.json()}catch{throw Error('เซิร์ฟเวอร์ไม่ส่งผลลัพธ์ JSON (HTTP '+response.status+')')}
+      if(!response.ok||!r.success)throw Error('ชุดที่ '+(i+1)+' : '+(r.message||'เกิดข้อผิดพลาด'));
+      processed+=Number(r.imported_rows||0);warnings+=Number(r.formula_warning_rows||0);
+      resultEl.textContent='กำลังนำเข้า '+(i+1)+'/'+files.length+' ชุด | '+processed+' แถว';
+    }
+    resultEl.textContent='นำเข้าสำเร็จ '+processed+' แถว\\nรายการที่พบข้อผิดพลาดสูตร '+warnings+' แถว\\nตรวจสอบหน้าเว็บและจำนวนข้อมูลใน MariaDB ก่อนใช้งานจริง';
+  }catch(err){
+    resultEl.textContent='นำเข้าสะดุดหลัง '+processed+' แถว: '+err.message+'\\nสามารถลองนำเข้าไฟล์เดิมซ้ำได้โดยใช้โทเค็นเดิม (ระบบปรับปรุงแถวตามรหัส)';
+  }finally{
+    btn.disabled=false;
+    document.getElementById('token').value='';
+  }
+});
+</script></body></html>
