@@ -1,0 +1,9 @@
+.private/
+*.env
+*.xlsx
+*.xls
+*.csv
+*.json.gz
+*.sql.gz
+*.sqlite
+.DS_Store
