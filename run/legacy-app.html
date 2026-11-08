@@ -1629,9 +1629,9 @@ document.addEventListener('DOMContentLoaded',function(){
   <h1>รายการจัดแข่งขัน</h1>
   <div class="subtitle">แสดงข้อมูลจากชีต <b>รายการวิ่ง</b> (หลังจากสุ่มฮีทและลู่แล้ว)</div>
   <div class="card">
-    <div class="card-header">
+    <div class="card-header" id="bang1ScheduleHeader">
       <div class="card-title">ตารางรายการแข่งขัน (รายการจะสมบูรณ์หลังการรับสมัครเสร็จสิ้น)</div>
-      <div class="btn-row"><div class="table-header-right">
+      <div class="btn-row"><div class="table-header-right" id="bang1ScheduleActionRow">
         <button id="btnPrintProgram" class="btn btn-outline" onclick="printScheduleProgram()">พิมพ์สูจิบัตร</button>
         <button id="btnRefreshSchedule" class="btn btn-primary" onclick="loadSchedule()">รีเฟรชข้อมูล</button>
       </div></div>
@@ -7605,6 +7605,38 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 }
 </style>
-<script src="event-management.js?v=20261108-events-final"></script>
+<style>
+/* Schedule actions: two logical groups, one even row under the unchanged title. */
+#bang1ScheduleHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+#bang1ScheduleHeader > .btn-row { margin-top: 0; width: 100%; }
+#bang1ScheduleActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+#bang1EventControls {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 12px 0 0;
+}
+#bang1ScheduleActionRow > button,
+#bang1EventControls > button { white-space: nowrap; flex: 0 0 auto; }
+#bang1EventControls[hidden],
+#bang1EventManager[hidden] { display: none !important; }
+@media (max-width: 700px) {
+  #bang1ScheduleActionRow { justify-content: flex-start; }
+  #bang1EventControls { margin-right: 0; }
+}
+</style>
+<script src="event-management.js?v=20261108-events-dropdowns"></script>
 </body>
 </html>
