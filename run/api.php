@@ -51,6 +51,23 @@ if($action==='login'){
 }
 if($action==='me'){json_out(['success'=>true,'user'=>$_SESSION['user']??null,'csrf'=>$_SESSION['csrf']??null]);}
 if($action==='logout'){must_post();session_destroy();json_out(['success'=>true]);}
+
+if($action==='original_results'){
+ $u=require_user();
+ $out=[['EventName','รอบการแข่ง','ฮีท','อันดับ 1','อันดับ 2','อันดับ 3','อันดับ 4','อันดับ 5','อันดับ 6','อันดับ 7','อันดับ 8']];
+ $q=db()->prepare('SELECT payload FROM source_rows WHERE sheet_name=? ORDER BY source_row');
+ $q->execute(['รายการวิ่ง']);
+ while($j=$q->fetchColumn()){
+   $ev=json_decode($j,true);
+   if(!is_array($ev))continue;
+   $count=trim((string)($ev['จำนวนทีมที่ลงแข่งของฮีท']??''));
+   if($count==='0')continue;
+   $row=[(string)($ev['EventName']??''),(string)($ev['รอบการแข่ง']??''),(string)($ev['ฮีท']??'')];
+   for($i=1;$i<=8;$i++)$row[]=(string)($ev['อันดับ '.$i]??'');
+   $out[]=$row;
+ }
+ json_out(['success'=>true,'data'=>$out]);
+}
 $u=require_user();
 if($action==='schools'){json_out(['success'=>true,'data'=>rows('SELECT id, name, nickname, active FROM schools ORDER BY name')]);}
 if($action==='runners'){
@@ -67,12 +84,15 @@ if($action==='save_runner'){
  $school=$u['schoolName'];if(is_admin($u)&&!empty($input['SchoolName']))$school=trim((string)$input['SchoolName']);
  $old=$id?single('SELECT * FROM runners WHERE id=?',[$id]):null;
  if($id&&!$old)json_out(['success'=>false,'message'=>'ไม่พบนักวิ่ง'],404);
- if($old){school_access($u,$old['school_name']);if($old['status']==='ผ่านการตรวจสอบ'&&!is_admin($u))json_out(['success'=>false,'message'=>'นักวิ่งผ่านการตรวจสอบแล้ว'],403);}
+ if($old){school_access($u,$old['school_name']);if(in_array($old['status'],['ผ่านการตรวจสอบ','รอตรวจภาพอีกครั้ง'],true))json_out(['success'=>false,'message'=>'ไม่สามารถแก้ไขนักวิ่งที่อยู่ในสถานะผ่านการตรวจสอบหรือรอตรวจภาพอีกครั้งแล้ว'],403);}
  $first=trim((string)($input['FirstName']??''));$last=trim((string)($input['LastName']??''));
  $citizen=preg_replace('/\\D/','',(string)($input['CitizenID']??''));
  $year=(int)($input['BirthYear']??0);
  $level=trim((string)($input['Level']??''));$gender=trim((string)($input['Gender']??''));
  if(!$first||!$last||!in_array($level,['อนุบาล','ประถม','มัธยม'],true)||!in_array($gender,['ชาย','หญิง'],true)||!preg_match('/^\\d{13}$/',$citizen)||$year<2400||$year>(int)date('Y')+543)json_out(['success'=>false,'message'=>'กรอกข้อมูลนักวิ่งให้ถูกต้อง'],422);
+ // Preserve Google Apps Script rule: a citizen ID belongs to only one runner.
+ $duplicate=single('SELECT id FROM runners WHERE citizen_id=? AND id<>? LIMIT 1',[$citizen,$id]);
+ if($duplicate)json_out(['success'=>false,'message'=>'ไม่สามารถบันทึกได้: เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนนักวิ่งแล้ว'],409);
  if($old) {
   db()->prepare('UPDATE runners SET level=?,first_name=?,last_name=?,citizen_id=?,birth_year=?,gender=? WHERE id=?')->execute([$level,$first,$last,$citizen,$year,$gender,$id]);
   $code='RUNNER_UPDATE';
@@ -87,7 +107,7 @@ if($action==='delete_runner'){
  $id=(int)($input['id']??0);$r=single('SELECT * FROM runners WHERE id=?',[$id]);
  if(!$r)json_out(['success'=>false,'message'=>'ไม่พบข้อมูล'],404);
  school_access($u,$r['school_name']);
- if($r['status']==='ผ่านการตรวจสอบ')json_out(['success'=>false,'message'=>'นักวิ่งผ่านการตรวจสอบแล้ว'],403);
+ if(in_array($r['status'],['ผ่านการตรวจสอบ','รอตรวจภาพอีกครั้ง'],true))json_out(['success'=>false,'message'=>'นักวิ่งอยู่ในสถานะที่ล็อกการแก้ไขแล้ว'],403);
  $check=single('SELECT COUNT(*) c FROM registrations WHERE FIND_IN_SET(?,REPLACE(runner_ids," ",""))>0',[$id]);
  if((int)$check['c'])json_out(['success'=>false,'message'=>'มีการสมัครแข่งขันอยู่ กรุณาลบรายการสมัครก่อน'],409);
  db()->prepare('DELETE FROM runners WHERE id=?')->execute([$id]);log_action('RUNNER_DELETE',$u,'Runner',(string)$id);json_out(['success'=>true]);
@@ -170,22 +190,45 @@ if($action==='schedule'){
 }
 if($action==='auto_heats'){
  must_post();require_admin($u);
- $eventRows=rows('SELECT * FROM events ORDER BY source_order,id');
+ // Keep original Google Apps Script lane allocation (especially 9 and 10 teams).
+ $events=rows('SELECT * FROM events ORDER BY source_order,id');
  db()->beginTransaction();
  try{
-  db()->exec('DELETE FROM heats');$heatCount=0;
-  foreach($eventRows as $ev){
-   $regs=rows('SELECT id FROM registrations WHERE event_name=? ORDER BY id',[$ev['name']]);if(!$regs)continue;
-   shuffle($regs);$groups=array_chunk($regs,8);
-   foreach($groups as $i=>$group){
-    $n=count($group);$laneMap=[1=>[4],2=>[4,5],3=>[3,4,5],4=>[3,4,5,6],5=>[2,3,4,5,6],6=>[2,3,4,5,6,7],7=>[1,2,3,4,5,6,7],8=>[1,2,3,4,5,6,7,8]];
-    $lanes=$laneMap[$n];shuffle($lanes);
-    foreach($group as $j=>$r)db()->prepare('UPDATE registrations SET heat=?,lane=? WHERE id=?')->execute([$i+1,$lanes[$j],$r['id']]);
-    db()->prepare('INSERT INTO heats(event_id,event_name,category,level,gender,heat) VALUES(?,?,?,?,?,?)')->execute([$ev['id'],$ev['name'],$ev['category'],$ev['level'],$ev['gender'],$i+1]);$heatCount++;
+   db()->exec('DELETE FROM heats');
+   $heatCount=0;
+   foreach($events as $ev){
+     $regs=rows('SELECT id FROM registrations WHERE event_name=? AND level=? AND category=? AND gender=? ORDER BY id',
+       [$ev['name'],$ev['level'],$ev['category'],$ev['gender']]);
+     $n=count($regs);if($n===0)continue;
+     $ids=array_map(fn($x)=>(int)$x['id'],$regs);
+     shuffle($ids);
+     $assignments=[];
+     if($n<=8){
+       foreach($ids as $i=>$id)$assignments[]=[$id,1,$i+1];
+     }elseif($n===9){
+       foreach($ids as $i=>$id)$assignments[]=[$id,$i<5?1:2,$i<5?($i+2):($i-5+2)];
+     }elseif($n===10){
+       foreach($ids as $i=>$id)$assignments[]=[$id,$i<5?1:2,($i%5)+2];
+     }else{
+       foreach($ids as $i=>$id)$assignments[]=[$id,1,$i<8?($i+1):null];
+     }
+     foreach($assignments as $a){
+       db()->prepare('UPDATE registrations SET heat=?,lane=? WHERE id=?')->execute([$a[1],$a[2],$a[0]]);
+     }
+     $heats=$n===9||$n===10?2:1;
+     for($h=1;$h<=$heats;$h++){
+       db()->prepare('INSERT INTO heats(event_id,event_name,category,level,gender,heat) VALUES(?,?,?,?,?,?)')
+         ->execute([$ev['id'],$ev['name'],$ev['category'],$ev['level'],$ev['gender'],$h]);$heatCount++;
+     }
    }
-  }
-  db()->commit();log_action('AUTO_HEATS',$u,'System','', 'Heats: '.$heatCount);json_out(['success'=>true,'heatsCount'=>$heatCount]);
- }catch(Throwable $e){db()->rollBack();throw $e;}
+   db()->commit();
+   log_action('AUTO_HEATS',$u,'System','',$heatCount.' heats');
+   json_out(['success'=>true,'message'=>'จัดฮีทและลู่เรียบร้อย','heatsCount'=>$heatCount]);
+ }catch(Throwable $e){
+   if(db()->inTransaction())db()->rollBack();
+   error_log('Bang1 heat assignment: '.$e->getMessage());
+   json_out(['success'=>false,'message'=>'ไม่สามารถจัดฮีทได้'],500);
+ }
 }
 if($action==='features'){
  $cfg=rows('SELECT * FROM feature_config ORDER BY id');foreach($cfg as &$f)$f['isOpen']=feature_allowed($f['name']);
@@ -202,7 +245,7 @@ if($action==='upload'){
  $r=single('SELECT * FROM runners WHERE id=?',[$id]);
  if(!$r)json_out(['success'=>false,'message'=>'ไม่พบนักวิ่ง'],404);
  school_access($u,$r['school_name']);
- if($r['status']==='ผ่านการตรวจสอบ')json_out(['success'=>false,'message'=>'ผ่านการตรวจสอบแล้ว'],403);
+ if($type==='idproof'&&in_array($r['status'],['ผ่านการตรวจสอบ','รอตรวจภาพอีกครั้ง'],true))json_out(['success'=>false,'message'=>'ไม่สามารถแนบหลักฐานได้ เนื่องจากสถานะผ่านการตรวจสอบหรือรอตรวจภาพอีกครั้งแล้ว'],403);
  if(!isset($_FILES['file'])||!is_uploaded_file($_FILES['file']['tmp_name']))json_out(['success'=>false,'message'=>'ไม่พบไฟล์'],422);
  $file=$_FILES['file'];if($file['size']>6*1024*1024||$file['size']<1)json_out(['success'=>false,'message'=>'ไฟล์ต้องไม่เกิน 6 MB'],422);
  $mime=(new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
@@ -218,7 +261,11 @@ if($action==='upload'){
  if($status!==200||!is_array($resp)||empty($resp['success'])||empty($resp['url']))json_out(['success'=>false,'message'=>'อัปโหลดไป Google Drive ไม่สำเร็จ'],502);
  $url=safe_url($resp['url']);if(!$url||!str_contains(parse_url($url,PHP_URL_HOST)??'','google.com'))json_out(['success'=>false,'message'=>'Google Drive ส่ง URL ไม่ถูกต้อง'],502);
  $col=$type==='photo'?'photo_url':'proof_url';
- db()->prepare('UPDATE runners SET '.$col.'=? WHERE id=?')->execute([$url,$id]);
+ if($type==='photo'&&$r['status']==='ผ่านการตรวจสอบ'){
+   db()->prepare('UPDATE runners SET '.$col.'=?,status=? WHERE id=?')->execute([$url,'รอตรวจภาพอีกครั้ง',$id]);
+ }else{
+   db()->prepare('UPDATE runners SET '.$col.'=? WHERE id=?')->execute([$url,$id]);
+ }
  log_action($type==='photo'?'RUNNER_UPLOAD_PHOTO':'RUNNER_UPLOAD_IDPROOF',$u,'Runner',(string)$id);
  json_out(['success'=>true,'url'=>$url]);
 }
