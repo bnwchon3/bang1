@@ -1573,6 +1573,7 @@ body{
         <button data-page="print"><span class="icon">🖨️</span> 4) พิมพ์ใบสมัครกรีฑา</button>
         <button data-page="schedule"><span class="icon">📜</span> รายการจัดแข่งขัน</button>
         <button data-page="results"><span class="icon">🏅</span> ผลการแข่งขัน</button>
+        <button data-page="score-summary"><span class="icon">📊</span> สรุปผลการแข่งขัน</button>
         <button data-page="admin"><span class="icon">🛠️</span> ผู้ดูแลระบบ</button>
         <button type="button" id="bang1LogoutButton" onclick="handleLogout()" hidden><span class="icon">🚪</span> ออกจากระบบ</button>
       </div>
@@ -3760,6 +3761,25 @@ function printRegSummary() {
         </div>
       </section>
 
+      <!-- รายงานสรุปคะแนนจากผลรอบชิงชนะเลิศ ตามสูตรในไฟล์ Excel เดิม -->
+      <section class="page" id="page-score-summary">
+        <h1>สรุปผลการแข่งขัน</h1>
+        <div class="card bang1-summary-panel">
+          <div class="bang1-summary-toolbar">
+            <div class="card-title">ตารางสรุปคะแนนรายโรงเรียนและรุ่นอายุ</div>
+            <button type="button" class="btn btn-primary" id="bang1ScoreSummaryRefresh">รีเฟรชข้อมูล</button>
+          </div>
+          <div class="bang1-summary-grid-scroll" tabindex="0" aria-label="เลื่อนดูตารางคะแนนทุกโรงเรียน">
+            <table class="bang1-summary-grid" id="bang1ScoreSummaryTable">
+              <thead><tr><th scope="col">รุ่นอายุ</th></tr></thead>
+              <tbody><tr><th scope="row">กำลังรอข้อมูล</th></tr></tbody>
+            </table>
+          </div>
+          <p id="bang1ScoreSummaryMessage" role="status" aria-live="polite"></p>
+          <p id="bang1ScoreSummaryWarning" hidden></p>
+        </div>
+      </section>
+
     </main>
   </div>
 
@@ -4189,6 +4209,11 @@ function printRegSummary() {
           window.refreshStaffResults();
         }else{
           loadRaceResults();
+        }
+
+      } else if (pageName === 'score-summary' && currentUser) {
+        if (typeof window.loadBang1ScoreSummary === 'function') {
+          window.loadBang1ScoreSummary();
         }
 
       } else if (pageName === 'schedule') {
@@ -7524,7 +7549,7 @@ document.addEventListener('DOMContentLoaded', function () {
 #page-admin #admin-logs-search { max-width:340px; }
 </style>
 <script src="admin-tabs.js?v=20261108-backup-restore"></script>
-<script src="role-guidance.js?v=20261108-staff-results"></script>
+<script src="role-guidance.js?v=20261108-score-summary"></script>
 
 <style>
 /* Popup ดูไฟล์แนบเท่านั้น — ใช้โทนเดียวกับหน้าต่างเดิม ไม่เปลี่ยนหน้าจออื่น */
@@ -7649,7 +7674,9 @@ document.addEventListener('DOMContentLoaded', function () {
 }
 </style>
 <link rel="stylesheet" href="staff-results.css?v=20261108-staff-results">
+<link rel="stylesheet" href="score-summary.css?v=20261108-scores-v1">
 <script src="staff-results.js?v=20261108-staff-results-unique"></script>
+<script src="score-summary.js?v=20261108-scores-v1"></script>
 <script src="event-management.js?v=20261108-events-dropdowns-sync"></script>
 <script src="mobile-shell.js?v=20261108-mobile-keyboard-1"></script>
 </body>
