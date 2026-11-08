@@ -57,7 +57,7 @@
    while(checkPanel.nextSibling)checkPanel.appendChild(checkPanel.nextSibling);
    var settings=createPanel('settings','ตั้งค่าเปิด–ปิดระบบ',['รหัสรายการ','ชื่อรายการ','เวลาเปิดลงทะเบียน','เวลาปิดลงทะเบียน','สถานะ','บันทึก']);
    var schools=createPanel('schools','โรงเรียน',['SchoolID','SchoolName','schoolnickname','Active','บันทึก']);
-   var coaches=createPanel('coaches','ผู้ฝึกซ้อม',['CoachID','Name','Email','SchoolName','Role','จัดการ'],
+   var coaches=createPanel('coaches','ผู้ฝึกซ้อม',['CoachID','Name','Email','SchoolName','Role','รหัสผ่าน','จัดการ'],
      '<form id="admin-coach-form" autocomplete="off">'+
        '<input name="id" type="hidden">'+
        '<div class="form-grid">'+
@@ -75,6 +75,43 @@
       '<div class="btn-row"><input id="admin-logs-search" class="input" type="search" placeholder="ค้นหาประวัติการใช้งาน">'+
       '<button id="admin-logs-find" type="button" class="btn btn-outline">ค้นหา</button></div>');
    [settings,schools,coaches,logs].forEach(function(p){page.appendChild(p)});
+
+   // Filtering is limited to the coach tab; preserve the original Admin page layout.
+   const coachFilter=document.createElement('div');
+   coachFilter.className='btn-row';
+   coachFilter.innerHTML='<label for="admin-coach-school-filter">กรองตามโรงเรียน</label>'+
+     '<select id="admin-coach-school-filter" class="input">'+
+     '<option value="">ทั้งหมด</option></select>';
+   coaches.querySelector('.card').insertBefore(coachFilter,coaches.querySelector('.table-wrap'));
+   const resetDialog=document.createElement('dialog');
+   resetDialog.id='admin-coach-reset-dialog';
+   resetDialog.style.cssText='max-width:min(95vw,540px);border-radius:12px;padding:20px;border:1px solid #334155;background:#0f172a;color:#e5e7eb;box-shadow:0 20px 70px #0009';
+   resetDialog.innerHTML='<h3>รหัสผ่านใหม่ของผู้ฝึกซ้อม</h3>'+
+      '<p>ระบบไม่สามารถแสดงรหัสผ่านเดิมได้ รหัสใหม่นี้จะแสดงเพียงครั้งเดียว โปรดแจ้งเจ้าของบัญชีโดยตรง</p>'+
+      '<label>รหัสผ่านใหม่<input id="admin-coach-reset-value" type="text" class="input" readonly autocomplete="off"></label>'+
+      '<div class="btn-row"><button type="button" id="admin-coach-copy-password" class="btn btn-primary">คัดลอกรหัสผ่าน</button>'+
+      '<button type="button" id="admin-coach-close-password" class="btn btn-outline">ปิด</button></div>';
+   page.appendChild(resetDialog);
+   let resetTimeout=null;
+   function clearResetSecret(){
+     if(resetTimeout)clearTimeout(resetTimeout);
+     resetTimeout=null;
+     el('#admin-coach-reset-value',resetDialog).value='';
+   }
+   resetDialog.addEventListener('close',clearResetSecret);
+   el('#admin-coach-close-password',resetDialog).onclick=()=>resetDialog.close();
+   el('#admin-coach-copy-password',resetDialog).onclick=async ()=>{
+      const field=el('#admin-coach-reset-value',resetDialog);
+      if(!field.value)return;
+      try{await navigator.clipboard.writeText(field.value);inform(coaches,'คัดลอกรหัสผ่านใหม่แล้ว');}
+      catch(error){field.focus();field.select();inform(coaches,'เลือกข้อความรหัสผ่านแล้ว กรุณาคัดลอกด้วยตนเอง');}
+   };
+   function showResetSecret(secret){
+     el('#admin-coach-reset-value',resetDialog).value=String(secret||'');
+     resetDialog.showModal();
+     resetTimeout=setTimeout(()=>{if(resetDialog.open)resetDialog.close()},120000);
+   }
+
    var pager=document.createElement('div');
    pager.className='btn-row';
    pager.id='admin-logs-pager';
@@ -164,39 +201,90 @@
      finally{b.disabled=false}
    });
    var coachList=[];
+   function populateCoachSchoolFilter(){
+     const select=el('#admin-coach-school-filter',coaches);
+     const previous=select.value;
+     const schools=Array.from(new Set(coachList.map(x=>String(x.school_name||'').trim()).filter(Boolean)))
+        .sort((a,b)=>a.localeCompare(b,'th'));
+     select.innerHTML='<option value="">ทั้งหมด</option>'+
+       schools.map(name=>'<option value="'+escapeText(name)+'">'+escapeText(name)+'</option>').join('');
+     select.value=schools.includes(previous)?previous:'';
+   }
+   function renderCoachRows(){
+     var rows=el('[data-admin-rows="coaches"]');
+     var select=el('#admin-coach-school-filter',coaches);
+     var selected=select.value;
+     var visible=selected?coachList.filter(x=>String(x.school_name||'')===selected):coachList;
+     const user=typeof currentUser==='undefined'?null:currentUser;
+     rows.innerHTML=visible.map(function(x){
+       const own=user&&String(x.id)===String(user.coachId);
+       return '<tr><td>'+escapeText(x.id)+'</td><td>'+escapeText(x.name)+'</td>'+
+         '<td>'+escapeText(x.email)+'</td><td>'+escapeText(x.school_name)+'</td><td>'+escapeText(x.role)+'</td>'+
+         '<td><button type="button" data-reset-coach="'+escapeText(x.id)+'" class="btn btn-outline btn-xs">ตั้งรหัสผ่านใหม่</button></td>'+
+         '<td><button type="button" data-edit-coach="'+escapeText(x.id)+'" class="btn btn-outline btn-xs">แก้ไข</button> '+
+         '<button type="button" data-delete-coach="'+escapeText(x.id)+'" class="btn btn-outline btn-xs"'+
+         (own?' disabled title="ไม่สามารถลบบัญชีตนเอง"':'')+'>ลบ</button></td></tr>';
+     }).join('')||'<tr><td colspan="7">ไม่พบผู้ฝึกซ้อมในโรงเรียนที่เลือก</td></tr>';
+   }
+   el('#admin-coach-school-filter',coaches).addEventListener('change',renderCoachRows);
    async function loadCoaches(){
      var rows=el('[data-admin-rows="coaches"]');
-     rows.innerHTML='<tr><td colspan="6">กำลังโหลด...</td></tr>';
+     rows.innerHTML='<tr><td colspan="7">กำลังโหลด...</td></tr>';
      var rs=await Promise.all([api('admin_coaches'),api('admin_schools')]);
      coachList=rs[0].data||[];
      var form=el('#admin-coach-form');
      var schoolSelect=el('[name="schoolName"]',form);
      var schoolNames=(rs[1].data||[]).map(function(x){return x.name});
-     // Existing administrator accounts use this SchoolName even though it is not a school row.
      if(!schoolNames.includes('ผู้ดูแลระบบ'))schoolNames.unshift('ผู้ดูแลระบบ');
      schoolSelect.innerHTML='<option value="">-- เลือกโรงเรียน --</option>'+
        schoolNames.map(function(s){return '<option value="'+escapeText(s)+'">'+escapeText(s)+'</option>'}).join('');
-     rows.innerHTML=coachList.map(function(x){
-       var user=typeof currentUser==='undefined'?null:currentUser;
-       var restricted=user&&user.role==='Manager';
-       return '<tr><td>'+escapeText(x.id)+'</td><td>'+escapeText(x.name)+'</td>'+
-         '<td>'+escapeText(x.email)+'</td><td>'+escapeText(x.school_name)+'</td><td>'+escapeText(x.role)+'</td>'+
-         '<td>'+(restricted?'บัญชีผู้ดูแลระบบ':'<button type="button" data-edit-coach="'+escapeText(x.id)+'" class="btn btn-outline btn-xs">แก้ไข</button>')+'</td></tr>';
-     }).join('')||'<tr><td colspan="6">ยังไม่มีข้อมูล</td></tr>';
-     inform(coaches,'');
+     populateCoachSchoolFilter();
+     renderCoachRows();
    }
-   coaches.addEventListener('click',function(e){
-     var b=e.target.closest('[data-edit-coach]');if(!b)return;
-     var x=coachList.find(function(x){return String(x.id)===b.dataset.editCoach});
-     if(!x)return;
-     var form=el('#admin-coach-form');
-     form.elements.id.value=x.id;
-     form.elements.name.value=x.name||'';
-     form.elements.email.value=x.email||'';
-     form.elements.schoolName.value=x.school_name||'';
-     form.elements.role.value=x.role;
-     form.elements.password.value='';
-     form.scrollIntoView({behavior:'smooth',block:'start'});
+   coaches.addEventListener('click',async function(e){
+     var edit=e.target.closest('[data-edit-coach]');
+     if(edit){
+       var x=coachList.find(x=>String(x.id)===edit.dataset.editCoach);
+       if(!x)return;
+       var form=el('#admin-coach-form');
+       form.elements.id.value=x.id;
+       form.elements.name.value=x.name||'';
+       form.elements.email.value=x.email||'';
+       form.elements.schoolName.value=x.school_name||'';
+       form.elements.role.value=x.role;
+       form.elements.password.value='';
+       form.scrollIntoView({behavior:'smooth',block:'start'});
+       return;
+     }
+     var reset=e.target.closest('[data-reset-coach]');
+     if(reset){
+       const x=coachList.find(x=>String(x.id)===reset.dataset.resetCoach);
+       if(!x)return;
+       if(!confirm('ยืนยันออกรหัสผ่านใหม่ให้ '+x.name+' ?\nรหัสผ่านเดิมจะใช้ไม่ได้ทันที'))return;
+       reset.disabled=true;
+       try{
+         const result=await api('admin_coach_reset_password',{id:x.id});
+         if(!result.password)throw Error('เซิร์ฟเวอร์ไม่ได้ส่งรหัสผ่านใหม่');
+         showResetSecret(result.password);
+         inform(coaches,'ออกรหัสใหม่แล้ว กรุณาแจ้งผู้ฝึกซ้อมด้วยตนเอง');
+       }catch(error){inform(coaches,error.message,true)}
+       finally{reset.disabled=false}
+       return;
+     }
+     var del=e.target.closest('[data-delete-coach]');
+     if(del){
+       const x=coachList.find(x=>String(x.id)===del.dataset.deleteCoach);
+       if(!x)return;
+       if(!confirm('ยืนยันลบบัญชีผู้ฝึกซ้อม '+x.name+' ('+x.email+') ?\nการลบจะยกเลิกสิทธิ์เข้าสู่ระบบ แต่จะเก็บข้อมูลนักวิ่ง ใบสมัคร และประวัติเดิมไว้'))return;
+       del.disabled=true;
+       try{
+         const result=await api('admin_coach_delete',{id:x.id});
+         var form=el('#admin-coach-form');
+         if(String(form.elements.id.value)===String(x.id)){form.reset();form.elements.id.value='';}
+         await loadCoaches();
+         inform(coaches,result.message||'ลบบัญชีเรียบร้อยแล้ว');
+       }catch(error){inform(coaches,error.message,true);del.disabled=false}
+     }
    });
    var coachForm=el('#admin-coach-form');
    coachForm.addEventListener('submit',async function(e){
