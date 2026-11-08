@@ -37,7 +37,7 @@ function account_mail(string $email,string $subject,string $message):bool {
     $from=account_email(config('mail_from'));
     if($from==='')$from='no-reply@bannawang.ac.th';
     $headers=[
-        'From: โรงเรียนบ้านนาวัง <'.$from.'>',
+        'From: =?UTF-8?B?'.base64_encode('ระบบกรีฑากลุ่มโรงเรียนบางละมุง 1').'?= <'.$from.'>',
         'Reply-To: '.$from,
         'MIME-Version: 1.0',
         'Content-Type: text/plain; charset=UTF-8',
@@ -59,13 +59,11 @@ if($action==='account_portal'){
     if(($_SERVER['REQUEST_METHOD']??'')!=='GET')json_out(['success'=>false],405);
     if(!isset($_SESSION['account_csrf']))$_SESSION['account_csrf']=bin2hex(random_bytes(24));
     $data=[];
-    $query=db()->query("SELECT id,name,email,school_name FROM coaches WHERE role IN ('Admin','TopAdmin','Manager','Staff','Teacher') ORDER BY school_name,name LIMIT 1500");
+    $query=db()->query("SELECT c.id,c.name,c.email,COALESCE((SELECT s.name FROM schools s WHERE s.nickname=c.school_name LIMIT 1),c.school_name) AS school_name
+        FROM coaches c WHERE c.role IN ('Admin','TopAdmin','Manager','Staff','Teacher') ORDER BY c.school_name,c.name LIMIT 1500");
     foreach($query as $coach){
-        $school=(string)$coach['school_name'];
-        $stmt=db()->prepare('SELECT name FROM schools WHERE nickname=? LIMIT 1');
-        $stmt->execute([$school]);
-        $school=(string)($stmt->fetchColumn()?:$school);
-        $data[]=['id'=>(int)$coach['id'],'name'=>(string)$coach['name'],'school'=>$school,'emailMasked'=>account_mask((string)$coach['email'])];
+        $data[]=['id'=>(int)$coach['id'],'name'=>(string)$coach['name'],'school'=>(string)$coach['school_name'],
+            'emailMasked'=>account_mask((string)$coach['email'])];
     }
     $schools=db()->query("SELECT name FROM schools WHERE active IS NULL OR active IN ('Active','ใช้งาน','1') ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
     json_out(['success'=>true,'csrf'=>$_SESSION['account_csrf'],'data'=>$data,'schools'=>$schools]);
@@ -78,7 +76,8 @@ if($action==='account_signup'){
     $email=account_email($input['email']??'');
     $schoolInput=trim((string)($input['school']??''));
     $school=account_school($schoolInput);
-    if(!$first||!$last||!$email||!$school||strlen($first)>240||strlen($last)>240||
+    if(!$first||!$last||!$email||!$school||strlen($first)>360||strlen($last)>360||
+       preg_match_all('/./u',$first)>120||preg_match_all('/./u',$last)>120||
        !preg_match("/^[\p{L}\p{M}\s.'\-]+$/u",$first)||
        !preg_match("/^[\p{L}\p{M}\s.'\-]+$/u",$last)){
         json_out(['success'=>false,'message'=>'กรุณาระบุชื่อ นามสกุล โรงเรียน และอีเมลให้ถูกต้อง'],422);
@@ -99,7 +98,7 @@ if($action==='account_signup'){
         db()->prepare("INSERT INTO account_applications(first_name,last_name,school_name,email,status) VALUES(?,?,?,?,'pending')")
             ->execute([$first,$last,$school,$email]);
     }
-    log_action('ACCOUNT_SIGNUP_REQUEST',['email'=>$email,'name'=>$first.' '.$last,'schoolName'=>$school],'AccountApplication',$email,'Pending Admin approval');
+    log_action('ACCOUNT_SIGNUP_REQUEST',['email'=>$email,'name'=>$first.' '.$last,'schoolName'=>$school],'AccountApplication',hash('sha256',$email),'Pending Admin approval');
     json_out(['success'=>true,'message'=>'ส่งคำขอสมัครเรียบร้อยแล้ว กรุณารอ Admin อนุมัติ ก่อนตั้งรหัสผ่านเพื่อเข้าสู่ระบบ']);
 }
 if($action==='account_reset_request'){
@@ -113,7 +112,7 @@ if($action==='account_reset_request'){
     $q->execute([$id,$email]);$coach=$q->fetch();
     if(!$coach){
         // Email matching alone is never proof of ownership; do not disclose a valid address.
-        json_out(['success'=>true,'message'=>'หากข้อมูลตรงกับบัญชี ระบบจะส่งรหัสยืนยัน 6 หลักไปยังอีเมลนั้น']);
+        json_out(['success'=>true,'message'=>'หากข้อมูลตรงกับบัญชี ระบบจะส่งรหัสยืนยัน 6 หลักไปยังอีเมลนั้น','requiresCode'=>true]);
     }
     $q=db()->prepare("SELECT COUNT(*) AS total,MAX(created_at) AS newest FROM account_reset_challenges WHERE coach_id=? AND created_at>=NOW()-INTERVAL 1 HOUR");
     $q->execute([$id]);$stats=$q->fetch();
@@ -152,7 +151,7 @@ if($action==='account_reset_verify'){
     if(!$upd->rowCount())json_out(['success'=>false,'message'=>'ยืนยันรหัสไม่สำเร็จ กรุณาขอรหัสใหม่'],422);
     if(!password_verify($code,(string)$challenge['code_hash']))
         json_out(['success'=>false,'message'=>'รหัสยืนยันไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง (สูงสุด 5 ครั้ง)'],422);
-    db()->prepare('UPDATE account_reset_challenges SET verified_at=NOW() WHERE id=?')->execute([(int)$pending['challenge']]);
+    db()->prepare('UPDATE account_reset_challenges SET verified_at=NOW(),expires_at=DATE_ADD(NOW(),INTERVAL 10 MINUTE) WHERE id=?')->execute([(int)$pending['challenge']]);
     unset($_SESSION['account_pending_reset']);
     $_SESSION['account_verified_reset']=['challenge'=>(int)$challenge['id'],'coachId'=>(int)$challenge['coach_id'],'expires'=>time()+600];
     session_regenerate_id(true);
