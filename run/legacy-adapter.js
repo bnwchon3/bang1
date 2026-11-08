@@ -101,13 +101,13 @@
      // events API. A secondary event-list failure must not turn a valid login into
      // a permanently blocking loading overlay.
      if(['Teacher','Admin','TopAdmin'].includes(result.user?.role)) {
-       try {
-         const events=await allEvents();
+       // Do not make a successful login wait for a secondary data request.
+       void allEvents().then(events=>{
          if(typeof eventsData!=='undefined')eventsData=events;
          if(typeof buildEventDropdown==='function')buildEventDropdown();
-       } catch(error) {
+       }).catch(error=>{
          console.warn('Bang1: optional event preload unavailable',errorText(error));
-       }
+       });
      }
      window.dispatchEvent(new CustomEvent('bang1:login'));
      return {...result,message:'เข้าสู่ระบบสำเร็จ'};
