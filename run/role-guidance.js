@@ -23,6 +23,16 @@
     {icon:'✅',title:'อนุมัติผล',detail:'เลือกผ่านหรือไม่ผ่านการตรวจสอบ',page:'admin'}
    ]
   },
+  Staff:{
+   pages:['login','results'],
+   name:'Staff',
+   permission:'บันทึกและแก้ไขผลการแข่งขันเฉพาะรายการที่โรงเรียนสมัครไว้ โดยไม่สามารถแก้ข้อมูลนักกรีฑา ใบสมัคร หรือการตั้งค่าระบบ',
+   steps:[
+    {icon:'🏅',title:'เลือกรายการ',detail:'เปิดเมนูบันทึกผลการแข่งขัน เลือกรายการและฮีท',page:'results'},
+    {icon:'🥇',title:'ระบุอันดับ',detail:'เลือกโรงเรียนในอันดับ 1–10 โดยไม่ซ้ำกัน',page:'results'},
+    {icon:'✅',title:'บันทึกผล',detail:'ตรวจสอบและบันทึกผลลงระบบ',page:'results'}
+   ]
+  },
   Teacher:{
    pages:['login','runners','register','print'],
    name:'Teacher',
@@ -58,6 +68,11 @@
      const show=can(page,u);
      b.hidden=!show;
      b.style.display=show?'':'none';
+     if(page==='results'){
+       b.innerHTML=(u&&u.role==='Staff')
+         ? '<span class="icon">🏅</span> บันทึกผลการแข่งขัน'
+         : '<span class="icon">🏅</span> ผลการแข่งขัน';
+     }
      if(page==='admin'){
        const label=b.querySelector('.role-menu-label');
        if(label)label.remove();
