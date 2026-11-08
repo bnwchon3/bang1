@@ -129,13 +129,17 @@ function event_schedule_data(): array {
             }
         }
     }
+    // Preserve the original spreadsheet/program order (e.g. final EventID 40
+    // stays in its preconfigured position, not immediately after preliminary 5).
+    usort($result,static fn($left,$right)=>
+        ((int)($left['SourceOrder']??$left['EventID']))<=>((int)($right['SourceOrder']??$right['EventID'])));
     return $result;
 }
 function event_map_schedule(array $e): array {
     return ['EventID'=>$e['id'],'EventName'=>$e['name'],'Category'=>$e['category'],
        'Level'=>$e['level'],'Gender'=>$e['gender'],'Remark'=>$e['remark'],
        'Heat'=>$e['heat'],'HeatPlan'=>$e['heat_plan'],'TeamCount'=>$e['team_count'],
-       'TotalTeams'=>$e['total_teams'],'Stage'=>$e['stage']];
+       'TotalTeams'=>$e['total_teams'],'Stage'=>$e['stage'],'SourceOrder'=>$e['source_order']??$e['id']];
 }
 
 if($action==='schedule'){
