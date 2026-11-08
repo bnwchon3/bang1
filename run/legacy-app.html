@@ -3802,15 +3802,120 @@ function printRegSummary() {
       }
     }
 
+    // แสดงรูปนักวิ่ง / หลักฐานใน Popup ภายในหน้าเดิม (ไม่เปิดแท็บใหม่)
+    let runnerPreviewLastFocus = null;
+    let runnerPreviewOverflow = '';
+    function getRunnerPreviewLocation(raw, type) {
+      let parsed;
+      try { parsed = new URL(String(raw || '').trim()); } catch (e) { return null; }
+      if (parsed.protocol !== 'https:') return null;
+
+      const host = parsed.hostname.toLowerCase();
+      let driveId = '';
+      if (host === 'drive.google.com' || host === 'drive.usercontent.google.com') {
+        driveId = parsed.searchParams.get('id') ||
+          (parsed.pathname.match(/\/(?:file\/d|d)\/([a-zA-Z0-9_-]{15,})(?:\/|$)/) || [])[1] || '';
+      }
+      if (driveId && /^[a-zA-Z0-9_-]{15,}$/.test(driveId)) {
+        // Drive Preview ใช้ดูรูป/ไฟล์หลักฐานได้ โดยยังคงสิทธิ์การเข้าถึงไฟล์ตาม Google Drive
+        return type === 'idproof'
+          ? { kind: 'frame', src: 'https://drive.google.com/file/d/' + encodeURIComponent(driveId) + '/preview' }
+          : { kind: 'image', src: 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(driveId) + '&sz=w1200' };
+      }
+      return { kind: type === 'photo' || /\.(?:png|jpe?g|gif|webp)(?:$|[?#])/i.test(parsed.href)
+          ? 'image' : 'frame', src: parsed.href };
+    }
+    function ensureRunnerPreviewPopup() {
+      let backdrop = document.getElementById('runnerFilePreviewBackdrop');
+      if (backdrop) return backdrop;
+      backdrop = document.createElement('div');
+      backdrop.id = 'runnerFilePreviewBackdrop';
+      backdrop.hidden = true;
+      backdrop.innerHTML = `
+        <div id="runnerFilePreviewDialog" role="dialog" aria-modal="true"
+             aria-labelledby="runnerFilePreviewTitle" tabindex="-1">
+          <div class="runner-file-preview-header">
+            <strong id="runnerFilePreviewTitle"></strong>
+            <button type="button" id="runnerFilePreviewClose" aria-label="ปิดหน้าต่าง">✕</button>
+          </div>
+          <div class="runner-file-preview-content">
+            <img id="runnerFilePreviewImage" alt="" hidden>
+            <iframe id="runnerFilePreviewFrame" title="ตัวอย่างไฟล์" referrerpolicy="no-referrer" hidden></iframe>
+            <p id="runnerFilePreviewError" hidden>ไม่สามารถแสดงตัวอย่างไฟล์ได้ โปรดตรวจสอบสิทธิ์ของไฟล์ใน Google Drive</p>
+          </div>
+        </div>`;
+      document.body.appendChild(backdrop);
+      backdrop.querySelector('#runnerFilePreviewClose').addEventListener('click', closeRunnerFilePreview);
+      backdrop.addEventListener('click', e => {
+        if (e.target === backdrop) closeRunnerFilePreview();
+      });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && !backdrop.hidden) {
+          e.preventDefault();
+          closeRunnerFilePreview();
+        }
+        if (e.key === 'Tab' && !backdrop.hidden) {
+          const close = backdrop.querySelector('#runnerFilePreviewClose');
+          // Popup มีปุ่มเดียวที่รับโฟกัส: ไม่ให้ Tab ออกไปยังข้อมูลหลังฉาก
+          if (document.activeElement !== close || e.shiftKey) {
+            e.preventDefault(); close.focus();
+          } else {
+            e.preventDefault(); close.focus();
+          }
+        }
+      });
+      return backdrop;
+    }
+    function closeRunnerFilePreview() {
+      const backdrop = document.getElementById('runnerFilePreviewBackdrop');
+      if (!backdrop || backdrop.hidden) return;
+      backdrop.hidden = true;
+      backdrop.querySelector('#runnerFilePreviewImage').removeAttribute('src');
+      backdrop.querySelector('#runnerFilePreviewFrame').removeAttribute('src');
+      document.body.style.overflow = runnerPreviewOverflow;
+      if (runnerPreviewLastFocus && runnerPreviewLastFocus.isConnected) runnerPreviewLastFocus.focus();
+    }
     function openRunnerFilePreview(type) {
-      const el = (type === 'photo') ? document.getElementById('runnerPhotoStatus') : document.getElementById('runnerIdStatus');
-      if (!el) return;
-      const url = el.getAttribute('data-url') || '';
+      const linkEl = type === 'photo'
+        ? document.getElementById('runnerPhotoStatus')
+        : document.getElementById('runnerIdStatus');
+      if (!linkEl) return;
+      const url = linkEl.getAttribute('data-url') || '';
       if (!url) {
         alert(type === 'photo' ? 'ยังไม่มีการแนบรูปนักวิ่ง' : 'ยังไม่มีการแนบรูปบัตรประชาชน');
         return;
       }
-      window.open(url, '_blank');
+      const preview = getRunnerPreviewLocation(url, type);
+      if (!preview) {
+        alert('ลิงก์ไฟล์ไม่ถูกต้อง');
+        return;
+      }
+      const backdrop = ensureRunnerPreviewPopup();
+      const img = backdrop.querySelector('#runnerFilePreviewImage');
+      const frame = backdrop.querySelector('#runnerFilePreviewFrame');
+      const error = backdrop.querySelector('#runnerFilePreviewError');
+      img.hidden = true;
+      frame.hidden = true;
+      error.hidden = true;
+      img.removeAttribute('src');
+      frame.removeAttribute('src');
+      backdrop.querySelector('#runnerFilePreviewTitle').textContent =
+        type === 'photo' ? 'รูปนักวิ่ง' : 'รูปบัตรประชาชน';
+      img.onerror = () => { img.hidden = true; error.hidden = false; };
+      if (preview.kind === 'image') {
+        img.alt = type === 'photo' ? 'รูปนักวิ่ง' : 'รูปบัตรประชาชน';
+        img.hidden = false;
+        img.src = preview.src;
+      } else {
+        frame.hidden = false;
+        frame.title = type === 'photo' ? 'รูปนักวิ่ง' : 'รูปบัตรประชาชน';
+        frame.src = preview.src;
+      }
+      runnerPreviewLastFocus = document.activeElement;
+      runnerPreviewOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      backdrop.hidden = false;
+      backdrop.querySelector('#runnerFilePreviewClose').focus();
     }
 
     /*********************** ตัวแปร global ***********************/
@@ -7338,5 +7443,48 @@ document.addEventListener('DOMContentLoaded', function () {
 </style>
 <script src="admin-tabs.js?v=20261108-1"></script>
 <script src="role-guidance.js?v=20261108-logout"></script>
+
+<style>
+/* Popup ดูไฟล์แนบเท่านั้น — ใช้โทนเดียวกับหน้าต่างเดิม ไม่เปลี่ยนหน้าจออื่น */
+#runnerFilePreviewBackdrop[hidden], #runnerFilePreviewImage[hidden],
+#runnerFilePreviewFrame[hidden], #runnerFilePreviewError[hidden] { display: none !important; }
+#runnerFilePreviewBackdrop {
+  position: fixed; inset: 0; z-index: 12000;
+  background: rgba(2, 6, 23, .83);
+  display: flex; align-items: center; justify-content: center; padding: 14px;
+}
+#runnerFilePreviewDialog {
+  width: min(920px, 96vw); max-height: 94vh; overflow: hidden;
+  background: #020617; border: 1px solid rgba(148, 163, 184, .5);
+  border-radius: 1rem; box-shadow: 0 24px 70px rgba(0,0,0,.65);
+  color: #e5e7eb; display: flex; flex-direction: column;
+}
+.runner-file-preview-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; gap: 12px; border-bottom: 1px solid rgba(148,163,184,.3);
+}
+#runnerFilePreviewClose {
+  cursor: pointer; font-size: 20px; width: 38px; height: 38px;
+  border-radius: 50%; border: 1px solid rgba(148,163,184,.4);
+  background: #1e293b; color: #fff;
+}
+.runner-file-preview-content {
+  min-height: 180px; max-height: calc(94vh - 70px);
+  overflow: auto; display: flex; justify-content: center; align-items: center;
+  padding: 12px;
+}
+#runnerFilePreviewImage {
+  max-width: 100%; max-height: calc(94vh - 100px); object-fit: contain;
+}
+#runnerFilePreviewFrame {
+  width: 100%; height: min(75vh, 800px); border: 0; background: #fff;
+}
+#runnerFilePreviewError { color: #fca5a5; text-align: center; }
+@media (max-width: 600px) {
+  #runnerFilePreviewDialog { width: 100%; }
+  .runner-file-preview-content { padding: 6px; }
+  #runnerFilePreviewFrame { height: 72vh; }
+}
+</style>
 </body>
 </html>
