@@ -39,9 +39,20 @@ function body(): array {
 }
 function session_open(): void {
     if(session_status()!==PHP_SESSION_ACTIVE) {
+        // Original application remembered a login for 10 hours; use a secure server session.
+        ini_set('session.gc_maxlifetime', (string)(10*60*60));
         session_name('BANGLAMUNG1');
         session_set_cookie_params(['lifetime'=>0,'path'=>'/bang1/run','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);
         session_start();
+        if (isset($_SESSION['user'])) {
+            $started=(int)($_SESSION['login_started_at']??time());
+            if (time()-$started>10*60*60) {
+                $_SESSION=[];
+                session_regenerate_id(true);
+            } else {
+                $_SESSION['login_started_at']=$started;
+            }
+        }
     }
 }
 function require_user(): array {
