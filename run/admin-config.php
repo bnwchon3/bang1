@@ -11,7 +11,9 @@ if (!isset($u, $action) || !is_array($u) || !function_exists('require_admin')) {
 }
 if (!str_starts_with((string)$action, 'admin_')) return;
 require_admin($u);
+require __DIR__.'/admin-security.php';
 require __DIR__.'/admin-reset.php';
+require __DIR__.'/admin-backup.php';
 
 function admin_date($value): ?string {
     $value = trim((string)($value ?? ''));
@@ -218,23 +220,32 @@ if ($action === 'admin_coach_delete') {
 }
 
 if ($action === 'admin_logs') {
-    $page = max(1,min(100000,(int)($_GET['page'] ?? 1)));
-    $q = trim((string)($_GET['q'] ?? ''));
-    if (strlen($q)>180)json_out(['success'=>false,'message'=>'คำค้นหายาวเกินไป'],422);
-    $where = '';
-    $params = [];
+    $page=max(1,min(100000,(int)($_GET['page']??1)));
+    $q=trim((string)($_GET['q']??''));
+    if(strlen($q)>180)json_out(['success'=>false,'message'=>'คำค้นหายาวเกินไป'],422);
+    // Security audit is never cleared, even when ordinary logs are reset/restored.
+    // Filter duplicates since reset events are also saved in audit_logs for compatibility.
+    $source="(SELECT id,event_time,action_code,action_text,module,target_type,target_id,target_name,
+       runner_id,reg_id,event_name,user_email,user_name,user_role,user_school,detail
+       FROM audit_logs WHERE action_code NOT IN ('ADMIN_DATA_RESET','ADMIN_BACKUP_EXPORT','ADMIN_BACKUP_RESTORE')
+       UNION ALL
+       SELECT id,event_time,action_code,'' AS action_text,'SECURITY' AS module,
+       'System' AS target_type,'' AS target_id,'' AS target_name,'' AS runner_id,'' AS reg_id,
+       '' AS event_name,actor_email AS user_email,actor_email AS user_name,'Admin' AS user_role,
+       '' AS user_school,detail FROM admin_security_audit) AS audit_history";
+    $where='';$params=[];
     if($q!==''){
-       $where=' WHERE (user_name LIKE ? OR user_school LIKE ? OR action_code LIKE ? OR target_name LIKE ?)';
-       $search='%'.$q.'%';
-       $params=[$search,$search,$search,$search];
+      $where=' WHERE (user_name LIKE ? OR user_school LIKE ? OR action_code LIKE ? OR target_name LIKE ?)';
+      $wildcard='%'.$q.'%';$params=[$wildcard,$wildcard,$wildcard,$wildcard];
     }
-    $stmt=db()->prepare('SELECT COUNT(*) FROM audit_logs'.$where);
+    $stmt=db()->prepare('SELECT COUNT(*) FROM '.$source.$where);
     $stmt->execute($params);
     $total=(int)$stmt->fetchColumn();
     $page=min($page,max(1,(int)ceil($total/20)));
     $offset=($page-1)*20;
-    $sql='SELECT id,event_time,action_code,action_text,module,target_type,target_id,target_name,runner_id,reg_id,event_name,user_email,user_name,user_role,user_school,detail FROM audit_logs'
-         .$where.' ORDER BY event_time DESC, id DESC LIMIT 20 OFFSET '.$offset;
+    $sql='SELECT id,event_time,action_code,action_text,module,target_type,target_id,target_name,
+       runner_id,reg_id,event_name,user_email,user_name,user_role,user_school,detail FROM '
+       .$source.$where.' ORDER BY event_time DESC,id DESC LIMIT 20 OFFSET '.$offset;
     json_out(['success'=>true,'page'=>$page,'perPage'=>20,'total'=>$total,
-        'data'=>rows($sql,$params)]);
+       'data'=>rows($sql,$params)]);
 }
