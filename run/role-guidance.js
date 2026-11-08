@@ -47,7 +47,7 @@
  function user(){return typeof currentUser!=='undefined'?currentUser:null;}
  function normRole(role){return role==='TopAdmin'?'Admin':role;}
  function policyFor(u){return u?policies[normRole(u.role)]||null:null;}
- function can(page,u){return !!(page==='login'||(policyFor(u)&&policyFor(u).pages.includes(page)));}
+ function can(page,u){return !!(page==='login'||page==='score-summary'||(policyFor(u)&&policyFor(u).pages.includes(page)));}
  function escapeHTML(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));}
  function ensureDashboard(){
    const page=document.getElementById('page-login');if(!page)return null;
