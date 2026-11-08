@@ -127,7 +127,9 @@
      }catch{return null;}
    },
    async logout(){
-     try{await request('logout',{})}finally{sessionUser=null;csrf='';}
+     const response=await request('logout',{});
+     sessionUser=null;csrf='';
+     return response;
    },
    photoLink,
    adminRequest: (action,data)=>request(action,data),
