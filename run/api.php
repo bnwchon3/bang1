@@ -55,25 +55,23 @@ if($action==='me'){
 }
 if($action==='logout'){must_post();session_destroy();json_out(['success'=>true]);}
 
-if($action==='original_results'){
- $u=require_user();
- authorize_athletics_action($u,$action);
- // Use the active events table rather than source_rows so resetting results takes effect immediately.
- $out=[['EventName','รอบการแข่ง','ฮีท','อันดับ 1','อันดับ 2','อันดับ 3','อันดับ 4','อันดับ 5','อันดับ 6','อันดับ 7','อันดับ 8']];
- $evs=rows('SELECT name, stage, heat, team_count, ranking_json FROM events ORDER BY source_order,id');
- foreach($evs as $ev){
-   if((int)($ev['team_count']??0)===0)continue;
-   $rank=json_decode((string)($ev['ranking_json']??''),true);
-   $row=[(string)$ev['name'],(string)($ev['stage']??''),(string)($ev['heat']??'')];
-   for($i=1;$i<=8;$i++)$row[]=(string)($rank[$i]??'');
-   $out[]=$row;
- }
- json_out(['success'=>true,'data'=>$out]);
-}
 $u=require_user();
 authorize_athletics_action($u,$action);
 require __DIR__.'/admin-config.php';
 require __DIR__.'/event-management.php';
+require __DIR__.'/staff-results.php';
+// The read-only results table uses the same live schedule/rankings as Staff entry.
+if($action==='original_results'){
+  $out=[array_merge(['EventName','รอบการแข่ง','ฮีท'],
+        array_map(static fn($n)=>'อันดับ '.$n,range(1,10)))];
+  foreach(staff_result_fixture_rows() as $item){
+    $row=[$item['eventName'],$item['round'],(string)$item['heat']];
+    for($n=1;$n<=10;$n++)$row[]=(string)($item['ranks'][(string)$n]??'');
+    $out[]=$row;
+  }
+  json_out(['success'=>true,'data'=>$out]);
+}
+
 if($action==='schools'){json_out(['success'=>true,'data'=>rows('SELECT id, name, nickname, active FROM schools ORDER BY name')]);}
 if($action==='runners'){
  $school=is_reviewer($u)?trim((string)($_GET['school']??'')):$u['schoolName'];
