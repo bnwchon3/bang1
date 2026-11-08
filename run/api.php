@@ -39,7 +39,7 @@ if($action==='login'){
   log_action('LOGIN_FAIL',['email'=>$email],'User',$email,'Invalid credentials');
   json_out(['success'=>false,'message'=>'อีเมลหรือรหัสผ่านไม่ถูกต้อง'],401);
  }
- if(!in_array($u['role'],['Teacher','Manager','Admin','TopAdmin'],true))json_out(['success'=>false,'message'=>'ไม่มีสิทธิ์ใช้งาน'],403);
+ if(!in_array($u['role'],['Teacher','Manager','Staff','Admin','TopAdmin'],true))json_out(['success'=>false,'message'=>'ไม่มีสิทธิ์ใช้งาน'],403);
  $school=$u['school_name'];
  $mapped=single('SELECT name FROM schools WHERE nickname=? AND (active IN ("Active","ใช้งาน","1") OR active IS NULL) LIMIT 1',[$school]);
  if($mapped)$school=$mapped['name'];
