@@ -264,6 +264,7 @@ if($action==='manage_event_delete'){
                 ->execute([$ev['name'],$ev['category'],$ev['level']]);
             db()->prepare('DELETE FROM certificates WHERE event_name=?')->execute([$ev['name']]);
         }
+        db()->prepare('DELETE FROM event_results WHERE event_id=?')->execute([$id]);
         db()->prepare('DELETE FROM events WHERE id=?')->execute([$id]);
         log_action('EVENT_DELETE',$u,'Event',(string)$id,
             'ลบ '.$ev['name'].'; มีใบสมัครเดิม '.$registered.' รายการ; เหลือแถวแข่งขัน '.count($other));
