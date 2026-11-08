@@ -56,9 +56,28 @@ body.bang1-score-modal-open {overflow:hidden}
 .bang1-score-row {display:grid;grid-template-columns:75px minmax(0,1fr);align-items:center;gap:10px;font-size:.85rem}
 .bang1-score-row select {width:100%;min-width:0;min-height:40px;color:#e5e7eb;background:#020617;border:1px solid #475569;border-radius:9px;padding:7px;font-size:16px}
 .bang1-score-row select:disabled {opacity:.65}
+/* Rank fields with a school selected are gently green; unselected stay dark. */
+#bang1StaffScoreDialog .bang1-score-row.bang1-score-selected select {
+  background:#bbf7d0 !important;
+  color:#064e3b !important;
+  border-color:#22c55e !important;
+  font-weight:700;
+}
+#bang1StaffScoreDialog .bang1-score-row.bang1-score-selected span {
+  color:#86efac;
+}
+
 .bang1-score-foot {padding:10px 16px 14px;border-top:1px solid #334155;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
 #bang1ScoreNotice {flex:1 1 100%;font-size:.8rem;color:#fca5a5;min-height:1em}
 .bang1-score-foot .btn {min-height:38px}
+/* Prevent browser-level zoom and rubber-band gestures on the modal itself. */
+@media (pointer:coarse) and (max-width:1199px){
+  #bang1StaffScoreBackdrop {touch-action:none;overscroll-behavior:none}
+  #bang1StaffScoreDialog {touch-action:pan-y;overscroll-behavior:contain}
+  #bang1StaffScoreDialog .bang1-score-body {touch-action:pan-y;overscroll-behavior:contain}
+  #bang1StaffScoreDialog select,
+  #bang1StaffScoreDialog button {touch-action:manipulation;font-size:16px}
+}
 @media(max-width:600px){
   #bang1StaffScoreBackdrop {padding:0;align-items:flex-end}
   #bang1StaffScoreDialog {width:100%;border-radius:16px 16px 0 0;max-height:94dvh}
