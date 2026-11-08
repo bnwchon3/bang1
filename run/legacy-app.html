@@ -1505,7 +1505,7 @@ body{
 
 
   </style>
-</head>
+<link rel="stylesheet" href="role-guidance.css?v=20261108-roles">\n</head>
 
 <body>
   <!-- overlay โหลดทั้งหน้า -->
@@ -2634,7 +2634,7 @@ function buildRegSummaryHtml(list, schoolName, printedAt) {
     พิมพ์เมื่อ: ${safePrinted}
   </div>
   ${itemsHtml}
-</body>
+<script src="role-guidance.js?v=20261108-roles"></script>\n</body>
 </html>`;
 }
 
@@ -2785,7 +2785,7 @@ function printRegSummary() {
       <section class="page" id="page-admin">
         <h1>หน้าผู้ดูแลระบบ</h1>
         <div class="subtitle">
-          สำหรับ Admin เท่านั้น: ใช้สุ่มจัดฮีท/ลู่ และอัปเดตตารางจัดแข่งขัน รวมถึงตรวจสอบสถานะนักวิ่ง
+          สำหรับ Admin และ Manager: ตรวจสอบสถานะนักวิ่ง (การตั้งค่าระบบเฉพาะ Admin)
         </div>
 
         <!-- การ์ดเดิม: จัดฮีทและลู่วิ่ง 
@@ -3876,7 +3876,7 @@ function printRegSummary() {
     }
 
     function isAdminClient() {
-      return currentUser && (currentUser.role === 'Admin' || currentUser.role === 'TopAdmin');
+      return currentUser && ['Admin','TopAdmin','Manager'].includes(currentUser.role);
     }
 
     function normalizeDriveImageUrl(rawUrl) {
@@ -4010,11 +4010,9 @@ function printRegSummary() {
 
     /*********************** NAVIGATION ***********************/
     function navigate(pageName) {
-      if (pageName === 'admin') {
-        if (!currentUser || (currentUser.role !== 'TopAdmin' && currentUser.role !== 'Admin')) {
-          alert('เมนูนี้สำหรับ Admin เท่านั้น');
-          return;
-        }
+      if (window.bang1Role && !window.bang1Role.can(pageName,currentUser)) {
+        alert('บัญชีนี้ไม่มีสิทธิ์เข้าใช้งานเมนูดังกล่าว');
+        return;
       }
 
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -4050,7 +4048,7 @@ function printRegSummary() {
       } else if (pageName === 'schedule') {
         loadSchedule();
 
-      } else if (pageName === 'admin' && currentUser && (currentUser.role === 'TopAdmin' || currentUser.role === 'Admin')) {
+      } else if (pageName === 'admin' && currentUser && isAdminClient()) {
         loadRunnersForAdmin();
         loadRunnersForCheck();
       }
@@ -4109,10 +4107,8 @@ function handleLogin() {
         }
       }
 
-      loadRunnersForRegister();
-      loadMyRegistrations();
-      loadMyRegistrationsForPrint();
-      navigate('runners');
+      // Show the requested access summary and three-step guide immediately after login.
+      navigate('login');
 
       autoLoginInProgress = false;
     })
@@ -4146,9 +4142,12 @@ function tryAutoLoginOnLoad() {
     updateUserInfoBox();
     const rs=document.getElementById('runnerSchool');if(rs)rs.value=user.schoolName||'';
     const reg=document.getElementById('regSchool');if(reg)reg.value=user.schoolName||'';
-    google.script.run.withSuccessHandler(function(evts){
-      eventsData=evts||[];buildEventDropdown();navigate('runners');
-    }).getEvents();
+    if(user.role!=='Manager'){
+      google.script.run.withSuccessHandler(function(evts){
+        eventsData=evts||[];buildEventDropdown();
+      }).getEvents();
+    }
+    navigate('login');
     const e=document.getElementById('loginEmail');if(e)e.value=user.email||'';
   });
 }
@@ -4165,6 +4164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         box.textContent = 'ยังไม่ได้เข้าสู่ระบบ';
         return;
       }
+      if(window.applyBang1Permissions)window.applyBang1Permissions();
       box.innerHTML = `
         <div><b>${currentUser.name}</b></div>
         <div>${currentUser.schoolName}</div>
@@ -6150,8 +6150,8 @@ function handleAutoHeats() {
         alert('กรุณากรอกอีเมลและรหัสผ่าน');
         return;
       }
-      if (currentUser.role !== 'TopAdmin' && currentUser.role !== 'Admin') {
-        alert('เฉพาะ Admin เท่านั้น');
+      if (!isAdminClient()) {
+        alert('เฉพาะ Admin หรือ Manager เท่านั้น');
         return;
       }
       setTableLoading('adminRunnerTableWrap', true);
