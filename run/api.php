@@ -58,16 +58,14 @@ if($action==='logout'){must_post();session_destroy();json_out(['success'=>true])
 if($action==='original_results'){
  $u=require_user();
  authorize_athletics_action($u,$action);
+ // Use the active events table rather than source_rows so resetting results takes effect immediately.
  $out=[['EventName','รอบการแข่ง','ฮีท','อันดับ 1','อันดับ 2','อันดับ 3','อันดับ 4','อันดับ 5','อันดับ 6','อันดับ 7','อันดับ 8']];
- $q=db()->prepare('SELECT payload FROM source_rows WHERE sheet_name=? ORDER BY source_row');
- $q->execute(['รายการวิ่ง']);
- while($j=$q->fetchColumn()){
-   $ev=json_decode($j,true);
-   if(!is_array($ev))continue;
-   $count=trim((string)($ev['จำนวนทีมที่ลงแข่งของฮีท']??''));
-   if($count==='0')continue;
-   $row=[(string)($ev['EventName']??''),(string)($ev['รอบการแข่ง']??''),(string)($ev['ฮีท']??'')];
-   for($i=1;$i<=8;$i++)$row[]=(string)($ev['อันดับ '.$i]??'');
+ $evs=rows('SELECT name, stage, heat, team_count, ranking_json FROM events ORDER BY source_order,id');
+ foreach($evs as $ev){
+   if((int)($ev['team_count']??0)===0)continue;
+   $rank=json_decode((string)($ev['ranking_json']??''),true);
+   $row=[(string)$ev['name'],(string)($ev['stage']??''),(string)($ev['heat']??'')];
+   for($i=1;$i<=8;$i++)$row[]=(string)($rank[$i]??'');
    $out[]=$row;
  }
  json_out(['success'=>true,'data'=>$out]);
