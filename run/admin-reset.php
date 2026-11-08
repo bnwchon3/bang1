@@ -31,7 +31,7 @@ function reset_counts(int $selfId): array {
         'coaches'=>'SELECT COUNT(*) FROM coaches WHERE id<>?',
         'registrations'=>'SELECT COUNT(*) FROM registrations',
         'photos'=>'SELECT COUNT(*) FROM runners WHERE (photo_url IS NOT NULL AND photo_url<>"") OR (proof_url IS NOT NULL AND proof_url<>"")',
-        'results'=>'SELECT (SELECT COUNT(*) FROM race_results)+(SELECT COUNT(*) FROM certificates)+(SELECT COUNT(*) FROM events WHERE ranking_json IS NOT NULL AND ranking_json NOT IN ("","{}","null"))',
+        'results'=>'SELECT (SELECT COUNT(*) FROM race_results)+(SELECT COUNT(*) FROM event_results)+(SELECT COUNT(*) FROM certificates)+(SELECT COUNT(*) FROM events WHERE ranking_json IS NOT NULL AND ranking_json NOT IN ("","{}","null"))',
         'logs'=>'SELECT COUNT(*) FROM audit_logs',
     ];
     $out=[];
@@ -110,7 +110,8 @@ try {
       $a=db()->exec('DELETE FROM race_results');
       $b=db()->exec('DELETE FROM certificates');
       $c=db()->exec('UPDATE events SET ranking_json=NULL WHERE ranking_json IS NOT NULL');
-      $affected['results']=$a+$b+$c;
+      $d=db()->exec('DELETE FROM event_results');
+      $affected['results']=$a+$b+$c+$d;
     }
     if(in_array('logs',$selected,true)){
       $affected['logs']=db()->exec('DELETE FROM audit_logs');
