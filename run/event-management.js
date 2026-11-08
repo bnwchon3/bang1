@@ -24,7 +24,7 @@ function createUI(){
   if(!header)return;
   const buttons=document.createElement('span');
   buttons.id='bang1EventControls';
-  buttons.className='btn-row';
+  buttons.className='btn-row bang1-admin-schedule-actions';
   buttons.hidden=true;
   buttons.innerHTML='<button type="button" class="btn btn-outline" id="bang1EventManagerToggle">จัดการรายการแข่งขัน</button>'+
     '<button type="button" class="btn btn-primary" id="bang1EventsDraw">สุ่มฮีทและลู่</button>';
@@ -39,14 +39,22 @@ function createUI(){
     '<input name="id" type="hidden">'+
     '<div class="form-grid">'+
     '<div class="field"><label>ชื่อรายการแข่งขัน</label><input class="input" name="name" required maxlength="255"></div>'+
-    '<div class="field"><label>ประเภท</label><input class="input" name="category" maxlength="80"></div>'+
-    '<div class="field"><label>ระดับ</label><input class="input" name="level" maxlength="60"></div>'+
-    '<div class="field"><label>เพศ</label><input class="input" name="gender" maxlength="30"></div>'+
+    '<div class="field"><label>ประเภท</label><select class="input" name="category">'+
+    '<option value="">-- เลือกประเภท --</option><option value="วิ่งเดี่ยว">วิ่งเดี่ยว</option><option value="วิ่งผลัด">วิ่งผลัด</option></select></div>'+
+    '<div class="field"><label>ระดับ</label><select class="input" name="level">'+
+    '<option value="">-- เลือกระดับ --</option><option value="อนุบาล">อนุบาล</option>'+
+    '<option value="ประถม">ประถม</option><option value="มัธยม">มัธยม</option></select></div>'+
+    '<div class="field"><label>เพศ</label><select class="input" name="gender">'+
+    '<option value="">-- เลือกเพศ --</option><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>'+
     '<div class="field"><label>หมายเหตุ / รอบที่ตั้งไว้</label><select class="input" name="remark"><option value="">-- ไม่ระบุ --</option>'+
     '<option value="คัดเลือก">คัดเลือก</option><option value="ชิงชนะเลิศ">ชิงชนะเลิศ</option></select></div>'+
-    '<div class="field"><label>ฮีท</label><input class="input" name="heat" maxlength="50"></div>'+
-    '<div class="field"><label>กำหนดฮีท</label><input class="input" name="heatPlan" maxlength="50"></div>'+
-    '<div class="field"><label>รอบการแข่งขัน</label><input class="input" name="stage" maxlength="100"></div>'+
+    '<div class="field"><label>ฮีท</label><select class="input" name="heat">'+
+    '<option value="">-- ไม่ระบุ --</option><option value="1">1</option><option value="2">2</option></select></div>'+
+    '<div class="field"><label>กำหนดฮีท</label><select class="input" name="heatPlan">'+
+    '<option value="">-- ไม่ระบุ --</option><option value="1">1</option><option value="2">2</option></select></div>'+
+    '<div class="field"><label>รอบการแข่งขัน</label><select class="input" name="stage">'+
+    '<option value="">-- เลือกรอบการแข่งขัน --</option>'+
+    '<option value="คัดเลือก">คัดเลือก</option><option value="ชิงชนะเลิศ">ชิงชนะเลิศ</option></select></div>'+
     '</div><div class="btn-row"><button class="btn btn-primary" type="submit">บันทึกรายการแข่งขัน</button>'+
     '<button type="button" class="btn btn-outline" id="bang1NewEvent">เพิ่มรายการใหม่ / ล้างฟอร์ม</button></div></form>'+
     '<p class="bang1-event-note">เมื่อแก้ชื่อรายการ ประเภท ระดับ หรือเพศ ระบบจะอัปเดตแถวที่เชื่อมกัน รวมถึงใบสมัคร ฮีท และชื่อรายการในเกียรติบัตรที่เกี่ยวข้อง</p>'+
@@ -58,7 +66,25 @@ function createUI(){
     '<p id="bang1EventManagementMessage" aria-live="polite"></p>';
   page.appendChild(panel);
   const form=$('#bang1EventForm');
-  const clear=()=>{form.reset();form.elements.id.value='';notice('')};
+  // Some imported finals carry the legacy "ชิง" marker in heatPlan.
+  // Show that value while editing rather than accidentally erasing a preset final;
+  // new selections are still limited to 1 or 2.
+  function setSelectFromRecord(select,value){
+    if(!select)return;
+    const raw=String(value??'');
+    select.querySelectorAll('option[data-bang1-existing]').forEach(option=>option.remove());
+    if(raw && !Array.from(select.options).some(option=>option.value===raw)){
+      const originalOption=new Option('ค่าเดิม: '+raw,raw,true,true);
+      originalOption.dataset.bang1Existing='1';
+      originalOption.disabled=true;
+      select.add(originalOption);
+    }
+    select.value=raw;
+  }
+  const clear=()=>{
+    form.querySelectorAll('option[data-bang1-existing]').forEach(option=>option.remove());
+    form.reset();form.elements.id.value='';notice('');
+  };
   $('#bang1NewEvent').addEventListener('click',clear);
   $('#bang1EventSearch').addEventListener('input',renderTable);
   $('#bang1EventRefresh').addEventListener('click',()=>loadEvents());
@@ -107,16 +133,12 @@ function createUI(){
     if(edit){
       for(const key of ['id','name','category','level','gender','remark','heat','heatPlan','stage']){
         const input=form.elements[key];
-        if(input)input.value=item[key]||'';
+        if(input){
+          if(input.tagName==='SELECT')setSelectFromRecord(input,item[key]);
+          else input.value=item[key]||'';
+        }
       }
-      // Support imported legacy remark labels beyond the two standard options.
-      if(item.remark && form.elements.remark.value!==item.remark){
-        const option=document.createElement('option');
-        option.value=item.remark;option.textContent=item.remark;
-        form.elements.remark.appendChild(option);
-        form.elements.remark.value=item.remark;
-      }
-      form.scrollIntoView({behavior:'smooth',block:'start'});
+       form.scrollIntoView({behavior:'smooth',block:'start'});
       return;
     }
     const count=Number(item.registrationCount||0);
@@ -140,7 +162,7 @@ function createUI(){
   function refreshVisibility(){
     const shown=isAdmin();
     buttons.hidden=!shown;
-    buttons.style.display=shown?'':'none';
+    buttons.style.display=shown?'flex':'none';
     if(!shown){manageVisible=false;panel.hidden=true}
   }
   refreshVisibility();
