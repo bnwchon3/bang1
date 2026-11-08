@@ -63,7 +63,7 @@ function require_user(): array {
     $q=db()->prepare('SELECT id,name,email,school_name,role FROM coaches WHERE id=? LIMIT 1');
     $q->execute([$id]);
     $coach=$q->fetch();
-    if(!$coach || !in_array($coach['role'],['Admin','TopAdmin','Manager','Teacher'],true)) {
+    if(!$coach || !in_array($coach['role'],['Admin','TopAdmin','Manager','Teacher','Staff'],true)) {
         $_SESSION=[];
         json_out(['success'=>false,'message'=>'บัญชีนี้ไม่มีสิทธิ์ใช้งาน กรุณาเข้าสู่ระบบใหม่'],401);
     }
@@ -88,7 +88,8 @@ function authorize_athletics_action(array $u,string $action): void {
     $teacher=['schools','runners','save_runner','delete_runner','upload','events','registrations',
       'save_registration','delete_registration','features'];
     $manager=['runners','update_status','features'];
-    $allowed=($u['role']??'')==='Manager'?$manager:(($u['role']??'')==='Teacher'?$teacher:[]);
+    $staff=['staff_results_list','staff_results_save'];
+    $allowed=($u['role']??'')==='Manager'?$manager:(($u['role']??'')==='Teacher'?$teacher:(($u['role']??'')==='Staff'?$staff:[]));
     if(!in_array($action,$allowed,true)) json_out(['success'=>false,'message'=>'ไม่มีสิทธิ์เข้าใช้งานส่วนนี้'],403);
 }
 function csrf_check(): void {
