@@ -122,13 +122,13 @@ if ($action === 'admin_coach_save') {
     $password = (string)($input['password'] ?? '');
     if ($name==='' || !filter_var($email,FILTER_VALIDATE_EMAIL) || $school===''
         || strlen($name)>750 || strlen($email)>255 || strlen($school)>750
-        || !in_array($role,['Admin','Manager','Teacher'],true)) {
+        || !in_array($role,['Admin','Manager','Teacher','Staff'],true)) {
         json_out(['success'=>false,'message'=>'ข้อมูลผู้ฝึกซ้อมไม่ถูกต้อง'],422);
     }
     $old=$id>0?single('SELECT id,name,role,email,school_name FROM coaches WHERE id=?',[$id]):null;
     if($id>0 && !$old) json_out(['success'=>false,'message'=>'ไม่พบบัญชีผู้ฝึกซ้อม'],404);
     // Admin can manage every role. This API is already restricted to Admin by require_admin().
-    if (in_array($role,['Teacher','Manager'],true)) {
+    if (in_array($role,['Teacher','Manager','Staff'],true)) {
         $exists=single('SELECT id FROM schools WHERE name=? OR nickname=? LIMIT 1',[$school,$school]);
         if(!$exists)json_out(['success'=>false,'message'=>'กรุณาเลือกโรงเรียนจากรายการ'],422);
     }
