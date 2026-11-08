@@ -4,6 +4,7 @@
   'use strict';
   const media=window.matchMedia('(max-width:1199px)');
   let mobileButton=null,backdrop=null,sidebar=null,main=null,lastHeight=0;
+  let menu=null,logoutButton=null,logoutDock=null;
   let frame=0,focusTimer=0;
   function isMobile(){return media.matches}
   function editing(el){
@@ -84,9 +85,20 @@
     const first=sidebar.querySelector('.menu button:not([hidden]):not([style*="display: none"])');
     (first||sidebar).focus({preventScroll:true});
   }
+  function syncLogoutDock(){
+    if(!menu||!logoutButton||!logoutDock)return;
+    // Move the original button; no clone and no duplicate logout handlers.
+    // Restore it inside the original menu on desktop.
+    if(isMobile()&&logoutButton.parentElement!==logoutDock){
+      logoutDock.appendChild(logoutButton);
+    }else if(!isMobile()&&logoutButton.parentElement!==menu){
+      menu.appendChild(logoutButton);
+    }
+  }
   function applyMedia(){
     updateVisibleHeight();
     if(!sidebar)return;
+    syncLogoutDock();
     if(!isMobile()){
       closeMenu();
       sidebar.inert=false;
@@ -109,6 +121,14 @@
     if(!main||!sidebar)return;
     sidebar.id='bang1MobileSidebar';
     sidebar.tabIndex=-1;
+    menu=sidebar.querySelector('.menu');
+    logoutButton=document.getElementById('bang1LogoutButton');
+    if(menu&&logoutButton){
+      logoutDock=document.createElement('div');
+      logoutDock.className='bang1-mobile-logout';
+      logoutDock.setAttribute('aria-label','บัญชีผู้ใช้');
+      sidebar.appendChild(logoutDock);
+    }
     const bar=document.createElement('div');
     bar.className='bang1-mobile-header';
     mobileButton=document.createElement('button');
