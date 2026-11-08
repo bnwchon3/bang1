@@ -1,0 +1,91 @@
+name: Deploy Bang1 (FTPS)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'run/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bang1-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ vars.ENABLE_DEPLOY == 'true' }}
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      FTPS_HOST: ${{ secrets.FTPS_HOST }}
+      FTPS_PORT: ${{ secrets.FTPS_PORT }}
+      FTPS_USER: ${{ secrets.FTPS_USER }}
+      LFTP_PASSWORD: ${{ secrets.FTPS_PASSWORD }}
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+      DRIVE_BRIDGE_URL: ${{ secrets.DRIVE_BRIDGE_URL }}
+      DRIVE_BRIDGE_TOKEN: ${{ secrets.DRIVE_BRIDGE_TOKEN }}
+      PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check mandatory configuration
+        shell: bash
+        run: |
+          for key in FTPS_HOST FTPS_PORT FTPS_USER LFTP_PASSWORD DB_HOST DB_NAME DB_USER DB_PASSWORD DEPLOY_TOKEN; do
+            if [ -z "${!key}" ]; then echo "::error::Missing secret ${key}"; exit 1; fi
+          done
+      - name: Validate PHP
+        run: |
+          find run -name '*.php' -type f -print0 | xargs -0 -n 1 php -l
+      - name: Build private server config (never commit)
+        shell: bash
+        run: |
+          mkdir -p .private
+          python3 - <<'PY'
+          import os,base64
+          keys=['DB_HOST','DB_NAME','DB_USER','DB_PASSWORD','DEPLOY_TOKEN','DRIVE_BRIDGE_URL','DRIVE_BRIDGE_TOKEN']
+          with open('.private/config.php','w') as f:
+              f.write('<?php\nreturn [\n')
+              for key in keys:
+                  val=base64.b64encode(os.getenv(key,'').encode()).decode()
+                  f.write("  '"+key.lower()+"' => base64_decode('"+val+"'),\n")
+              f.write('];\n')
+          PY
+          cat > .private/.htaccess <<'EOF'
+          <IfModule mod_authz_core.c>
+          Require all denied
+          </IfModule>
+          <IfModule !mod_authz_core.c>
+          Order allow,deny
+          Deny from all
+          </IfModule>
+          EOF
+      - name: Install FTPS client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+      - name: Secure upload to restricted FTP root /bang1/
+        shell: bash
+        run: |
+          lftp --env-password -u "$FTPS_USER" -p "$FTPS_PORT" "$FTPS_HOST" <<'LFTP'
+          set ftp:ssl-force yes
+          set ftp:ssl-protect-data yes
+          set ssl:verify-certificate yes
+          set cmd:fail-exit yes
+          mkdir -p run
+          mirror --reverse --verbose --only-newer --parallel=2 run run
+          mkdir -p .private
+          put .private/config.php -o .private/config.php
+          put .private/.htaccess -o .private/.htaccess
+          bye
+          LFTP
+      - name: Apply idempotent DB schema
+        shell: bash
+        run: |
+          BASE="${PUBLIC_BASE_URL:-https://www.bannawang.ac.th/bang1/run}"
+          curl --fail-with-body --silent --show-error --retry 2 --connect-timeout 15 --max-time 90 \
+            -X POST -H "X-Deploy-Token: ${DEPLOY_TOKEN}" "${BASE%/}/setup/migrate.php"
