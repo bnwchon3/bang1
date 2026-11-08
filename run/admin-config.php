@@ -159,6 +159,63 @@ if ($action === 'admin_coach_save') {
     json_out(['success'=>true,'id'=>$id,'message'=>'บันทึกผู้ฝึกซ้อมเรียบร้อย']);
 }
 
+if ($action === 'admin_coach_reset_password') {
+    must_post();
+    $id = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
+    if (!$id || $id < 1) json_out(['success'=>false,'message'=>'รหัสผู้ฝึกซ้อมไม่ถูกต้อง'],422);
+    $coach = single('SELECT id,name,email FROM coaches WHERE id=?',[$id]);
+    if (!$coach) json_out(['success'=>false,'message'=>'ไม่พบผู้ฝึกซ้อม'],404);
+
+    // Existing password hashes cannot be reversed: generate a new secret and reveal it once.
+    $temporaryPassword = strtoupper(bin2hex(random_bytes(10)));
+    $hash = password_hash($temporaryPassword, PASSWORD_DEFAULT);
+    try {
+        db()->prepare('UPDATE coaches SET password_hash=? WHERE id=?')->execute([$hash,$id]);
+        log_action('ADMIN_COACH_PASSWORD_RESET',$u,'Coach',(string)$id,
+            'Admin reset login password for '.$coach['email'].' (password not logged)');
+    } catch(Throwable $e) {
+        error_log('Bang1 coach password reset failed: '.$e->getMessage());
+        json_out(['success'=>false,'message'=>'ตั้งรหัสผ่านใหม่ไม่สำเร็จ'],500);
+    }
+    header('Cache-Control: no-store, private');
+    json_out(['success'=>true,'message'=>'ออกรหัสผ่านใหม่แล้ว โปรดแจ้งผู้ฝึกซ้อมโดยตรง',
+        'password'=>$temporaryPassword, 'email'=>$coach['email']]);
+}
+
+if ($action === 'admin_coach_delete') {
+    must_post();
+    $id = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
+    if (!$id || $id < 1) json_out(['success'=>false,'message'=>'รหัสผู้ฝึกซ้อมไม่ถูกต้อง'],422);
+    if ((int)($u['coachId']??0) === $id) {
+        json_out(['success'=>false,'message'=>'ไม่สามารถลบบัญชีของตนเองได้'],403);
+    }
+    try {
+        db()->beginTransaction();
+        $old = single('SELECT id,name,email,role FROM coaches WHERE id=? FOR UPDATE',[$id]);
+        if (!$old) {
+            db()->rollBack();
+            json_out(['success'=>false,'message'=>'ไม่พบผู้ฝึกซ้อม'],404);
+        }
+        if (in_array($old['role'],['Admin','TopAdmin'],true)) {
+            $count = (int)db()->query("SELECT COUNT(*) FROM coaches WHERE role IN ('Admin','TopAdmin')")->fetchColumn();
+            if ($count <= 1) {
+                db()->rollBack();
+                json_out(['success'=>false,'message'=>'ไม่สามารถลบบัญชีผู้ดูแลระบบคนสุดท้ายได้'],409);
+            }
+        }
+        db()->prepare('DELETE FROM coaches WHERE id=?')->execute([$id]);
+        db()->commit();
+        // Keep registrations, runners and audit history: only the login account is deleted.
+        log_action('ADMIN_COACH_DELETE',$u,'Coach',(string)$id,
+            'Deleted coach login '.$old['email'].' (existing athletes/registrations retained)');
+    } catch(Throwable $e) {
+        if (db()->inTransaction()) db()->rollBack();
+        error_log('Bang1 coach deletion failed: '.$e->getMessage());
+        json_out(['success'=>false,'message'=>'ลบผู้ฝึกซ้อมไม่สำเร็จ'],500);
+    }
+    json_out(['success'=>true,'message'=>'ลบบัญชีผู้ฝึกซ้อมเรียบร้อยแล้ว']);
+}
+
 if ($action === 'admin_logs') {
     $page = max(1,min(100000,(int)($_GET['page'] ?? 1)));
     $q = trim((string)($_GET['q'] ?? ''));
