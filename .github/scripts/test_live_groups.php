@@ -63,10 +63,15 @@ $official=[
     'ranking_json'=>json_encode(['1'=>'โรงเรียนบ้านนาวัง','2'=>'โรงเรียนอนุบาลบางละมุง','3'=>'โรงเรียนบ้านทุ่งกราด'],JSON_UNESCAPED_UNICODE),
     'updated_at'=>'2026-11-09 10:59:00'
 ];
+$official['id']=987;
 $recent=live_recent_result_item($official);
 check(is_array($recent),'A Staff-saved ranking must become a public ticker result');
 check($recent['eventId']===82 && $recent['heat']===1,'Result must preserve event/heat');
+check($recent['resultId']===987,
+  'Breaking news must identify the exact saved score row to prevent duplicate announcements');
 check($recent['round']==='ชิงชนะเลิศ','Result must show the official round');
+check($recent['updatedAt']==='2026-11-09 10:59:00',
+  'New-result detection must be anchored to the official saved timestamp');
 check(count($recent['places'])===3 && $recent['places'][0]['place']===1,
     'The latest result must display podium ranking in its saved order');
 check($recent['places'][0]['school']==='โรงเรียนบ้านนาวัง',
@@ -75,6 +80,19 @@ $empty=$official;$empty['ranking_json']='{}';
 check(live_recent_result_item($empty)===null,'Do not announce an unranked result');
 $corrupt=$official;$corrupt['ranking_json']='this is not JSON';
 check(live_recent_result_item($corrupt)===null,'Corrupt ranking must not appear publicly');
+$qualifying=$official;$qualifying['round_type']='คัดเลือก';
+$qualifying['id']=988;$qualifying['ranking_json']=json_encode([
+  '1'=>'โรงเรียน ก','2'=>'โรงเรียน ข','3'=>'โรงเรียน ค',
+  '4'=>'โรงเรียน ง'],JSON_UNESCAPED_UNICODE);
+$breakingQualifying=live_recent_result_item($qualifying);
+check($breakingQualifying['round']==='คัดเลือก' &&
+ count($breakingQualifying['places'])===3,
+ 'Qualifying breaking news should announce only saved positions 1-3');
+check($breakingQualifying['places'][2]['school']==='โรงเรียน ค',
+ 'The third qualifying school must match official Staff result');
+$partial=$official;$partial['ranking_json']='{"1":"โรงเรียน ก"}';
+check(count(live_recent_result_item($partial)['places'])===1,
+ 'Missing podium ranks must stay missing; do not invent winners');
 echo "PASS latest official result ticker ranking, round, heat, and no fake results\n";
 
 

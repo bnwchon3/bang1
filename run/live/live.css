@@ -965,3 +965,228 @@ body{background:#06162c}
 @media(prefers-reduced-motion:reduce){
  .sport-mobile-person.is-active{animation:none}
 }
+
+
+/* =============================================================
+   TRACK FLASH — real Staff results, 10-second projector takeover
+   VICTORY MOMENT — finals podium with original optional fanfare
+   ============================================================= */
+.live-screen{position:relative}
+.race-breaking[hidden]{display:none!important}
+.race-breaking{
+  position:absolute;inset:0;z-index:75;isolation:isolate;overflow:hidden;
+  display:grid;grid-template-rows:clamp(48px,8vh,88px) minmax(0,1fr) clamp(66px,10vh,105px);
+  color:#fff;font-family:"Noto Sans Thai","Sarabun",Tahoma,system-ui,sans-serif;
+  background:linear-gradient(145deg,#040e27,#0a2b57 55%,#041327);
+}
+.race-breaking *{box-sizing:border-box}
+.race-breaking-atmosphere{position:absolute;inset:0;z-index:-1;overflow:hidden;
+ background:radial-gradient(ellipse at 51% 47%,#0e64837a,transparent 65%),
+ repeating-linear-gradient(115deg,transparent 0 110px,#3ac0ef09 115px 117px,transparent 121px 175px);
+ pointer-events:none}
+.race-breaking.is-final{background:linear-gradient(146deg,#180d32,#101d4b 48%,#2e1c22)}
+.race-breaking.is-final .race-breaking-atmosphere{
+ background:radial-gradient(ellipse at 50% 62%,#bb862c46,transparent 60%),
+ radial-gradient(ellipse at 85% 15%,#72388862,transparent 50%),
+ repeating-linear-gradient(116deg,transparent 0 100px,#ffe0a207 103px 106px,transparent 112px 164px)
+}
+.race-breaking-ring{position:absolute;inset:-35% auto auto -20%;width:70vmax;height:70vmax;
+ border:5vw solid #33cdf711;border-radius:50%;filter:blur(1px);transform:scale(1);
+ animation:race-breaking-ring 10s ease-in-out infinite alternate}
+.race-breaking-ring.ring-two{left:auto;right:-25%;top:auto;bottom:-45%;
+ width:75vmax;height:75vmax;border-color:#bbff5310;animation-delay:-4s}
+.race-breaking-sprint-lines{position:absolute;inset:-30% -40%;
+ background:repeating-linear-gradient(110deg,transparent 0 10%,#48d8ee19 10.3% 10.5%,transparent 10.8% 20%);
+ transform:skew(-9deg);animation:race-breaking-rush 6s linear infinite}
+.race-breaking.is-final .race-breaking-sprint-lines{
+ background:repeating-linear-gradient(110deg,transparent 0 10%,#f8d6781c 10.3% 10.5%,transparent 10.8% 20%)}
+.race-breaking-header{display:flex;justify-content:space-between;align-items:center;gap:8px;
+ min-width:0;padding:0 clamp(12px,2.6vw,46px);
+ border-bottom:2px solid #36cee8;background:linear-gradient(100deg,#03122bcb,#052a4acb)}
+.race-breaking.is-final .race-breaking-header{border-bottom-color:#ffdd72}
+.race-breaking-live{font-weight:1000;letter-spacing:.09em;color:#d6f6ff;
+ font-size:clamp(.7rem,1.15vw,1.35rem);white-space:nowrap}
+.race-breaking-dot{display:inline-block;width:11px;height:11px;border-radius:50%;
+ background:#7effae;box-shadow:0 0 18px #3cff94;margin-right:7px;
+ animation:race-breaking-blink .8s ease-in-out infinite alternate}
+.race-breaking-status{font-size:clamp(.61rem,1.04vw,1.1rem);font-weight:900;
+ color:#b4edee;white-space:nowrap}
+.race-breaking-main{min-height:0;min-width:0;
+ display:flex;align-items:center;justify-content:center;flex-direction:column;
+ text-align:center;padding:clamp(7px,1.5vh,20px) clamp(14px,3vw,50px);
+ gap:clamp(2px,.78vh,11px);overflow:hidden}
+.race-breaking-kicker{color:#66eaff;font-size:clamp(.65rem,1.08vw,1.2rem);
+ font-weight:950;letter-spacing:.18em}
+.race-breaking-title{color:#b8ff5d;font-size:clamp(2.6rem,6.4vw,7.6rem);
+ font-weight:1000;font-style:italic;letter-spacing:-.075em;
+ line-height:1.06;text-shadow:0 0 25px #62eb8d52,0 7px 23px #02030d;
+ animation:race-breaking-title .76s cubic-bezier(.16,1.1,.35,1) both}
+.race-breaking.is-final .race-breaking-title{color:#ffe6a0;
+ text-shadow:0 0 32px #ffbd3a75,0 7px 23px #02030d}
+.race-breaking-subtitle{font-size:clamp(.75rem,1.5vw,1.7rem);
+ color:#93e7f1;font-weight:950;letter-spacing:.055em}
+.race-breaking.is-final .race-breaking-subtitle{color:#ffe99c}
+.race-breaking-event{max-width:100%;margin:0;
+ font-size:clamp(1.45rem,3.45vw,4.15rem);line-height:1.22;
+ letter-spacing:-.045em;font-weight:1000;color:#fff;overflow-wrap:anywhere;
+ text-shadow:0 5px 20px #010920}
+.race-breaking-round{font-size:clamp(.72rem,1.15vw,1.38rem);
+ border-radius:99px;border:1px solid #46def2;
+ color:#ccfcff;background:#12607977;font-weight:900;padding:clamp(3px,.6vh,8px) clamp(12px,1.8vw,25px)}
+.race-breaking.is-final .race-breaking-round{border-color:#ffd469;
+ color:#ffe9a2;background:#8c541f45}
+.race-breaking-winners{
+ width:min(100%,1500px);flex:1;min-height:0;
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ align-items:stretch;gap:clamp(8px,1.8vw,27px);padding:clamp(5px,1.1vh,12px) 0;
+}
+.race-breaking-card{min-width:0;min-height:0;overflow:hidden;
+ display:flex;align-items:center;justify-content:center;flex-direction:column;
+ gap:clamp(5px,1.25vh,15px);padding:clamp(9px,1.4vw,25px);
+ background:linear-gradient(149deg,#0c3a5edb,#09314dce);
+ border:2px solid #3fcbec;border-radius:clamp(10px,1.5vw,23px);
+ box-shadow:0 14px 33px #0007,inset 0 1px 0 #ccffff2f;
+ animation:race-breaking-card-in .73s cubic-bezier(.2,.95,.15,1.04) both}
+.race-breaking-card:nth-child(2){animation-delay:.12s}
+.race-breaking-card:nth-child(3){animation-delay:.23s}
+.race-breaking-medal{font-size:clamp(2rem,4.2vw,5rem);
+ line-height:1.07;filter:drop-shadow(0 8px 10px #0008)}
+.race-breaking-card-rank{font-size:clamp(.8rem,1.2vw,1.35rem);
+ font-weight:900;color:#70ecfb;letter-spacing:.06em}
+.race-breaking-card strong{
+ max-width:100%;font-size:clamp(1.15rem,2.15vw,2.65rem);
+ font-weight:1000;line-height:1.34;overflow-wrap:anywhere;
+ text-wrap:balance;max-height:4.2em;overflow:hidden}
+.race-breaking-card-note{font-size:clamp(.66rem,.98vw,1.06rem);
+ letter-spacing:.15em;font-weight:1000;color:#d0ff81}
+.race-breaking.is-prelim .race-breaking-card:nth-child(1){
+ background:linear-gradient(146deg,#13635d,#0e4357);
+ border-color:#adff6a;box-shadow:0 0 30px #b1ff412e,0 15px 35px #020915aa}
+.race-breaking.is-final .race-breaking-winners{
+ align-items:end;grid-template-columns:1fr 1.17fr 1fr;
+ gap:clamp(9px,1.8vw,28px)}
+.race-breaking.is-final .race-breaking-card{
+ height:82%;border-color:#c2a6fa;background:linear-gradient(149deg,#3c305e,#1b3154);
+ box-shadow:0 20px 40px #01051999,0 0 20px #af91e12a;
+}
+.race-breaking.is-final .race-breaking-rank-1{
+ height:100%;border-color:#ffdf76;
+ background:linear-gradient(155deg,#78501b,#bd853268 54%,#3a2841);
+ box-shadow:0 8px 42px #ffcb5952,0 20px 40px #01051999}
+.race-breaking.is-final .race-breaking-rank-1 .race-breaking-card-rank,
+.race-breaking.is-final .race-breaking-rank-1 .race-breaking-card-note{color:#ffe48a}
+.race-breaking.is-final .race-breaking-rank-3{height:73%}
+.race-breaking-message{flex:none;color:#9feaf4;
+ font-size:clamp(.72rem,1.18vw,1.35rem);font-weight:850;
+ max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.race-breaking.is-final .race-breaking-message{color:#ffe7b0}
+.race-breaking-footer{
+ display:flex;align-items:center;gap:clamp(9px,2vw,32px);
+ min-width:0;padding:clamp(7px,1vh,14px) clamp(14px,2.4vw,36px);
+ background:linear-gradient(110deg,#05192e,#0c4561);
+ border-top:3px solid #a7ff54}
+.race-breaking.is-final .race-breaking-footer{
+ background:linear-gradient(110deg,#271f3d,#654121);border-top-color:#ffd477}
+.race-breaking-footer-copy{display:flex;align-items:center;gap:12px;
+ min-width:0;font-size:clamp(.62rem,1.05vw,1.2rem);
+ font-weight:950;letter-spacing:.03em;white-space:nowrap}
+.race-breaking-footer-copy span{font-size:clamp(1.4rem,2.5vw,2.8rem);color:#baff64}
+.race-breaking-footer-copy strong{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.race-breaking-progress{height:clamp(8px,1.1vh,13px);min-width:60px;flex:1;
+ background:#173e58;border-radius:30px;overflow:hidden}
+.race-breaking-progress #breakingProgressFill{
+ width:100%;height:100%;background:linear-gradient(90deg,#24c9e9,#c8ff58);
+ border-radius:30px;box-shadow:0 0 17px #b8ff4999}
+.race-breaking-remaining{flex:none;width:2.2em;text-align:right;
+ font-size:clamp(1.1rem,2.3vw,2.6rem);font-weight:1000;color:#d4ff84}
+.race-breaking-confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.race-confetti{position:absolute;top:-12%;left:var(--confetti-x);width:clamp(5px,.7vw,12px);
+ height:clamp(13px,1.6vw,25px);background:#fada63;
+ border-radius:2px;transform:rotate(21deg);
+ animation:race-confetti-fall var(--confetti-duration) var(--confetti-delay) linear infinite}
+.race-confetti[style*="--confetti-hue:1"]{background:#7cddfb}
+.race-confetti[style*="--confetti-hue:2"]{background:#f69acb}
+.news-sound-toggle{cursor:pointer;border:1px solid #6bafcd;border-radius:99px;
+ padding:6px 13px;line-height:1.25;font:900 clamp(.67rem,.85vw,.94rem) system-ui,sans-serif;
+ color:#cef3ff;background:linear-gradient(130deg,#0d3a57,#14607b);
+ white-space:nowrap;flex:none}
+.news-sound-toggle[aria-pressed="true"]{color:#dbffb3;
+ background:linear-gradient(130deg,#155e56,#0b4a62);border-color:#abf774}
+.news-sound-toggle:focus-visible{outline:3px solid #ffd85e;outline-offset:3px}
+.live-footer .news-sound-toggle{font:inherit;padding:3px 8px}
+.race-breaking-audio{border-color:#9cd0da;background:#113f5a;padding:7px 12px}
+@keyframes race-breaking-title{
+ from{opacity:0;filter:blur(12px);transform:translateX(-15%) scale(1.12)}
+ to{opacity:1;filter:blur(0);transform:translateX(0) scale(1)}}
+@keyframes race-breaking-card-in{
+ from{opacity:0;transform:translateY(24%) rotateX(-12deg);filter:blur(6px)}
+ to{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes race-breaking-ring{
+ from{transform:scale(.87)}to{transform:scale(1.08)}}
+@keyframes race-breaking-rush{
+ from{transform:translateX(-7%) skew(-9deg)}
+ to{transform:translateX(7%) skew(-9deg)}}
+@keyframes race-breaking-blink{from{opacity:.35}to{opacity:1}}
+@keyframes race-confetti-fall{
+ 0%{transform:translate3d(0,-7vh,0) rotate(0);opacity:0}
+ 9%{opacity:1}90%{opacity:1}
+ 100%{transform:translate3d(13vw,116vh,0) rotate(750deg);opacity:0}}
+@media(max-width:800px){
+ .race-breaking-header{padding:0 10px}
+ .race-breaking-status{display:none}
+ .race-breaking-kicker{letter-spacing:.08em}
+ .race-breaking-title{font-size:clamp(2rem,7vw,4rem)}
+ .race-breaking-event{font-size:clamp(1.2rem,3.8vw,2.2rem)}
+ .race-breaking-main{padding:7px 10px;gap:5px}
+ .race-breaking-winners{gap:6px;padding:5px 0}
+ .race-breaking-card{padding:7px 5px;gap:6px;border-width:1.5px}
+ .race-breaking-card strong{font-size:clamp(.72rem,2vw,1.26rem)}
+ .race-breaking-card-rank{font-size:.72rem}
+ .race-breaking-card-note{font-size:.5rem;letter-spacing:.02em}
+ .race-breaking-medal{font-size:clamp(1.65rem,4.2vw,2.6rem)}
+ .race-breaking-footer-copy{max-width:55%}
+ .news-sound-toggle{font-size:.66rem;padding:5px 8px}
+ .news-sound-sport{padding:5px 8px}
+}
+@media(max-width:600px) and (orientation:portrait){
+ .race-breaking{grid-template-rows:47px minmax(0,1fr) 62px}
+ .race-breaking-main{gap:4px;padding:8px 9px}
+ .race-breaking-kicker{font-size:.55rem}
+ .race-breaking-title{font-size:clamp(2.1rem,8.6vw,3.7rem)}
+ .race-breaking-subtitle{font-size:clamp(.62rem,2.7vw,.98rem)}
+ .race-breaking-event{font-size:clamp(1rem,5vw,1.8rem);line-height:1.25}
+ .race-breaking-round{font-size:.7rem;padding:4px 10px}
+ .race-breaking-winners,.race-breaking.is-final .race-breaking-winners{
+   display:flex;flex-direction:column;align-items:stretch;gap:6px;min-height:0;
+   padding:5px 0}
+ .race-breaking-card,.race-breaking.is-final .race-breaking-card,
+ .race-breaking.is-final .race-breaking-rank-1,
+ .race-breaking.is-final .race-breaking-rank-3{
+   flex:1 1 0;height:auto;min-height:0;width:100%;
+   display:grid;grid-template-columns:45px 65px minmax(0,1fr);align-items:center;
+   gap:6px;text-align:left;padding:5px 9px;
+ }
+ .race-breaking-card .race-breaking-medal{font-size:clamp(1.5rem,6vw,2.2rem);grid-row:1/3;grid-column:1}
+ .race-breaking-card-rank{grid-column:2;grid-row:1/3;white-space:nowrap;font-size:.7rem}
+ .race-breaking-card strong{grid-column:3;grid-row:1/2;font-size:clamp(.82rem,3vw,1.1rem);max-height:2.8em}
+ .race-breaking-card-note{grid-column:3;grid-row:2;color:#a6e8f5;font-size:.55rem}
+ .race-breaking-message{font-size:.65rem;white-space:normal;line-height:1.2;text-align:center}
+ .race-breaking-footer{gap:8px;padding:6px 10px}
+ .race-breaking-footer-copy{font-size:.5rem;max-width:51%}
+ .race-breaking-footer-copy span{font-size:1.3rem}
+ .race-breaking-remaining{font-size:1.2rem}
+ .live-footer .news-sound-toggle{max-width:57px;overflow:hidden;text-overflow:clip}
+}
+@media(max-height:480px){
+ .race-breaking{grid-template-rows:34px minmax(0,1fr) 39px}
+ .race-breaking-title{font-size:clamp(1.55rem,4.6vw,2.8rem)}
+ .race-breaking-event{font-size:clamp(1rem,2.5vw,1.7rem)}
+ .race-breaking-subtitle,.race-breaking-kicker,.race-breaking-message{font-size:.6rem}
+ .race-breaking-main{gap:1px;padding:4px 8px}
+ .race-breaking-card{gap:3px;padding:4px}
+ .race-breaking-medal{font-size:1.25rem}
+ .race-breaking-card strong{font-size:clamp(.72rem,1.3vw,1rem)}
+}
+@media(prefers-reduced-motion:reduce){
+ .race-breaking *,.race-breaking *::before,.race-breaking *::after{animation:none!important;transition:none!important}
+}

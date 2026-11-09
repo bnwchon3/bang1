@@ -11,7 +11,7 @@ header('Cache-Control: no-store, private');
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#06162c">
   <title>จอรายงานตัว LIVE | กรีฑากลุ่มโรงเรียนบางละมุง 1</title>
-  <link rel="stylesheet" href="./live.css?v=20261109-portrait15">
+  <link rel="stylesheet" href="./live.css?v=20261109-race-breaking16">
 </head>
 <body>
   <main class="live-screen">
@@ -51,6 +51,7 @@ header('Cache-Control: no-store, private');
       <span class="footer-brand">ระบบบริหารจัดการกรีฑา · กลุ่มโรงเรียนบางละมุง 1</span>
       <span id="connection" role="status">● กำลังเชื่อมต่อ</span>
       <span id="lastRefresh">—</span>
+      <button type="button" class="news-sound-toggle" id="newsSoundLive" title="เปิดเสียงประกาศผลเมื่อมีผลใหม่" aria-pressed="false">🔇 เสียงผล</button>
       <button type="button" id="fullScreen" title="เปิดเต็มจอ">⛶ เต็มจอ</button>
     </footer>
     <section id="sportShowcase" class="sport-showcase" hidden aria-label="กราฟิกแนะนำรายการแข่งขันกรีฑา">
@@ -113,6 +114,7 @@ header('Cache-Control: no-store, private');
       <footer class="sport-lower-third">
         <div class="sport-next-copy"><span class="sport-next-chevron">⏭</span><div><small>UP NEXT • รายการแข่งขันถัดไป</small><strong id="sportNextEvent">กำลังโหลดรายการถัดไป</strong></div></div>
         <div class="sport-progress-box"><div class="sport-progress-label"><span>AUTO SHOWCASE</span><strong id="sportProgressTime">15s</strong></div><div class="sport-progress-track"><div id="sportProgressFill"></div></div></div>
+        <button type="button" class="news-sound-toggle news-sound-sport" id="newsSoundSport" title="เปิดเสียงผลการแข่งขัน" aria-pressed="false">🔇 เสียง</button>
         <button id="sportFullScreen" type="button" class="sport-fullscreen" aria-label="เปิดหรือปิดเต็มจอ" title="เปิดเต็มจอ">⛶</button>
       </footer>
       <div id="sportIntro" class="sport-intro" aria-hidden="true">
@@ -126,7 +128,35 @@ header('Cache-Control: no-store, private');
         </div>
       </div>
     </section>
+    <!-- Shared full-screen news interruption; works in Check-in and Sport modes. -->
+    <section id="raceBreaking" class="race-breaking" hidden aria-label="ประกาศผลการแข่งขันล่าสุด" role="region">
+      <div class="race-breaking-atmosphere" aria-hidden="true">
+        <div class="race-breaking-ring ring-one"></div>
+        <div class="race-breaking-ring ring-two"></div>
+        <div class="race-breaking-sprint-lines"></div>
+      </div>
+      <div id="breakingConfetti" class="race-breaking-confetti" aria-hidden="true"></div>
+      <header class="race-breaking-header">
+        <div class="race-breaking-live"><span class="race-breaking-dot"></span> LIVE • BREAKING RESULTS</div>
+        <span id="breakingLiveStatus" class="race-breaking-status">ผลการแข่งขันล่าสุด</span>
+        <button type="button" class="news-sound-toggle race-breaking-audio" id="newsSoundBreaking" title="เปิด/ปิดทำนองเฉลิมฉลอง" aria-pressed="false">🔇 เปิดเสียง</button>
+      </header>
+      <div class="race-breaking-main">
+        <div class="race-breaking-kicker">BANGLAMUNG 1 • ATHLETICS</div>
+        <div id="breakingTitle" class="race-breaking-title">⚡ TRACK FLASH</div>
+        <div id="breakingSubtitle" class="race-breaking-subtitle">ผลการแข่งขันล่าสุด</div>
+        <h1 id="breakingEvent" class="race-breaking-event">กำลังโหลดผลการแข่งขัน</h1>
+        <div id="breakingRound" class="race-breaking-round">—</div>
+        <div id="breakingWinners" class="race-breaking-winners"></div>
+        <div id="breakingMessage" class="race-breaking-message"></div>
+      </div>
+      <footer class="race-breaking-footer">
+        <div class="race-breaking-footer-copy"><span>⚡</span><strong id="breakingFooterText">รายงานผลการแข่งขันอย่างเป็นทางการ</strong></div>
+        <div class="race-breaking-progress"><div id="breakingProgressFill"></div></div>
+        <div id="breakingRemaining" class="race-breaking-remaining">10</div>
+      </footer>
+    </section>
   </main>
-  <script defer src="./live.js?v=20261109-portrait15"></script>
+  <script defer src="./live.js?v=20261109-race-breaking16"></script>
 </body>
 </html>

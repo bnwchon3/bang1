@@ -334,6 +334,7 @@ function live_recent_result_item(array $row):?array {
     $round=(string)($row['round_type']??'');
     if(!in_array($round,['คัดเลือก','ชิงชนะเลิศ'],true))$round='คัดเลือก';
     return [
+        'resultId'=>(int)($row['id']??0),
         'eventId'=>(int)($row['event_id']??0),
         'eventName'=>$eventName,
         'round'=>$round,
@@ -346,7 +347,7 @@ function live_latest_results():array {
     $results=[];
     // Latest first. Only official Staff-saved results, no unsaved fixture rankings.
     $saved=rows(
-        'SELECT r.event_id,r.round_type,r.heat_no,r.ranking_json,r.updated_at,e.name AS event_name
+        'SELECT r.id,r.event_id,r.round_type,r.heat_no,r.ranking_json,r.updated_at,e.name AS event_name
          FROM event_results r INNER JOIN events e ON e.id=r.event_id
          ORDER BY r.updated_at DESC,r.id DESC LIMIT 32'
     );

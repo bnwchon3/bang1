@@ -459,6 +459,198 @@
     const token=++sportSlideToken;
     void sportSlide({...payload,fixtures},index,token);
   }
+
+  // TRACK FLASH interrupts either Live mode only for NEW Staff-saved rankings.
+  // Existing records on initial load are baselined: page refresh never replays
+  // all earlier score results or an entire previous competition.
+  const BREAKING_DURATION_MS=10000;
+  let breakingBootstrapped=false,breakingSeen=new Set(),breakingCurrent=null;
+  let breakingQueued=null,breakingStarted=0,newsSoundEnabled=false,newsAudio=null;
+  const soundButtons=['newsSoundLive','newsSoundSport','newsSoundBreaking'];
+  function breakingIdentity(result){
+    if(!result||!Array.isArray(result.places))return '';
+    return JSON.stringify([result.resultId||result.eventId||0,result.eventId||0,
+      result.round,result.heat,result.updatedAt,
+      result.places.slice(0,3).map(x=>[x.place,x.school])]);
+  }
+  function officialBreakingResult(result){
+    return Boolean(result && Number(result.eventId)>0 &&
+      ['คัดเลือก','ชิงชนะเลิศ'].includes(result.round) &&
+      Array.isArray(result.places) && result.places.some(
+        p=>Number(p.place)>=1&&Number(p.place)<=3&&String(p.school||'').trim()));
+  }
+  function breakingTimestamp(result){
+    const date=String(result?.updatedAt||'').trim();
+    if(!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(date))return NaN;
+    // MariaDB stores times in Asia/Bangkok (+07), not the visitor's time zone.
+    return Date.parse(date.replace(' ','T')+'+07:00');
+  }
+  function breakingResultCard(place){
+    const rank=Number(place.place);
+    const medals={1:'🥇',2:'🥈',3:'🥉'};
+    const rankText=rank===1?'อันดับ 1':rank===2?'อันดับ 2':'อันดับ 3';
+    return '<article class="race-breaking-card race-breaking-rank-'+rank+'">'+
+      '<span class="race-breaking-medal" aria-hidden="true">'+(medals[rank]||'🏅')+'</span>'+
+      '<div class="race-breaking-card-rank">'+rankText+'</div>'+
+      '<strong>'+esc(place.school)+'</strong>'+
+      '<span class="race-breaking-card-note">'+(rank===1?'THE LEADER':
+       rank===2?'RUNNER-UP':'TOP THREE')+'</span>'+
+      '</article>';
+  }
+  function breakingDecorations(finalRound){
+    const container=el('breakingConfetti');
+    if(!container)return;
+    container.innerHTML=finalRound?
+      Array.from({length:32},(_,i)=>{
+        const x=(i*37+13)%100,delay=((i*13)%23)/10,duration=2.5+(i%6)*.42;
+        return '<i class="race-confetti" style="--confetti-x:'+x+
+          '%;--confetti-delay:'+delay+'s;--confetti-duration:'+duration+
+          's;--confetti-hue:'+(i%3)+'" aria-hidden="true"></i>';
+      }).join(''):'';
+  }
+  function showBreaking(result){
+    if(!officialBreakingResult(result))return;
+    breakingCurrent=result;breakingStarted=Date.now();
+    const finalRound=result.round==='ชิงชนะเลิศ';
+    const root=el('raceBreaking');
+    root.hidden=false;
+    root.classList.remove('is-active','is-final','is-prelim');
+    root.classList.add(finalRound?'is-final':'is-prelim');
+    el('breakingTitle').textContent=finalRound?'🏆 VICTORY MOMENT':'⚡ TRACK FLASH';
+    el('breakingSubtitle').textContent=finalRound?'CHAMPIONS PODIUM • ขอแสดงความยินดี':
+      'ROAD TO THE FINALS • ประกาศผู้ผ่านเข้ารอบ';
+    el('breakingEvent').textContent=result.eventName;
+    el('breakingRound').textContent=(finalRound?'รอบชิงชนะเลิศ':'รอบคัดเลือก')+
+      (Number(result.heat)>0?' • ฮีท '+Number(result.heat):'');
+    const places=result.places.filter(p=>[1,2,3].includes(Number(p.place))&&p.school);
+    // The center podium gets the true first place; missing scores are never
+    // filled with invented athletes or schools.
+    const ordered=finalRound?
+      [2,1,3].flatMap(rank=>places.filter(p=>Number(p.place)===rank)):places;
+    const winners=el('breakingWinners');
+    winners.className='race-breaking-winners '+(finalRound?'is-podium':'is-qualifiers');
+    winners.innerHTML=ordered.map(breakingResultCard).join('');
+    el('breakingMessage').textContent=finalRound?
+      'สุดยอดความสำเร็จ • ขอแสดงความยินดีกับโรงเรียนที่ได้รับรางวัล':
+      'TOP 3 • 3 อันดับแรกของฮีทนี้ได้รับการประกาศเข้ารอบต่อไป';
+    el('breakingFooterText').textContent=finalRound?
+      'OFFICIAL RESULTS • CHAMPIONS CELEBRATION':
+      'OFFICIAL RESULTS • QUALIFYING ROUND';
+    el('breakingLiveStatus').textContent=finalRound?'🏆 ผลการแข่งขันรอบชิง':
+      '⚡ ผลการแข่งขันรอบคัดเลือก';
+    breakingDecorations(finalRound);
+    // Restart transition only on a genuinely new saved result.
+    void root.offsetWidth;
+    root.classList.add('is-active');
+    updateBreakingClock();
+    if(newsSoundEnabled)playNewsFanfare(finalRound);
+  }
+  function hideBreaking(){
+    const root=el('raceBreaking');
+    root.classList.remove('is-active','is-prelim','is-final');
+    root.hidden=true;
+    breakingCurrent=null;
+    breakingStarted=0;
+    if(breakingQueued){
+      const next=breakingQueued;breakingQueued=null;
+      // Do not show stale queued results after the projector tab was hidden.
+      if(Date.now()+clockOffsetMs-breakingTimestamp(next)<45000)showBreaking(next);
+    }
+  }
+  function updateBreakingClock(){
+    if(!breakingCurrent)return;
+    const elapsed=Date.now()-breakingStarted;
+    if(elapsed>=BREAKING_DURATION_MS){hideBreaking();return;}
+    const remaining=Math.max(0,BREAKING_DURATION_MS-elapsed);
+    el('breakingProgressFill').style.width=(remaining/BREAKING_DURATION_MS*100)+'%';
+    el('breakingRemaining').textContent=String(Math.ceil(remaining/1000));
+  }
+  function watchOfficialBreakingResults(results){
+    const valid=Array.isArray(results)?results.filter(officialBreakingResult):[];
+    if(!breakingBootstrapped){
+      breakingBootstrapped=true;
+      valid.forEach(result=>breakingSeen.add(breakingIdentity(result)));
+      // An already open Live screen must never replay older final scores.
+      return;
+    }
+    const freshlySaved=[];
+    const now=Date.now()+clockOffsetMs;
+    for(const result of valid){
+      const key=breakingIdentity(result);
+      if(!key||breakingSeen.has(key))continue;
+      breakingSeen.add(key);
+      const when=breakingTimestamp(result);
+      if(Number.isFinite(when)&&when<=now+5000&&now-when<=30000)
+        freshlySaved.push(result);
+    }
+    if(breakingSeen.size>160){
+      const recent=[...breakingSeen].slice(-80);
+      breakingSeen=new Set(recent);
+    }
+    if(!freshlySaved.length)return;
+    // The latest committed result wins when multiple Staff submissions arrive
+    // during a single 3-second poll. Do not interrupt one animation mid-slide.
+    const newest=freshlySaved[0];
+    if(breakingCurrent)breakingQueued=newest;
+    else showBreaking(newest);
+  }
+  function updateNewsAudioButtons(){
+    soundButtons.forEach(id=>{
+      const button=el(id);
+      if(!button)return;
+      button.setAttribute('aria-pressed',newsSoundEnabled?'true':'false');
+      button.textContent=newsSoundEnabled?(id==='newsSoundBreaking'?'🔊 เสียงเปิดอยู่':'🔊 เสียง'):
+        (id==='newsSoundBreaking'?'🔇 เปิดเสียง':'🔇 เสียง');
+      button.title=newsSoundEnabled?'ปิดทำนองประกาศผล':
+        'กดเปิดเสียงหนึ่งครั้งเพื่อฟังทำนองประกาศผลการแข่งขัน';
+    });
+  }
+  function playNewsFanfare(finalRound){
+    if(!newsSoundEnabled||!newsAudio)return;
+    try{
+      if(newsAudio.state!=='running'){
+        void newsAudio.resume().catch(()=>{});
+        if(newsAudio.state!=='running')return;
+      }
+      // Original brief 2.4s victory jingle synthesized locally. No recording,
+      // streaming file, copyrighted song, or third-party audio resource.
+      const sequence=finalRound?
+        [[0,523,.22],[.24,659,.22],[.48,784,.25],[.78,1046,.41],
+         [1.28,784,.19],[1.50,988,.19],[1.75,1046,.5]]:
+        [[0,523,.19],[.2,587,.19],[.4,784,.25],[.72,880,.3],
+         [1.08,784,.18],[1.28,1046,.46]];
+      const start=newsAudio.currentTime+.025;
+      for(const [offset,freq,duration] of sequence){
+        const osc=newsAudio.createOscillator(),gain=newsAudio.createGain();
+        osc.type='triangle';
+        osc.frequency.setValueAtTime(freq,start+offset);
+        gain.gain.setValueAtTime(.0001,start+offset);
+        gain.gain.exponentialRampToValueAtTime(.085,start+offset+.026);
+        gain.gain.exponentialRampToValueAtTime(.0001,start+offset+duration);
+        osc.connect(gain);gain.connect(newsAudio.destination);
+        osc.start(start+offset);osc.stop(start+offset+duration+.02);
+      }
+    }catch(error){
+      console.warn('Track Flash sound unavailable',error);
+    }
+  }
+  function toggleBreakingSound(){
+    if(!newsSoundEnabled){
+      try{
+        const AudioCtor=window.AudioContext||window.webkitAudioContext;
+        if(!AudioCtor)throw Error('AudioContext unavailable');
+        if(!newsAudio)newsAudio=new AudioCtor();
+        newsSoundEnabled=true;
+        void newsAudio.resume().catch(()=>{});
+      }catch(error){newsSoundEnabled=false}
+    }else{
+      newsSoundEnabled=false;
+    }
+    updateNewsAudioButtons();
+    if(newsSoundEnabled&&breakingCurrent)
+      playNewsFanfare(breakingCurrent.round==='ชิงชนะเลิศ');
+  }
+
   function render(payload){
     loaded=true;
     lastPayload=payload;
@@ -487,6 +679,7 @@
     if(mode==='sport')renderSportCycle(payload);
     else renderCheckin(payload);
     renderRecentResults(payload.latestResults);
+    watchOfficialBreakingResults(payload.latestResults);
     el('connection').className='connected';
     el('connection').textContent=mode==='sport'?'● LIVE • SPORT':'● LIVE • เชื่อมต่อแล้ว';
     el('lastRefresh').textContent='อัปเดต '+stamp();
@@ -508,6 +701,9 @@
       el('lastRefresh').textContent=loaded?'แสดงข้อมูลล่าสุด':'โหลดข้อมูลไม่ได้';
     }finally{requestBusy=false;}
   }
+  soundButtons.forEach(id=>el(id)?.addEventListener('click',toggleBreakingSound));
+  updateNewsAudioButtons();
+  setInterval(updateBreakingClock,120);
   el('sportRosterPrev').addEventListener('click',()=>stepSportRosterPage(-1));
   el('sportRosterNext').addEventListener('click',()=>stepSportRosterPage(1));
   let sportSwipeStart=null;

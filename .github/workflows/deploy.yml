@@ -120,6 +120,9 @@ jobs:
           grep -q 'schoolGrid' /tmp/bang1-live-page.html
           grep -q 'nextFixture' /tmp/bang1-live-page.html
           grep -q 'latestResultTicker' /tmp/bang1-live-page.html
+          grep -q 'raceBreaking' /tmp/bang1-live-page.html
+          grep -q 'breakingWinners' /tmp/bang1-live-page.html
+          grep -q 'newsSoundBreaking' /tmp/bang1-live-page.html
           grep -q 'eventHeading' /tmp/bang1-live-page.html
           grep -q 'nextProgressTitle' /tmp/bang1-live-page.html
           curl --fail-with-body --silent --show-error --retry 2 \
