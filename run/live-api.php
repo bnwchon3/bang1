@@ -9,6 +9,9 @@ declare(strict_types=1);
  * Private ID numbers and proof documents are never returned.
  */
 if (!isset($action)) { http_response_code(403); exit; }
+// The public and manager Live boards must use the same officially generated
+// competition schedule as the event list and Staff result entry.
+require_once __DIR__.'/event-management.php';
 
 function live_gender(string $gender): string {
     $first=trim(explode(',',str_replace('，',',',$gender))[0]);
@@ -46,6 +49,43 @@ function live_event_order_key(array $row): string {
         trim((string)($row['category']??'')),
         trim((string)($row['level']??'')),
     ]);
+}
+
+/**
+ * Return the competition stage assigned by event_schedule_data() rather than
+ * deducing the round from the number of schools in ONE heat. Event #11, for
+ * example, can have five schools in heat 1 but ten across the full event.
+ *
+ * The schedule may reuse an EventID for generated heats: prefer an exact
+ * EventID+heat match, then the competition identity+heat. In a fallback
+ * collision the preliminary fixture takes precedence over a future final.
+ */
+function live_official_round_index(array $schedule):array {
+    $byId=[];$byGroup=[];
+    foreach($schedule as $event){
+        $stage=trim((string)($event['Stage']??''));
+        if(!in_array($stage,['คัดเลือก','ชิงชนะเลิศ'],true))continue;
+        $round=$stage==='ชิงชนะเลิศ'?'รอบชิง':'รอบคัดเลือก';
+        $heat=max(1,(int)($event['Heat']??1));
+        $eventId=(int)($event['EventID']??0);
+        if($eventId>0)$byId[$eventId.'|'.$heat]=$round;
+        $identity=live_event_order_key([
+            'event_name'=>(string)($event['EventName']??''),
+            'category'=>(string)($event['Category']??''),
+            'level'=>(string)($event['Level']??''),
+        ]).'|'.$heat;
+        if(!isset($byGroup[$identity])||$round==='รอบคัดเลือก')
+            $byGroup[$identity]=$round;
+    }
+    return ['byId'=>$byId,'byGroup'=>$byGroup];
+}
+function live_fixture_round(int $eventId,array $registration,array $index):string {
+    $heat=max(1,(int)($registration['heat']??1));
+    $idKey=$eventId.'|'.$heat;
+    if($eventId>0&&isset($index['byId'][$idKey]))
+        return $index['byId'][$idKey];
+    $groupKey=live_event_order_key($registration).'|'.$heat;
+    return $index['byGroup'][$groupKey]??'รอยืนยันรอบ';
 }
 
 /** Ten fixed presentation columns, in the reference screen's order. */
@@ -206,6 +246,7 @@ function live_latest_results():array {
 }
 
 function live_dataset(bool $manager=false):array {
+    $roundIndex=live_official_round_index(event_schedule_data());
     $order=[];
     foreach(rows('SELECT id,name,category,level,gender,source_order,remark,stage FROM events ORDER BY COALESCE(source_order,999999),id') as $e){
         $k=live_event_order_key($e);
@@ -243,6 +284,7 @@ function live_dataset(bool $manager=false):array {
                 'level'=>(string)$r['level'],
                 'gender'=>(string)($ord['gender']??live_gender((string)$r['gender'])),
                 'heat'=>(int)$r['heat'],
+                'round'=>live_fixture_round((int)($ord['eventId']??$r['event_id']??0),$r,$roundIndex),
                 'order'=>(int)($ord['order']??999999),
                 'total'=>0,'checked'=>0,'teams'=>0,'teamsReady'=>0
             ];
