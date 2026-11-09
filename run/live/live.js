@@ -12,6 +12,7 @@
   let requestBusy=false,loaded=false,lastSignature='',lastResultSignature='';
   let lastMode=null,lastPayload=null,clockOffsetMs=0,sportSlideIndex=-1;
   let sportSlideToken=0,lastSportBoardSignature='',sportCache=new Map(),sportPending=new Map(),sportRetryAt=0;
+  let sportRosterElapsed=0,sportRosterStepMs=15000,sportManualRosterPage=null;
 
   function stamp(){
     return new Intl.DateTimeFormat('th-TH',{
@@ -214,6 +215,49 @@
     const finalRowCount=total%layout.columns||layout.columns;
     return layout.units/(index>=total-finalRowCount?finalRowCount:layout.columns);
   }
+  // Rotate four legible portrait cards at a time on phones. Each event's
+  // existing 15s cycle is divided evenly among the participating schools.
+  function mobileRosterLayout(total){
+    if(total<=1)return [{col:2,row:2}];
+    if(total===2)return [{col:1,row:2},{col:1,row:2}];
+    if(total===3)return [{col:1,row:1},{col:1,row:1},{col:2,row:1}];
+    return Array.from({length:4},()=>({col:1,row:1}));
+  }
+  function updateSportMobileRoster(elapsed=sportRosterElapsed,stepMs=sportRosterStepMs){
+    const grid=el('sportRivalGrid');
+    const cards=[...grid.querySelectorAll('.sport-rival-card')];
+    const pageTotal=Math.max(1,Math.ceil(cards.length/4));
+    const autoPage=Math.min(pageTotal-1,Math.floor((elapsed%stepMs)/(stepMs/pageTotal)));
+    if(sportManualRosterPage&&Date.now()>=sportManualRosterPage.until)sportManualRosterPage=null;
+    const page=sportManualRosterPage?sportManualRosterPage.page%pageTotal:autoPage;
+    const signature=page+':'+cards.length;
+    if(grid.dataset.mobilePage!==signature){
+      const start=page*4;
+      const count=Math.min(4,Math.max(0,cards.length-start));
+      const layout=mobileRosterLayout(count);
+      cards.forEach((card,index)=>{
+        const visible=index>=start&&index<start+4;
+        card.classList.toggle('is-mobile-visible',visible);
+        if(visible){
+          const slot=layout[index-start];
+          card.style.setProperty('--sport-page-col',slot.col);
+          card.style.setProperty('--sport-page-row',slot.row);
+        }
+      });
+      grid.dataset.mobilePage=signature;
+    }
+    el('sportRosterPager').hidden=pageTotal<=1;
+    el('sportRosterPage').textContent=(page+1)+' / '+pageTotal;
+  }
+  function stepSportRosterPage(direction){
+    if(lastMode!=='sport')return;
+    const count=el('sportRivalGrid').querySelectorAll('.sport-rival-card').length;
+    const pages=Math.ceil(count/4);
+    if(pages<=1)return;
+    const page=Number(el('sportRivalGrid').dataset.mobilePage?.split(':')[0]||0);
+    sportManualRosterPage={page:(page+direction+pages)%pages,until:Date.now()+7000};
+    updateSportMobileRoster();
+  }
   function paintSportTeams(schools,index,formerChampion){
     const input=Array.isArray(schools)?schools:[];
     // Show the confirmed former CHAMPION SCHOOL, not a falsely identified
@@ -262,7 +306,9 @@
       sportGridSpan(i,others.length,desktop),
       sportGridSpan(i,others.length,mobile))).join('')||
       '<div class="sport-loading">ยังไม่มีโรงเรียนสมัครแข่งขันในรายการนี้</div>';
+    rivalGrid.dataset.mobilePage='';
     el('sportTeamCount').textContent=registered.length+' TEAMS';
+    updateSportMobileRoster();
     bindSportPhotos();
   }
   function paintSportSchedule(fixtures,index){
@@ -313,11 +359,15 @@
     const within=Math.max(0,elapsed%stepMs);
     el('sportProgressFill').style.width=Math.min(100,within/stepMs*100)+'%';
     el('sportProgressTime').textContent=Math.max(0,Math.ceil((stepMs-within)/1000))+'s';
+    sportRosterElapsed=within;sportRosterStepMs=stepMs;
+    updateSportMobileRoster(within,stepMs);
   }
   async function sportSlide(payload,index,token){
     const fixtures=payload.fixtures,fixture=fixtures[index];
     sportDisplayHeader(fixture,index,fixtures.length);
     paintSportSchedule(fixtures,index);
+    sportManualRosterPage=null;
+    el('sportRosterPager').hidden=true;
     playSportIntro();
     el('sportRivalGrid').innerHTML='<div class="sport-loading">กำลังเรียกข้อมูลนักกรีฑา...</div>';
     el('sportHeroPhotos').innerHTML='<div class="sport-image-placeholder">กำลังโหลดภาพนักกรีฑา</div>';
@@ -353,6 +403,7 @@
       el('sportHeroSchool').textContent='ยังไม่มีรายการแข่งขัน';
       el('sportHeroPhotos').innerHTML='<div class="sport-image-placeholder">🏃</div>';
       el('sportRivalGrid').innerHTML='<div class="sport-loading">กำลังรอรายการแข่งขัน</div>';
+      el('sportRosterPager').hidden=true;
       el('sportScheduleList').innerHTML='<div class="sport-schedule-empty">ยังไม่มีรายการแข่งขัน</div>';
       el('sportNextEvent').textContent='รอโปรแกรมการแข่งขัน';
       el('sportEventTotal').textContent='0';
@@ -390,6 +441,7 @@
       const showcase=el('sportShowcase');
       if(showcase)showcase.hidden=mode!=='sport';
       if(mode!=='sport'){
+        sportManualRosterPage=null;
         el('sportIntro').classList.remove('is-playing');
         el('sportShowcase').classList.remove('is-changing');
       }
@@ -419,6 +471,18 @@
       el('lastRefresh').textContent=loaded?'แสดงข้อมูลล่าสุด':'โหลดข้อมูลไม่ได้';
     }finally{requestBusy=false;}
   }
+  el('sportRosterPrev').addEventListener('click',()=>stepSportRosterPage(-1));
+  el('sportRosterNext').addEventListener('click',()=>stepSportRosterPage(1));
+  let sportSwipeStart=null;
+  el('sportRivalGrid').addEventListener('touchstart',e=>{
+    sportSwipeStart=e.changedTouches[0]?.clientX??null;
+  },{passive:true});
+  el('sportRivalGrid').addEventListener('touchend',e=>{
+    if(sportSwipeStart===null)return;
+    const delta=e.changedTouches[0].clientX-sportSwipeStart;
+    sportSwipeStart=null;
+    if(Math.abs(delta)>45)stepSportRosterPage(delta<0?1:-1);
+  },{passive:true});
   el('sportFullScreen').addEventListener('click',async()=>{
     try{
       if(document.fullscreenElement)await document.exitFullscreen();

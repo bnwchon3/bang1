@@ -11,7 +11,7 @@ header('Cache-Control: no-store, private');
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#06162c">
   <title>จอรายงานตัว LIVE | กรีฑากลุ่มโรงเรียนบางละมุง 1</title>
-  <link rel="stylesheet" href="./live.css?v=20261109-sport-roster12">
+  <link rel="stylesheet" href="./live.css?v=20261109-sport-face14">
 </head>
 <body>
   <main class="live-screen">
@@ -90,7 +90,14 @@ header('Cache-Control: no-store, private');
           <span class="sport-hero-number" aria-hidden="true">01</span>
         </article>
         <section class="sport-roster" aria-label="โรงเรียนที่เข้าร่วมรายการแข่งขัน">
-          <div class="sport-roster-heading"><span><b class="sport-cyan-dot"></b> ATHLETE LINEUP</span><span id="sportTeamCount">10 SCHOOLS</span></div>
+          <div class="sport-roster-heading">
+            <span><b class="sport-cyan-dot"></b> ATHLETE LINEUP <span id="sportTeamCount" class="sport-roster-count">10 TEAMS</span></span>
+            <div id="sportRosterPager" class="sport-roster-pager" hidden aria-label="เปลี่ยนชุดภาพนักกีฬา">
+              <button id="sportRosterPrev" type="button" aria-label="ชมชุดก่อนหน้า">‹</button>
+              <span id="sportRosterPage">1 / 1</span>
+              <button id="sportRosterNext" type="button" aria-label="ชมชุดถัดไป">›</button>
+            </div>
+          </div>
           <div id="sportRivalGrid" class="sport-rival-grid"><div class="sport-loading">กำลังโหลดภาพนักกรีฑาจริง...</div></div>
         </section>
         <aside class="sport-schedule" aria-label="โปรแกรมการแข่งขัน">
@@ -120,6 +127,6 @@ header('Cache-Control: no-store, private');
       </div>
     </section>
   </main>
-  <script defer src="./live.js?v=20261109-sport-roster12"></script>
+  <script defer src="./live.js?v=20261109-sport-face14"></script>
 </body>
 </html>
