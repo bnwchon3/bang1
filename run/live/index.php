@@ -9,9 +9,9 @@ header('Cache-Control: no-store, private');
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0505e9">
+  <meta name="theme-color" content="#06162c">
   <title>จอรายงานตัว LIVE | กรีฑากลุ่มโรงเรียนบางละมุง 1</title>
-  <link rel="stylesheet" href="./live.css?v=20261109-ten-schools1">
+  <link rel="stylesheet" href="./live.css?v=20261109-sport3">
 </head>
 <body>
   <main class="live-screen">
@@ -26,9 +26,21 @@ header('Cache-Control: no-store, private');
       <span id="fixtureMeta">กลุ่มโรงเรียนบางละมุง 1 · เช็กชื่อรายงานตัว</span>
       <span id="checkedCount">ยังไม่มีรายการ Active</span>
     </div>
-    <section class="school-board" aria-label="แสดงรายชื่อและภาพนักกรีฑาที่รายงานตัวของสิบโรงเรียน">
+    <section class="school-board" aria-label="สิบช่องโรงเรียนพร้อมภาพนักกรีฑาที่รายงานตัว">
       <div class="school-grid" id="schoolGrid">
         <div class="loading">กำลังโหลดข้อมูลการแข่งขัน...</div>
+      </div>
+    </section>
+    <section class="up-next" aria-label="การรับรายงานตัวรายการถัดไป">
+      <div class="next-icon" aria-hidden="true">⏭</div>
+      <div class="next-description">
+        <span class="next-eyebrow">NEXT UP <span class="next-accent">• รับรายงานตัวล่วงหน้า</span></span>
+        <strong id="nextFixture">รอรายการแข่งขันถัดไป</strong>
+        <span id="nextMeta">จุดรับรายงานตัวรายการต่อไป</span>
+      </div>
+      <div class="next-progress">
+        <div class="next-progress-numbers"><span>รายงานตัวแล้ว</span><strong id="nextCount">—</strong></div>
+        <div class="next-track"><div id="nextFill" class="next-fill"></div></div>
       </div>
     </section>
     <footer class="live-footer">
@@ -38,6 +50,6 @@ header('Cache-Control: no-store, private');
       <button type="button" id="fullScreen" title="เปิดเต็มจอ">⛶ เต็มจอ</button>
     </footer>
   </main>
-  <script defer src="./live.js?v=20261109-ten-schools1"></script>
+  <script defer src="./live.js?v=20261109-sport3"></script>
 </body>
 </html>
