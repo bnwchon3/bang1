@@ -30,8 +30,16 @@
     const count=athletes.length;
     const layout=count<=1?'count-1':count===2?'count-2':
       count<=4?'count-4':'count-6';
+    const heats=[...new Set((Array.isArray(school.heats)?school.heats:[])
+      .map(Number).filter(h=>Number.isInteger(h)&&h>0&&h<=99))].sort((a,b)=>a-b);
+    const badges=entered&&heats.length
+      ?'<span class="school-heat-badges" aria-label="ฮีทของโรงเรียน">'+
+        heats.map(h=>'<span class="school-heat-badge '+(h===1?'heat-one':h===2?'heat-two':'heat-other')+
+          '" aria-label="ฮีทที่ '+h+'" title="ฮีทที่ '+h+'">'+h+'</span>').join('')+
+        '</span>':'';
     return '<section class="school-column'+(entered?' is-entered':'')+'">'+
-      '<header class="school-name">'+esc(String(school.name||'').replace(/^โรงเรียน/u,''))+'</header>'+
+      '<header class="school-name"><span class="school-name-text">'+
+      esc(String(school.name||'').replace(/^โรงเรียน/u,''))+'</span>'+badges+'</header>'+
       '<div class="school-athletes '+layout+'">'+
       (count ? athletes.map(athleteCard).join('') :
         '<span class="no-athletes">'+(entered?'รอรายงานตัว':'')+'</span>')+
@@ -86,8 +94,10 @@
       fill.style.width='0%';
       return;
     }
-    title.textContent='รายการที่ '+(Number(next.eventId)||'—')+'  '+next.eventName;
-    meta.textContent=[next.category,next.level,next.gender,next.heat?'ฮีทที่ '+next.heat:''].filter(Boolean).join(' · ');
+    title.textContent='รายการที่ '+(next.eventNumberLabel||Number(next.eventId)||'—')+'  '+next.eventName;
+    const heatLabel=Array.isArray(next.heats)&&next.heats.length>1?
+      'ฮีท '+next.heats.join('–'):(next.heat?'ฮีทที่ '+next.heat:'');
+    meta.textContent=[next.category,next.level,next.gender,heatLabel].filter(Boolean).join(' · ');
     count.textContent=Number(next.checked)+' / '+Number(next.total)+' คน';
     const percent=Number(next.total)>0
       ?Math.min(100,Math.max(0,Math.round(Number(next.checked)*100/Number(next.total))))
@@ -104,7 +114,7 @@
     if(signature!==lastSignature){
       lastSignature=signature;
       el('eventNumber').textContent=active?
-        String(Number(active.eventId)||Number(active.order)||'—'):'—';
+        String(active.eventNumberLabel||Number(active.eventId)||Number(active.order)||'—'):'—';
       el('fixtureTitle').textContent=active?active.eventName:'รอ Manager เลือกรายการแข่งขัน';
       // The round comes from the official competition schedule for the
       // whole event, NOT the number of schools checked into this heat.
