@@ -227,3 +227,27 @@
 @media(prefers-reduced-motion:reduce){
   #page-checkin .bang1-fixture-trigger,.bang1-fixture-option{transition:none}
 }
+
+/* Public display mode switch: same row as "Open Live". */
+#page-checkin .bang1-sport-toggle{
+  flex:none;display:inline-flex;align-items:center;justify-content:center;
+  min-height:43px;padding:9px 19px;border:1.5px solid #49c8f0;
+  border-radius:99px;color:#d7f8ff;
+  background:linear-gradient(115deg,#144970,#103150);
+  box-shadow:0 4px 15px #073b5c55;
+  font:inherit;font-size:.94rem;font-weight:900;cursor:pointer;
+  transition:background .16s,border-color .16s;
+}
+#page-checkin .bang1-sport-toggle:hover{
+  border-color:#a6f2ff;background:linear-gradient(115deg,#167493,#0c4f6a);
+}
+#page-checkin .bang1-sport-toggle.is-sport-on{
+  border-color:#9cedae;color:#084126;
+  background:linear-gradient(115deg,#baf8d0,#67d99b);
+}
+#page-checkin .bang1-sport-toggle:focus-visible{
+  outline:3px solid #8defff;outline-offset:3px;
+}
+@media(max-width:850px){
+  #page-checkin .bang1-checkin-actions .bang1-sport-toggle{flex:1 1 auto}
+}
