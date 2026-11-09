@@ -120,10 +120,20 @@ jobs:
           grep -q 'schoolGrid' /tmp/bang1-live-page.html
           grep -q 'nextFixture' /tmp/bang1-live-page.html
           grep -q 'latestResultTicker' /tmp/bang1-live-page.html
+          grep -q 'eventHeading' /tmp/bang1-live-page.html
+          grep -q 'nextProgressTitle' /tmp/bang1-live-page.html
           curl --fail-with-body --silent --show-error --retry 2 \
             --connect-timeout 15 --max-time 45 "${BASE%/}/api.php?action=live_state" > /tmp/bang1-live-check.json
-          jq -e '.success == true and (.fixtures | type == "array") and (.next | type == "array") and (.latestResults | type == "array") and (.schools | length == 10) and (.schools | all((.registered | type == "boolean") and (.athletes | type == "array") and (.totalAthletes | type == "number")))' /tmp/bang1-live-check.json >/dev/null
-          jq '{success,fixture_count:(.fixtures|length),school_columns:(.schools|length),recent_results:(.latestResults|length)}' /tmp/bang1-live-check.json
+          jq -e '.success == true and (.display.mode == "sport" or .display.mode == "checkin") and (.display.slideSeconds == 15) and (.serverNowMs | type == "number") and (.fixtures | type == "array") and (.next | type == "array") and (.latestResults | type == "array") and (.schools | length == 10) and (.schools | all((.registered | type == "boolean") and (.athletes | type == "array") and (.totalAthletes | type == "number")))' /tmp/bang1-live-check.json >/dev/null
+          jq '{success,display_mode:.display.mode,fixture_count:(.fixtures|length),school_columns:(.schools|length),recent_results:(.latestResults|length)}' /tmp/bang1-live-check.json
+          if jq -e '.display.mode == "sport" and (.fixtures|length)>0' /tmp/bang1-live-check.json >/dev/null; then
+            FIXTURE_KEY="$(jq -r '.fixtures[0].key' /tmp/bang1-live-check.json)"
+            curl --fail-with-body --silent --show-error --retry 2 \
+              --connect-timeout 15 --max-time 45 \
+              "${BASE%/}/api.php?action=live_sport_fixture&fixtureKey=${FIXTURE_KEY}" > /tmp/bang1-sport-check.json
+            jq -e '.success == true and (.fixture.key | type == "string") and (.schools|length == 10) and (.schools | all(.athletes | type == "array"))' /tmp/bang1-sport-check.json >/dev/null
+            jq '{sport_fixture:.fixture.eventNumberLabel,school_columns:(.schools|length)}' /tmp/bang1-sport-check.json
+          fi
       - name: Probe Drive upload bridge from production host (no real file upload)
         shell: bash
         run: |
