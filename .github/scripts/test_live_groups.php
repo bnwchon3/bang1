@@ -143,3 +143,45 @@ $heats=[];
 live_add_heat($heats,2);live_add_heat($heats,1);live_add_heat($heats,2);
 check($heats===[1,2],'School heat badges must be unique and ordered');
 echo "PASS combined event 11–12, separate final, correct IDs and school heat badges\n";
+
+
+// Reporting counters are based on competition slots, NOT all candidate names.
+// One school can list two potential sprinters but only one may report.
+// Relay teams have four check-in slots, even if more alternatives are listed.
+$soloRegistration=[
+    'event_name'=>'วิ่ง 80 เมตร (8 ปี หญิง)','category'=>'วิ่งเดี่ยว',
+    'runner_ids'=>'101,102','runner_names'=>'คนแรก,คนสำรอง'
+];
+$relayRegistration=[
+    'event_name'=>'วิ่งผลัด 4x50 เมตร (6 ปี ชาย)','category'=>'วิ่งผลัด',
+    'runner_ids'=>'101,102,103,104,105,106',
+    'runner_names'=>'คนที่ 1,คนที่ 2,คนที่ 3,คนที่ 4,คนที่ 5,คนที่ 6'
+];
+check(live_attendance_capacity($soloRegistration)===1,
+    'One team in a solo event counts as one attendee even with two candidate runners');
+check(live_attendance_capacity($relayRegistration)===4,
+    'One relay team can check in exactly four athletes');
+check(live_attendance_capacity(['event_name'=>'วิ่งผลัด 4x100','category'=>''])===4,
+    'Relay fallback handles an incomplete category');
+$attendees=[
+    ['name'=>'A','checkedAt'=>null],
+    ['name'=>'B','checkedAt'=>'2026-11-09 09:04:00'],
+    ['name'=>'C','checkedAt'=>'2026-11-09 09:03:00'],
+    ['name'=>'D','checkedAt'=>'2026-11-09 09:05:00'],
+    ['name'=>'E','checkedAt'=>'2026-11-09 09:06:00']
+];
+check(count(live_counted_attendees($attendees,1))===1,
+    'A solo registration must count one confirmed person, not multiple alternatives');
+check(live_counted_attendees($attendees,1)[0]['name']==='C',
+    'Keep earliest check-in for legacy over-limit registrations');
+check(count(live_counted_attendees($attendees,4))===4,
+    'Relay check-in count cannot exceed four even with extra historic checks');
+check(count(live_counted_attendees($attendees,0))===0,
+    'Empty capacity must never contribute to public totals');
+$tenSoloTeams=array_fill(0,10,$soloRegistration);
+$totalSolo=array_sum(array_map('live_attendance_capacity',$tenSoloTeams));
+check($totalSolo===10,'Ten school sprint entries should display 0/10, never 0/20');
+$tenRelayTeams=array_fill(0,10,$relayRegistration);
+check(array_sum(array_map('live_attendance_capacity',$tenRelayTeams))===40,
+    'Ten relay entries require 40 check-ins');
+echo "PASS capacity-based live totals for ten solo teams, four-person relays, and historic extras\n";
