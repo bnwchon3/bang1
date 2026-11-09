@@ -82,7 +82,10 @@ jobs:
           mkdir run
           set cmd:fail-exit yes
           cd run
-          mirror --reverse --verbose --only-newer --parallel=2 --all run .
+          mirror --reverse --verbose --only-newer --parallel=2 run .
+          # Explicitly upload security rules: this lftp release has no --all option
+          # and dotfiles can be skipped by the standard mirror.
+          put run/uploads/school-logos/.htaccess -o uploads/school-logos/.htaccess
           cd ..
           set cmd:fail-exit no
           mkdir .private
