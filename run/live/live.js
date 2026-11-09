@@ -164,7 +164,7 @@
     const img=person?.photo
       ?'<img loading="eager" decoding="async" src="'+esc(person.photo)+'" alt="'+label+'" referrerpolicy="no-referrer">'
       :'<div class="sport-image-placeholder" role="img" aria-label="ไม่มีรูปนักกรีฑา">ยังไม่มีรูป</div>';
-    return '<div class="sport-hero-photo">'+img+
+    return '<div class="sport-hero-photo" data-athlete-name="'+label+'">'+img+
       (showName?'<span class="sport-player-name">'+label+'</span>':'')+'</div>';
   }
   function sportPhotoTiles(athletes){
@@ -184,10 +184,20 @@
     const badge=heat.length?'ฮีท '+[...new Set(heat)].join(', '):'';
     const subtitle=!team?'ไม่ได้ลงรายการ':
       (people.length>1?people.length+' นักกรีฑา':people[0]?.name||'รอข้อมูลนักกรีฑา');
+    const portraits=people.filter(person=>person.photo);
+    const mobilePhoto=portraits.length?portraits.map((person,i)=>
+      '<img class="sport-mobile-person'+(i===0?' is-active':'')+'" '+
+      'src="'+esc(person.photo)+'" alt="'+esc(person.name)+'" '+
+      'data-athlete-name="'+esc(person.name)+'" loading="eager" decoding="async" referrerpolicy="no-referrer">'
+    ).join(''):'<div class="sport-mobile-empty">ยังไม่มีภาพนักกีฬา</div>';
     return '<article class="sport-rival-card'+(team?' is-registered':' is-empty')+'" style="--sport-span:'+desktopSpan+';--sport-mobile-span:'+mobileSpan+';">'+
       '<div class="sport-rival-photo'+(multi?' is-relay':'')+'">'+tiles+'</div>'+
+      '<div class="sport-mobile-photo">'+mobilePhoto+
+        (portraits.length>1?'<span class="sport-mobile-photo-step">1 / '+portraits.length+'</span>':'')+
+      '</div>'+
       '<div class="sport-rival-copy"><strong>'+esc(sportSchoolName(school.name))+'</strong>'+
       '<small>'+esc(subtitle)+'</small>'+
+      '<span class="sport-mobile-athlete">'+esc(portraits[0]?.name||people[0]?.name||'ยังไม่มีรายชื่อนักกีฬา')+'</span>'+
       (badge?'<span class="sport-rival-tag">'+esc(badge)+'</span>':'')+
       '</div></article>';
   }
@@ -218,25 +228,23 @@
   // Rotate four legible portrait cards at a time on phones. Each event's
   // existing 15s cycle is divided evenly among the participating schools.
   function mobileRosterLayout(total){
-    if(total<=1)return [{col:2,row:2}];
-    if(total===2)return [{col:1,row:2},{col:1,row:2}];
-    if(total===3)return [{col:1,row:1},{col:1,row:1},{col:2,row:1}];
-    return Array.from({length:4},()=>({col:1,row:1}));
+    if(total<=1)return [{col:2,row:1}];
+    return [{col:1,row:1},{col:1,row:1}];
   }
   function updateSportMobileRoster(elapsed=sportRosterElapsed,stepMs=sportRosterStepMs){
     const grid=el('sportRivalGrid');
     const cards=[...grid.querySelectorAll('.sport-rival-card')];
-    const pageTotal=Math.max(1,Math.ceil(cards.length/4));
+    const pageTotal=Math.max(1,Math.ceil(cards.length/2));
     const autoPage=Math.min(pageTotal-1,Math.floor((elapsed%stepMs)/(stepMs/pageTotal)));
     if(sportManualRosterPage&&Date.now()>=sportManualRosterPage.until)sportManualRosterPage=null;
     const page=sportManualRosterPage?sportManualRosterPage.page%pageTotal:autoPage;
     const signature=page+':'+cards.length;
     if(grid.dataset.mobilePage!==signature){
-      const start=page*4;
-      const count=Math.min(4,Math.max(0,cards.length-start));
+      const start=page*2;
+      const count=Math.min(2,Math.max(0,cards.length-start));
       const layout=mobileRosterLayout(count);
       cards.forEach((card,index)=>{
-        const visible=index>=start&&index<start+4;
+        const visible=index>=start&&index<start+2;
         card.classList.toggle('is-mobile-visible',visible);
         if(visible){
           const slot=layout[index-start];
@@ -248,11 +256,40 @@
     }
     el('sportRosterPager').hidden=pageTotal<=1;
     el('sportRosterPage').textContent=(page+1)+' / '+pageTotal;
+    // One actual vertical portrait per card: rotate the registered runners
+    // without dividing each athlete into tiny landscape-cropped quarters.
+    const tick=Math.floor((Date.now()+clockOffsetMs)/1900);
+    cards.forEach((card,slot)=>{
+      if(!card.classList.contains('is-mobile-visible'))return;
+      const photos=[...card.querySelectorAll('.sport-mobile-person')];
+      if(!photos.length)return;
+      const selected=(tick+slot)%photos.length;
+      photos.forEach((photo,i)=>photo.classList.toggle('is-active',i===selected));
+      card.querySelector('.sport-mobile-athlete').textContent=
+        photos[selected].dataset.athleteName||'นักกีฬา';
+      const step=card.querySelector('.sport-mobile-photo-step');
+      if(step)step.textContent=(selected+1)+' / '+photos.length;
+    });
+    // FEATURED: show the same portrait treatment, not four tiny tiles.
+    const heroTiles=[...el('sportHeroPhotos').querySelectorAll('.sport-hero-photo')];
+    const hasPortrait=heroTiles.filter(tile=>tile.querySelector('img'));
+    const heroEligible=hasPortrait.length?hasPortrait:heroTiles;
+    if(heroEligible.length){
+      const current=heroEligible[Math.floor((Date.now()+clockOffsetMs)/2300)%heroEligible.length];
+      heroTiles.forEach(tile=>tile.classList.toggle('is-mobile-active',tile===current));
+      if(window.matchMedia('(max-width:900px) and (orientation:portrait)').matches){
+        const name=current.dataset.athleteName;
+        if(name){
+          const title=el('sportHeroLabel').textContent.includes('CHAMPION');
+          el('sportHeroName').textContent=(title?'นักกีฬาปัจจุบัน: ':'')+name;
+        }
+      }
+    }
   }
   function stepSportRosterPage(direction){
     if(lastMode!=='sport')return;
     const count=el('sportRivalGrid').querySelectorAll('.sport-rival-card').length;
-    const pages=Math.ceil(count/4);
+    const pages=Math.ceil(count/2);
     if(pages<=1)return;
     const page=Number(el('sportRivalGrid').dataset.mobilePage?.split(':')[0]||0);
     sportManualRosterPage={page:(page+direction+pages)%pages,until:Date.now()+7000};

@@ -856,3 +856,112 @@ body{background:#06162c}
  .sport-rival-copy strong{font-size:.76rem}
 }
 @media(prefers-reduced-motion:reduce){.sport-rival-card.is-mobile-visible{animation:none}}
+
+/* Portrait broadcast redesign: one full-height vertical student photo per
+   competing school card; never 4 cropped landscape strips on a phone. */
+.sport-mobile-photo,.sport-mobile-athlete{display:none}
+@media(max-width:900px) and (orientation:portrait){
+ .sport-stage{
+  grid-template-rows:clamp(170px,24dvh,226px) minmax(0,1fr);
+  gap:8px;padding:8px;
+ }
+ .sport-hero{
+  grid-template-columns:minmax(0,.98fr) minmax(0,1.02fr);
+  background:linear-gradient(145deg,#071e38,#096057);
+ }
+ .sport-hero-photos,.sport-hero-photos.is-multi,.sport-hero-photos.is-duo{
+  display:block;position:relative;grid-template-columns:none;grid-template-rows:none;
+  padding:5px;overflow:hidden;
+ }
+ .sport-hero-photo{
+  width:100%;height:100%;min-width:0;min-height:0;
+  border-radius:10px;overflow:hidden;
+ }
+ .sport-hero-photo:not(.is-mobile-active){display:none!important}
+ .sport-hero-photo.is-mobile-active{display:block}
+ .sport-hero-photo img{
+  width:100%;height:100%;object-fit:contain!important;
+  object-position:center center!important;
+  background:linear-gradient(145deg,#21475a,#05293c);
+ }
+ .sport-hero-photo .sport-player-name{display:none}
+ .sport-hero-caption h2{
+  font-size:clamp(.99rem,3.8vw,1.6rem);
+  white-space:normal;-webkit-line-clamp:3;max-height:3.5em;
+ }
+ .sport-hero-caption p{
+  font-size:clamp(.72rem,2.65vw,1rem);line-height:1.35;
+  white-space:normal;-webkit-line-clamp:3;max-height:4.05em;
+ }
+ .sport-roster{padding:9px;border-radius:14px}
+ .sport-roster-heading{margin-bottom:10px;min-height:28px}
+ .sport-rival-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-template-rows:minmax(0,1fr)!important;
+  gap:10px;
+ }
+ .sport-rival-card.is-mobile-visible{
+  grid-row:span 1!important;
+  grid-column:span var(--sport-page-col,1)!important;
+  display:flex;flex-direction:column;min-height:0;
+  border-radius:12px;box-shadow:0 10px 20px #0009;
+  background:#072137;
+ }
+ .sport-rival-card.is-mobile-visible:only-child{
+  max-width:80%;width:100%;justify-self:center;
+ }
+ .sport-rival-photo,.sport-rival-photo.is-relay{display:none!important}
+ .sport-mobile-photo{
+  position:relative;display:block;min-height:0;min-width:0;
+  flex:1 1 auto;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 32%,#235b73,#061a30 76%);
+ }
+ .sport-mobile-person{
+  display:none;width:100%;height:100%;min-height:0;min-width:0;
+  object-fit:contain;object-position:center center;
+  background:linear-gradient(155deg,#1d5263,#0c2e49);
+ }
+ .sport-mobile-person.is-active{display:block;animation:sport-portrait-in .45s ease both}
+ .sport-mobile-empty{
+  display:grid;width:100%;height:100%;place-items:center;
+  text-align:center;color:#b8dded;font-size:.84rem;font-weight:800;
+  padding:12px;background:radial-gradient(ellipse at center,#1b5870,#071f39);
+ }
+ .sport-mobile-photo-step{
+  position:absolute;top:7px;right:7px;z-index:2;
+  border:1px solid #b4ff7673;background:#08283cde;color:#dcff9b;
+  border-radius:99px;padding:3px 7px;font:900 .65rem system-ui,sans-serif;
+ }
+ .sport-rival-copy{
+  flex:0 0 auto!important;min-height:74px;max-height:108px;
+  padding:8px 9px;gap:3px;
+  background:linear-gradient(125deg,#093953,#08614e);
+  border-top:2px solid #adfa7391;
+ }
+ .sport-rival-copy strong{
+  font-size:clamp(.84rem,3.2vw,1.2rem);
+  max-height:2.5em;line-height:1.2;
+ }
+ .sport-mobile-athlete{
+  display:block!important;color:#c9eefd;
+  font-size:clamp(.7rem,2.5vw,.92rem);line-height:1.2;
+  min-height:1.2em;overflow:hidden;
+  white-space:nowrap;text-overflow:ellipsis;
+ }
+ .sport-rival-copy .sport-rival-tag{
+  font-size:clamp(.68rem,2.3vw,.85rem)!important;line-height:1.1;
+ }
+}
+@keyframes sport-portrait-in{
+ from{opacity:.25;filter:blur(3px);transform:scale(1.035)}
+ to{opacity:1;filter:blur(0);transform:scale(1)}
+}
+@media(max-width:380px) and (orientation:portrait){
+ .sport-stage{grid-template-rows:clamp(147px,22dvh,192px) minmax(0,1fr);gap:6px;padding:6px}
+ .sport-rival-grid{gap:7px}
+ .sport-rival-copy{min-height:66px;padding:6px 7px}
+ .sport-mobile-athlete{font-size:.67rem}
+}
+@media(prefers-reduced-motion:reduce){
+ .sport-mobile-person.is-active{animation:none}
+}
