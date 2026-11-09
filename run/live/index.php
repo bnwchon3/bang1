@@ -11,12 +11,12 @@ header('Cache-Control: no-store, private');
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#06162c">
   <title>จอรายงานตัว LIVE | กรีฑากลุ่มโรงเรียนบางละมุง 1</title>
-  <link rel="stylesheet" href="./live.css?v=20261109-mergedheats5">
+  <link rel="stylesheet" href="./live.css?v=20261109-sport-rotation8">
 </head>
 <body>
   <main class="live-screen">
     <header class="event-number">
-      <span>รายการแข่งขันที่ </span><strong id="eventNumber">—</strong>
+      <span id="eventHeading">รายการแข่งขันที่ </span><strong id="eventNumber">—</strong>
     </header>
     <div class="event-banner">
       <h1 id="fixtureTitle">รอ Manager เลือกรายการแข่งขัน</h1>
@@ -36,14 +36,14 @@ header('Cache-Control: no-store, private');
       </div>
     </section>
     <section class="up-next" aria-label="การรับรายงานตัวรายการถัดไป">
-      <div class="next-icon" aria-hidden="true">⏭</div>
+      <div class="next-icon" id="nextIcon" aria-hidden="true">⏭</div>
       <div class="next-description">
-        <span class="next-eyebrow">NEXT UP <span class="next-accent">• รับรายงานตัวล่วงหน้า</span></span>
+        <span class="next-eyebrow" id="nextEyebrow">NEXT UP <span class="next-accent" id="nextAccent">• รับรายงานตัวล่วงหน้า</span></span>
         <strong id="nextFixture">รอรายการแข่งขันถัดไป</strong>
         <span id="nextMeta">จุดรับรายงานตัวรายการต่อไป</span>
       </div>
       <div class="next-progress">
-        <div class="next-progress-numbers"><span>รายงานตัวแล้ว</span><strong id="nextCount">—</strong></div>
+        <div class="next-progress-numbers"><span id="nextProgressTitle">รายงานตัวแล้ว</span><strong id="nextCount">—</strong></div>
         <div class="next-track"><div id="nextFill" class="next-fill"></div></div>
       </div>
     </section>
@@ -54,6 +54,6 @@ header('Cache-Control: no-store, private');
       <button type="button" id="fullScreen" title="เปิดเต็มจอ">⛶ เต็มจอ</button>
     </footer>
   </main>
-  <script defer src="./live.js?v=20261109-mergedheats5"></script>
+  <script defer src="./live.js?v=20261109-sport-rotation8"></script>
 </body>
 </html>
