@@ -155,55 +155,174 @@
   function slideIdentity(fixture){
     return [fixture.eventNumberLabel||fixture.eventId||'—',fixture.eventName,fixture.round||''];
   }
-  function sportCountdown(payload,index,elapsed,cycleMs){
-    const fixtures=payload.fixtures||[];
-    const next=fixtures[(index+1)%fixtures.length];
-    if(next){
-      el('nextFixture').textContent='รายการถัดไป '+(next.eventNumberLabel||next.eventId||'—')+
-        ' · '+next.eventName;
-      el('nextMeta').textContent=[next.category,next.level,next.gender,
-        next.round].filter(Boolean).join(' · ');
+  function sportSchoolName(value){
+    return String(value||'').replace(/^โรงเรียน/u,'').trim()||'ไม่ระบุโรงเรียน';
+  }
+  function sportImageHTML(person,showName=false){
+    const label=esc(person?.name||'นักกรีฑา');
+    const img=person?.photo
+      ?'<img loading="eager" decoding="async" src="'+esc(person.photo)+'" alt="'+label+'" referrerpolicy="no-referrer">'
+      :'<div class="sport-image-placeholder" role="img" aria-label="ไม่มีรูปนักกรีฑา">ยังไม่มีรูป</div>';
+    return '<div class="sport-hero-photo">'+img+
+      (showName?'<span class="sport-player-name">'+label+'</span>':'')+'</div>';
+  }
+  function sportPhotoTiles(athletes){
+    const people=athletes.slice(0,4);
+    if(!people.length)return '<div class="sport-image-placeholder">ยังไม่มีรูปนักกรีฑา</div>';
+    return people.map(p=>sportImageHTML(p,people.length>1)).join('');
+  }
+  function sportRivalCard(school){
+    const people=Array.isArray(school.athletes)?school.athletes.slice(0,4):[];
+    const team=Boolean(school.registered);
+    const multi=people.length>1;
+    const tiles=people.length?people.map(person=>person.photo
+      ?'<img loading="eager" decoding="async" src="'+esc(person.photo)+'" alt="'+esc(person.name)+'" referrerpolicy="no-referrer">'
+      :'<div class="sport-image-placeholder" role="img" aria-label="ไม่มีรูปนักกรีฑา">ไม่มีรูป</div>').join('')
+      :'<div class="sport-image-placeholder">'+(team?'ยังไม่มีรูป':'—')+'</div>';
+    const heat=(Array.isArray(school.heats)?school.heats:[]).map(Number).filter(n=>n>0&&n<100);
+    const badge=heat.length?'ฮีท '+[...new Set(heat)].join(', '):'';
+    const subtitle=!team?'ไม่ได้ลงรายการ':
+      (people.length>1?people.length+' นักกรีฑา':people[0]?.name||'รอข้อมูลนักกรีฑา');
+    return '<article class="sport-rival-card'+(team?' is-registered':' is-empty')+'">'+
+      '<div class="sport-rival-photo'+(multi?' is-relay':'')+'">'+tiles+'</div>'+
+      '<div class="sport-rival-copy"><strong>'+esc(sportSchoolName(school.name))+'</strong>'+
+      '<small>'+esc(subtitle)+'</small>'+
+      (badge?'<span class="sport-rival-tag">'+esc(badge)+'</span>':'')+
+      '</div></article>';
+  }
+  function bindSportPhotos(){
+    const root=el('sportShowcase');
+    if(!root)return;
+    root.querySelectorAll('img').forEach(img=>{
+      img.addEventListener('error',function(){
+        const fallback=document.createElement('div');
+        fallback.className='sport-image-placeholder';
+        fallback.textContent='ยังไม่มีรูป';
+        fallback.setAttribute('role','img');
+        fallback.setAttribute('aria-label','ภาพนักกรีฑาไม่สามารถแสดงได้');
+        this.replaceWith(fallback);
+      },{once:true});
+    });
+  }
+  function paintSportTeams(schools,index){
+    const input=Array.isArray(schools)?schools:[];
+    // Prefer a registered school with a real stored portrait; cycle the hero
+    // between schools so all teams get attention across event slides.
+    const populated=input.filter(s=>s.registered&&Array.isArray(s.athletes)&&s.athletes.some(a=>a.photo));
+    const registered=input.filter(s=>s.registered);
+    const pool=populated.length?populated:(registered.length?registered:input);
+    const hero=pool.length?pool[index%pool.length]:null;
+    const others=hero?input.filter(s=>s!==hero):input;
+    const people=Array.isArray(hero?.athletes)?hero.athletes.slice(0,4):[];
+    const multi=people.length>1;
+    const pics=el('sportHeroPhotos');
+    pics.className='sport-hero-photos'+(multi?' is-multi':'')+
+      (people.length===2?' is-duo':'');
+    pics.innerHTML=sportPhotoTiles(people);
+    el('sportHeroSchool').textContent=hero?sportSchoolName(hero.name):'รอข้อมูลโรงเรียน';
+    el('sportHeroName').textContent=people.length===1?people[0].name:
+      people.length>1?people.length+' นักกรีฑาที่ลงทะเบียน':
+      'ยังไม่มีรูปนักกรีฑาที่ลงทะเบียน';
+    const heat=Array.isArray(hero?.heats)?hero.heats.filter(n=>Number(n)>0):[];
+    el('sportHeroHeat').textContent=heat.length?'HEAT '+heat.join('–'):'ATHLETICS';
+    el('sportRivalGrid').innerHTML=others.slice(0,9).map(sportRivalCard).join('')||
+      '<div class="sport-loading">รอข้อมูลโรงเรียนที่เข้าร่วมแข่งขัน</div>';
+    el('sportTeamCount').textContent=input.filter(s=>s.registered).length+
+      ' / '+input.length+' TEAMS';
+    bindSportPhotos();
+  }
+  function paintSportSchedule(fixtures,index){
+    const total=fixtures.length;
+    el('sportEventTotal').textContent=String(total);
+    const entries=[];
+    // A compact live program around this fixture, ordered by the existing
+    // official competition sequence. No invented dates/times.
+    const shown=Math.min(5,total);
+    for(let j=0;j<shown;j++){
+      const i=(index+j)%total,fixture=fixtures[i];
+      entries.push('<div class="sport-schedule-item'+
+        (j===0?' is-current':j===1?' is-next':'')+'">'+
+        '<span class="sport-schedule-number">'+esc(fixture.eventNumberLabel||fixture.eventId||'—')+'</span>'+
+        '<span class="sport-schedule-text"><strong>'+esc(fixture.eventName)+'</strong>'+
+        '<small>'+esc(j===0?'กำลังแสดง':j===1?'รายการถัดไป':(fixture.round||'รายการแข่งขัน'))+'</small></span></div>');
     }
-    el('nextCount').textContent=(index+1)+' / '+fixtures.length;
-    el('nextFill').style.width=Math.min(100,elapsed%cycleMs/cycleMs*100)+'%';
+    el('sportScheduleList').innerHTML=entries.join('')||
+      '<div class="sport-schedule-empty">ยังไม่มีรายการแข่งขัน</div>';
+  }
+  function sportDisplayHeader(fixture,index,total){
+    el('sportEventNumber').textContent='รายการที่ '+(fixture.eventNumberLabel||fixture.eventId||'—');
+    el('sportEventName').textContent=fixture.eventName||'ไม่ระบุรายการ';
+    el('sportRound').textContent=fixture.round||'รอยืนยันรอบ';
+    const heat=Array.isArray(fixture.heats)&&fixture.heats.length>1?
+      'ฮีท '+fixture.heats.join('–'):(fixture.heat?'ฮีท '+fixture.heat:'');
+    el('sportEventMeta').textContent=[fixture.category,fixture.level,
+      fixture.gender,heat].filter(Boolean).join(' • ');
+    el('sportSlideCounter').textContent=(index+1)+' / '+total;
+    el('sportIntroNumber').textContent='EVENT '+(fixture.eventNumberLabel||fixture.eventId||'—');
+    el('sportIntroTitle').textContent=fixture.eventName||'READY TO RUN';
+  }
+  function playSportIntro(){
+    const intro=el('sportIntro'),root=el('sportShowcase');
+    if(!intro||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    intro.classList.remove('is-playing');
+    root.classList.remove('is-changing');
+    void intro.offsetWidth; // restart CSS animation only for an actual slide change
+    intro.classList.add('is-playing');
+    root.classList.add('is-changing');
+  }
+  function sportCountdown(payload,index,elapsed,stepMs){
+    const fixtures=payload.fixtures||[];
+    const total=fixtures.length;
+    const next=total?fixtures[(index+1)%total]:null;
+    if(next)el('sportNextEvent').textContent='รายการที่ '+
+      (next.eventNumberLabel||next.eventId||'—')+' • '+next.eventName;
+    const within=Math.max(0,elapsed%stepMs);
+    el('sportProgressFill').style.width=Math.min(100,within/stepMs*100)+'%';
+    el('sportProgressTime').textContent=Math.max(0,Math.ceil((stepMs-within)/1000))+'s';
   }
   async function sportSlide(payload,index,token){
-    const fixture=payload.fixtures[index];
-    el('eventNumber').textContent=String(fixture.eventNumberLabel||fixture.eventId||'—');
-    el('fixtureTitle').textContent=fixture.eventName;
-    el('roundLabel').textContent=fixture.round||'รอยืนยันรอบ';
-    el('schoolGrid').innerHTML='<div class="loading">กำลังโหลดภาพนักกรีฑาที่ลงทะเบียน...</div>';
+    const fixtures=payload.fixtures,fixture=fixtures[index];
+    sportDisplayHeader(fixture,index,fixtures.length);
+    paintSportSchedule(fixtures,index);
+    playSportIntro();
+    el('sportRivalGrid').innerHTML='<div class="sport-loading">กำลังเรียกข้อมูลนักกรีฑา...</div>';
+    el('sportHeroPhotos').innerHTML='<div class="sport-image-placeholder">กำลังโหลดภาพนักกรีฑา</div>';
+    el('sportHeroSchool').textContent='โรงเรียนที่เข้าร่วมแข่งขัน';
+    el('sportHeroName').textContent='กำลังเตรียมภาพการแข่งขัน';
     try{
       const data=await getSportFixture(fixture.key);
       if(lastMode!=='sport'||token!==sportSlideToken)return;
       const signature=JSON.stringify([fixture.key,data.schools]);
       if(lastSportBoardSignature!==signature){
-        paintSchools(data.schools,true);
+        paintSportTeams(data.schools,index);
         lastSportBoardSignature=signature;
       }
       sportRetryAt=0;
-      const following=payload.fixtures[(index+1)%payload.fixtures.length];
+      const following=fixtures[(index+1)%fixtures.length];
       if(following&&following.key!==fixture.key)
         void getSportFixture(following.key).catch(()=>{});
     }catch(error){
       if(lastMode!=='sport'||token!==sportSlideToken)return;
-      el('schoolGrid').innerHTML='<div class="loading">ไม่สามารถโหลดภาพรายการนี้ได้ ระบบจะลองใหม่อัตโนมัติ</div>';
-      sportRetryAt=Date.now()+6000; // Avoid hammering the backend on outages.
-      sportSlideIndex=-1; // Retry without changing the persisted display mode.
+      el('sportRivalGrid').innerHTML='<div class="sport-loading">ขัดข้องระหว่างโหลดภาพนักกรีฑา · กำลังลองใหม่</div>';
+      el('sportHeroSchool').textContent='เชื่อมต่อข้อมูลนักกรีฑา';
+      sportRetryAt=Date.now()+6000;
+      sportSlideIndex=-1;
     }
   }
   function renderSportCycle(payload){
     const fixtures=Array.isArray(payload.fixtures)?
       payload.fixtures.filter(f=>f&&f.key):[];
     if(!fixtures.length){
-      el('eventNumber').textContent='—';
-      el('fixtureTitle').textContent='ยังไม่มีรายการแข่งขันในตาราง';
-      el('roundLabel').textContent='SPORT';
-      el('schoolGrid').innerHTML='<div class="loading">รอข้อมูลการแข่งขันที่ลงทะเบียน</div>';
-      el('nextFixture').textContent='ยังไม่มีรายการถัดไป';
-      el('nextMeta').textContent='';
-      el('nextCount').textContent='0 / 0';
-      el('nextFill').style.width='0%';
+      el('sportEventName').textContent='รอโปรแกรมการแข่งขัน';
+      el('sportEventNumber').textContent='SPORT SHOWCASE';
+      el('sportRound').textContent='SPORT';
+      el('sportHeroSchool').textContent='ยังไม่มีรายการแข่งขัน';
+      el('sportHeroPhotos').innerHTML='<div class="sport-image-placeholder">🏃</div>';
+      el('sportRivalGrid').innerHTML='<div class="sport-loading">กำลังรอรายการแข่งขัน</div>';
+      el('sportScheduleList').innerHTML='<div class="sport-schedule-empty">ยังไม่มีรายการแข่งขัน</div>';
+      el('sportNextEvent').textContent='รอโปรแกรมการแข่งขัน';
+      el('sportEventTotal').textContent='0';
+      el('sportProgressFill').style.width='0%';
       return;
     }
     const stepMs=Math.max(8000,Number(payload.display?.slideSeconds||15)*1000);
@@ -234,6 +353,12 @@
       sportCache.clear();
       sportPending.clear();
       document.querySelector('.live-screen').classList.toggle('is-sport',mode==='sport');
+      const showcase=el('sportShowcase');
+      if(showcase)showcase.hidden=mode!=='sport';
+      if(mode!=='sport'){
+        el('sportIntro').classList.remove('is-playing');
+        el('sportShowcase').classList.remove('is-changing');
+      }
       setNextLabels(mode==='sport');
     }
     if(mode==='sport')renderSportCycle(payload);
@@ -260,6 +385,12 @@
       el('lastRefresh').textContent=loaded?'แสดงข้อมูลล่าสุด':'โหลดข้อมูลไม่ได้';
     }finally{requestBusy=false;}
   }
+  el('sportFullScreen').addEventListener('click',async()=>{
+    try{
+      if(document.fullscreenElement)await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    }catch(error){}
+  });
   el('fullScreen').addEventListener('click',async()=>{
     try{
       if(document.fullscreenElement)await document.exitFullscreen();
