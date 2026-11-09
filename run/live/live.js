@@ -1,100 +1,91 @@
-/* Public read-only, polling-based live race check-in screen. */
+/* Simple public race call: ten fixed school columns, only checked athletes. */
 (function(){
   'use strict';
-  const $=id=>document.getElementById(id);
-  const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let oldActive='',oldChecked=new Set(),initialized=false,requesting=false,toastTimer=null;
-  function timeOnly(text){
-    if(!text)return '—';
-    const match=String(text).match(/\d{2}:\d{2}:\d{2}/);
-    return match?match[0]:String(text);
+  const el=id=>document.getElementById(id);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let requestBusy=false,lastSignature='',loaded=false;
+  const initialSchools=[
+    'วัดสุทธารีย์บุญญาราม','บ้านตะเคียนเตี้ย','บ้านสันติคาม',
+    'บ้านบางละมุง','วัดหนองเกตุใหญ่','อนุบาลบางละมุง',
+    'วัดเวฬุวนาราม','บ้านโรงหีบ','บ้านนาวัง','บ้านทุ่งกราด'
+  ];
+  function timeStamp(){
+    return new Intl.DateTimeFormat('th-TH',{
+      timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false
+    }).format(new Date());
   }
-  function clock(){
-    $('liveClock').textContent=new Intl.DateTimeFormat('th-TH',{timeZone:'Asia/Bangkok',
-      hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());
+  function photo(athlete){
+    if(!athlete.photo)return '<div class="portrait-placeholder" aria-hidden="true">🏃</div>';
+    return '<img loading="lazy" alt="" src="'+esc(athlete.photo)+'" referrerpolicy="no-referrer">';
   }
-  function connection(online,message){
-    $('connect').textContent=(online?'● ออนไลน์':'● '+(message||'เชื่อมต่อไม่ได้'));
-    $('connect').className='connection '+(online?'online':'offline');
+  function schoolCell(school){
+    const athletes=Array.isArray(school.athletes)?school.athletes:[];
+    return '<section class="school-column">'+
+      '<header class="school-name">'+esc(String(school.name||'').replace(/^โรงเรียน/u,''))+'</header>'+
+      '<div class="school-athletes">'+(athletes.length?
+      athletes.map(a=>'<article class="athlete">'+photo(a)+
+        '<div class="athlete-name">'+esc(a.name)+'</div>'+
+        '<div class="athlete-id">#'+Number(a.regId)+'</div></article>').join(''):
+      '<div class="no-athletes"></div>')+'</div></section>';
   }
-  function update(payload){
+  function draw(payload){
     const f=payload.active;
-    const key=f?.key||'';
-    const teams=Array.isArray(payload.teams)?payload.teams:[];
-    const checkedNow=new Set(teams.filter(t=>t.checkedAt).map(t=>Number(t.regId)));
-    let arrivals=[];
-    if(initialized&&key===oldActive) {
-      arrivals=teams.filter(t=>t.checkedAt&&!oldChecked.has(Number(t.regId)));
-      if(arrivals.length){
-        const last=arrivals[arrivals.length-1];
-        const msg='✓ รายงานตัวแล้ว: '+last.school+' · ใบสมัคร #'+last.regId;
-        $('scanToast').textContent=msg;
-        $('scanToast').hidden=false;
-        clearTimeout(toastTimer);
-        toastTimer=setTimeout(()=>{$('scanToast').hidden=true},6500);
+    const schools=Array.isArray(payload.schools)&&payload.schools.length?
+      payload.schools:initialSchools.map(s=>({name:'โรงเรียน'+s,athletes:[]}));
+    const signature=JSON.stringify([f,schools]);
+    if(signature!==lastSignature){
+      lastSignature=signature;
+      el('eventNumber').textContent=f?
+        String(Number(f.order)||((payload.fixtures||[]).findIndex(x=>x.key===f.key)+1)||'—'):'—';
+      el('fixtureTitle').textContent=f?f.eventName:'รอ Manager เลือกรายการแข่งขัน';
+      // With 1-8 schools, the event goes straight to the final under the
+      // competition's established scheduling rules.
+      el('roundLabel').textContent=f?(Number(f.teams)<=8?'รอบชิง':'รอบคัดเลือก'):'ยังไม่เริ่ม';
+      el('fixtureMeta').textContent=f?
+        [f.category,f.level,f.gender,f.heat?'ฮีทที่ '+f.heat:''].filter(Boolean).join(' · '):
+        'กลุ่มโรงเรียนบางละมุง 1 · เช็กชื่อรายงานตัว';
+      el('checkedCount').textContent=f?
+        'รายงานตัวแล้ว '+Number(f.checked)+' / '+Number(f.total)+' คน':'รอเปิดรายการ';
+      const grid=el('schoolGrid');
+      grid.innerHTML=schools.slice(0,10).map(schoolCell).join('');
+      for(const img of grid.querySelectorAll('img')){
+        img.addEventListener('error',function(){
+          const fallback=document.createElement('div');
+          fallback.className='portrait-placeholder';
+          fallback.textContent='🏃';
+          this.replaceWith(fallback);
+        },{once:true});
       }
-    }else{$('scanToast').hidden=true;clearTimeout(toastTimer);}
-    oldActive=key;oldChecked=checkedNow;initialized=true;
-
-    $('fixtureTitle').textContent=f?.eventName||'รอ Manager เลือกรายการแข่งขัน';
-    $('fixtureMeta').textContent=f?[f.category,f.level,f.gender].filter(Boolean).join(' • '):
-      'เมื่อ Manager เปิดรายการ หน้าจอนี้จะแสดงสถานะโดยอัตโนมัติ';
-    $('fixtureHeat').textContent=f?(f.heat?'ฮีทที่ '+f.heat:'รายการแข่งขัน'):'รอเปิดรายการ';
-    const total=Number(f?.total||0),confirmed=Number(f?.checked||0),pending=Math.max(0,total-confirmed);
-    $('total').textContent=f?total.toLocaleString('th-TH'):'—';
-    $('checked').textContent=f?confirmed.toLocaleString('th-TH'):'—';
-    $('pending').textContent=f?pending.toLocaleString('th-TH'):'—';
-    const percent=total?Math.min(100,Math.round(100*confirmed/total)):0;
-    $('progressText').textContent=percent+'%';
-    $('progressRing').style.setProperty('--fill',percent+'%');
-    $('rosterCount').textContent=f?(confirmed+' / '+total+' รายงานตัวแล้ว'):'ยังไม่เลือกรายการ';
-    $('roster').innerHTML=f?(
-      teams.length?teams.map(t=>
-        '<div class="school-card'+(t.checkedAt?' done':'')+(arrivals.some(x=>Number(x.regId)===Number(t.regId))?' flash':'')+'" data-reg="'+Number(t.regId)+'">'+
-         '<div class="school-main"><strong>'+escapeHtml(t.school)+'</strong>'+
-          '<small>ใบสมัคร #'+Number(t.regId)+(t.lane?' · ลู่วิ่ง '+Number(t.lane):'')+'</small></div>'+
-         '<span class="school-state">'+(t.checkedAt?'✓ รายงานตัวแล้ว':'◷ รอรายงานตัว')+'</span>'+
-        '</div>').join(''):'<div class="empty">ยังไม่มีใบสมัครสำหรับรายการนี้</div>'
-    ):'<div class="empty">รอ Manager เปิดรายการ Active เพื่อเริ่มรายงานตัว</div>';
-    const recent=Array.isArray(payload.recent)?payload.recent:[];
-    $('recent').innerHTML=recent.length?recent.map(t=>
-       '<div class="recent-card"><div><strong>✓ '+escapeHtml(t.school)+'</strong>'+
-       '<small>ใบสมัคร #'+Number(t.regId)+'</small></div>'+
-       '<span class="recent-time">'+escapeHtml(timeOnly(t.checkedAt))+'</span></div>'
-    ).join(''):'<div class="empty">ยังไม่มีการรายงานตัวในรายการนี้</div>';
-    const upcoming=Array.isArray(payload.next)?payload.next:[];
-    $('upcoming').innerHTML=upcoming.length?upcoming.map((x,i)=>
-      '<div class="upcoming-item"><div><strong>'+escapeHtml(x.eventName)+'</strong>'+
-      '<small>'+escapeHtml([x.category,x.level,x.gender,x.heat?'ฮีท '+x.heat:''].filter(Boolean).join(' · '))+'</small></div>'+
-      '<span class="queue-no">'+(Number(x.checked)||0)+'/'+(Number(x.total)||0)+'</span></div>'
-    ).join(''):'<div class="empty">ไม่มีรายการถัดไป</div>';
-    $('lastRefresh').textContent='อัปเดตล่าสุด '+new Intl.DateTimeFormat('th-TH',{timeZone:'Asia/Bangkok',
-      hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());
+    }
+    loaded=true;
+    el('connection').className='connected';
+    el('connection').textContent='● LIVE';
+    el('lastRefresh').textContent='อัปเดต '+timeStamp();
   }
-  async function poll(){
-    if(requesting||document.visibilityState==='hidden')return;
-    requesting=true;
+  async function refresh(){
+    if(requestBusy||document.visibilityState==='hidden')return;
+    requestBusy=true;
     try{
-      const res=await fetch('../api.php?action=live_state',{cache:'no-store',credentials:'same-origin'});
-      if(!res.ok)throw Error('HTTP '+res.status);
-      const json=await res.json();
-      if(!json.success)throw Error(json.message||'ข้อมูลไม่พร้อม');
-      update(json);
-      connection(true);
-    }catch(err){
-      connection(false,'การเชื่อมต่อขัดข้อง');
-      $('lastRefresh').textContent='อัปเดตไม่สำเร็จ · ข้อมูลที่แสดงเป็นข้อมูลครั้งล่าสุด';
-      if(!initialized)$('roster').innerHTML='<div class="empty">ไม่สามารถโหลดข้อมูล Live ได้ กรุณาตรวจสอบการเชื่อมต่อ</div>';
-    }finally{requesting=false;}
+      const response=await fetch('../api.php?action=live_state',{
+        cache:'no-store',credentials:'same-origin'
+      });
+      if(!response.ok)throw Error('HTTP '+response.status);
+      const result=await response.json();
+      if(result.success!==true)throw Error(result.message||'ไม่สามารถโหลดข้อมูล');
+      draw(result);
+    }catch(error){
+      el('connection').className='';
+      el('connection').textContent='● การเชื่อมต่อขัดข้อง';
+      el('lastRefresh').textContent=loaded?'แสดงข้อมูลที่อัปเดตล่าสุด':'โหลดข้อมูลไม่สำเร็จ';
+    }finally{requestBusy=false;}
   }
-  $('fullScreen').addEventListener('click',async function(){
-    try {
+  el('fullScreen').addEventListener('click',async function(){
+    try{
       if(document.fullscreenElement)await document.exitFullscreen();
       else await document.documentElement.requestFullscreen();
-    }catch(e){}
+    }catch(error){}
   });
-  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')poll()});
-  window.setInterval(clock,1000);
-  window.setInterval(poll,3000);
-  clock();poll();
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh()});
+  refresh();
+  setInterval(refresh,3000);
 })();
