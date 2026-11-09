@@ -124,3 +124,16 @@ jobs:
             --connect-timeout 15 --max-time 45 "${BASE%/}/api.php?action=live_state" > /tmp/bang1-live-check.json
           jq -e '.success == true and (.fixtures | type == "array") and (.next | type == "array") and (.latestResults | type == "array") and (.schools | length == 10) and (.schools | all((.registered | type == "boolean") and (.athletes | type == "array") and (.totalAthletes | type == "number")))' /tmp/bang1-live-check.json >/dev/null
           jq '{success,fixture_count:(.fixtures|length),school_columns:(.schools|length),recent_results:(.latestResults|length)}' /tmp/bang1-live-check.json
+      - name: Probe Drive upload bridge from production host (no real file upload)
+        shell: bash
+        run: |
+          BASE="${PUBLIC_BASE_URL:-https://www.bannawang.ac.th/bang1/run}"
+          curl --fail-with-body --silent --show-error --retry 2 \
+            --connect-timeout 15 --max-time 55 -X POST \
+            -H "X-Deploy-Token: ${DEPLOY_TOKEN}" \
+            "${BASE%/}/setup/drive-check.php" > /tmp/bang1-drive-health.json
+          jq -e '.code | type == "string"' /tmp/bang1-drive-health.json > /dev/null
+          jq '{success,code,httpStatus}' /tmp/bang1-drive-health.json
+          if ! jq -e '.success == true' /tmp/bang1-drive-health.json > /dev/null; then
+            echo "::warning::Google Drive upload bridge is not ready. See its sanitized diagnostic code above."
+          fi
