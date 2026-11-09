@@ -11,7 +11,7 @@ header('Cache-Control: no-store, private');
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#06162c">
   <title>จอรายงานตัว LIVE | กรีฑากลุ่มโรงเรียนบางละมุง 1</title>
-  <link rel="stylesheet" href="./live.css?v=20261109-sport3">
+  <link rel="stylesheet" href="./live.css?v=20261109-results-marquee4">
 </head>
 <body>
   <main class="live-screen">
@@ -22,10 +22,14 @@ header('Cache-Control: no-store, private');
       <h1 id="fixtureTitle">รอ Manager เลือกรายการแข่งขัน</h1>
       <div id="roundLabel" class="round-label">รอเปิดรายการ</div>
     </div>
-    <div class="event-meta">
-      <span id="fixtureMeta">กลุ่มโรงเรียนบางละมุง 1 · เช็กชื่อรายงานตัว</span>
-      <span id="checkedCount">ยังไม่มีรายการ Active</span>
-    </div>
+    <section class="results-ticker" aria-label="ผลการแข่งขันล่าสุดที่บันทึกแล้ว">
+      <div class="ticker-label"><span class="ticker-live-dot" aria-hidden="true"></span> 🏆 ผลการแข่งขันล่าสุด</div>
+      <div class="ticker-window">
+        <div class="ticker-track" id="latestResultTicker">
+          <div class="ticker-sequence"><span class="ticker-placeholder">กำลังโหลดผลการแข่งขันล่าสุด...</span></div>
+        </div>
+      </div>
+    </section>
     <section class="school-board" aria-label="สิบช่องโรงเรียนพร้อมภาพนักกรีฑาที่รายงานตัว">
       <div class="school-grid" id="schoolGrid">
         <div class="loading">กำลังโหลดข้อมูลการแข่งขัน...</div>
@@ -50,6 +54,6 @@ header('Cache-Control: no-store, private');
       <button type="button" id="fullScreen" title="เปิดเต็มจอ">⛶ เต็มจอ</button>
     </footer>
   </main>
-  <script defer src="./live.js?v=20261109-sport3"></script>
+  <script defer src="./live.js?v=20261109-results-marquee4"></script>
 </body>
 </html>
