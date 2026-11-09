@@ -3,7 +3,7 @@
   'use strict';
   const el=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let snapshot=null,busy=false,loading=false,filter='',lastActionAt=0,lastRosterHash='',lastOptionHash='';
+  let snapshot=null,busy=false,loading=false,filter='',lastActionAt=0,lastRosterHash='',lastNextRosterHash='',lastOptionHash='',pendingFixtureKey=null,switchInFlight=false;
   function isManager(){
     const user=typeof currentUser==='undefined'?null:currentUser;
     return !!user&&['Manager','Admin','TopAdmin'].includes(user.role);
@@ -35,6 +35,14 @@
       '<span class="bang1-athlete-status'+(checked?' confirmed':'')+'">'+(checked?'✓':'○')+'</span>'+
       '</label>';
   }
+  function teamMarkup(team){
+    return '<section class="bang1-roster-school">'+
+      '<header><div><strong>'+esc(team.school)+'</strong><small>ใบสมัคร #'+Number(team.regId)+
+      (team.lane?' · ลู่ '+Number(team.lane):'')+'</small></div>'+
+      '<span>'+Number(team.checkedAthletes)+' / '+Number(team.totalAthletes)+' คน</span></header>'+
+      '<div class="bang1-athlete-list">'+team.athletes.map(a=>athleteCard(a,team.regId)).join('')+'</div>'+
+      '</section>';
+  }
   function renderRoster(force=false){
     const area=el('bang1CheckinRoster');
     if(!area)return;
@@ -59,15 +67,33 @@
       area.innerHTML='<div class="bang1-roster-empty">'+
         (term?'ไม่พบชื่อนักกรีฑาตามคำค้นหา':'รายการนี้ยังไม่มีนักกรีฑาที่สมัครไว้')+'</div>';return;
     }
-    area.innerHTML=visible.map(team=>
-      '<section class="bang1-roster-school">'+
-      '<header><div><strong>'+esc(team.school)+'</strong><small>ใบสมัคร #'+Number(team.regId)+
-      (team.lane?' · ลู่ '+Number(team.lane):'')+'</small></div>'+
-      '<span>'+Number(team.checkedAthletes)+' / '+Number(team.totalAthletes)+' คน</span></header>'+
-      '<div class="bang1-athlete-list">'+team.athletes.map(a=>athleteCard(a,team.regId)).join('')+'</div>'+
-      '</section>').join('');
+    area.innerHTML=visible.map(teamMarkup).join('');
     // Keep the Manager at the same scroll position after a successful check-in.
     if(previousScroll!==null&&area.closest('.main'))area.closest('.main').scrollTop=previousScroll;
+  }
+  function renderNextRoster(force=false){
+    const area=el('bang1NextRoster');
+    if(!area)return;
+    const next=snapshot?.active?(snapshot?.next||[])[0]:null;
+    const teams=Array.isArray(snapshot?.nextTeams)?snapshot.nextTeams:[];
+    const signature=JSON.stringify([next?.key||'',teams]);
+    if(!force && signature===lastNextRosterHash)return;
+    lastNextRosterHash=signature;
+    const card=el('bang1NextCard');
+    const heading=el('bang1NextFixtureName');
+    const count=el('bang1NextCheckinCount');
+    if(!next){
+      card.hidden=true;
+      heading.textContent='ไม่มีรายการถัดไป';
+      count.textContent='—';
+      area.innerHTML='<div class="bang1-roster-empty">ยังไม่มีรายการถัดไป</div>';
+      return;
+    }
+    card.hidden=false;
+    heading.textContent=fixtureName(next);
+    count.textContent=Number(next.checked)+' / '+Number(next.total)+' คน';
+    area.innerHTML=teams.length?teams.map(teamMarkup).join(''):
+      '<div class="bang1-roster-empty">ยังไม่มีนักกรีฑาสมัครในรายการถัดไป</div>';
   }
   function render(data){
     snapshot=data;
@@ -80,9 +106,8 @@
       select.replaceChildren(new Option('เลือกรายการแข่งขัน/ฮีท',''));
       fixtures.forEach((f,i)=>select.appendChild(new Option(
         (i+1)+'. '+fixtureName(f),f.key)));
-      if(selected&&fixtures.some(f=>f.key===selected))select.value=selected;
-      else if(data.active)select.value=data.active.key;
-    }
+      }
+    if(!switchInFlight)select.value=data.active?.key||'';
     const active=data.active;
     el('bang1LiveActiveName').textContent=active?fixtureName(active):'ยังไม่ได้เปิดรายการ Active';
     el('bang1LiveActiveCount').textContent=active?
@@ -90,6 +115,7 @@
       'เลือกการแข่งขันแล้วกดแสดงรายการบนจอ Live';
     el('bang1ActiveEnd').disabled=!active;
     renderRoster();
+    renderNextRoster();
   }
   async function refresh(showNotice=false){
     if(!isManager()||!activePage()||busy||loading)return;
@@ -111,23 +137,53 @@
       lastActionAt=Date.now();
       return true;
     }catch(err){message(err.message||'บันทึกไม่สำเร็จ','error');return false}
-    finally{busy=false}
+    finally{busy=false;if(pendingFixtureKey!==null)void flushSelection()}
+  }
+  // A selection immediately changes the public screen. Repeated quick changes
+  // are serialized, with only the user's latest selection retained.
+  async function flushSelection(){
+    if(busy||switchInFlight||pendingFixtureKey===null)return;
+    switchInFlight=true;busy=true;
+    try{
+      while(pendingFixtureKey!==null){
+        const key=pendingFixtureKey;
+        pendingFixtureKey=null;
+        message('กำลังเปลี่ยนรายการบนจอ Live...','info');
+        try{
+          await request('live_select',{fixtureKey:key});
+          lastActionAt=Date.now();
+        }catch(error){
+          message(error.message||'เปลี่ยนรายการไม่สำเร็จ','error');
+        }
+      }
+      const state=await request('live_manager_data');
+      render(state);
+      el('bang1ActiveFixture').value=state.active?.key||'';
+      if(state.active)message('✓ แสดงรายการ '+fixtureName(state.active)+' บนจอ Live แล้ว','success');
+    }catch(error){
+      message(error.message||'อ่านสถานะจอ Live ไม่สำเร็จ','error');
+    }finally{
+      busy=false;switchInFlight=false;
+      if(pendingFixtureKey!==null)void flushSelection();
+    }
   }
   function setup(){
     const page=el('page-checkin');if(!page)return;
-    el('bang1SetActive').addEventListener('click',()=>{
-      const key=el('bang1ActiveFixture').value;
-      if(!key){message('กรุณาเลือกรายการแข่งขันก่อน','error');return}
-      update('live_select',{fixtureKey:key});
+    el('bang1ActiveFixture').addEventListener('change',event=>{
+      pendingFixtureKey=event.target.value||'';
+      void flushSelection();
     });
     el('bang1ActiveEnd').addEventListener('click',()=>{
-      if(confirm('ยืนยันปิดรายการ Active บนจอ Live?'))update('live_select',{fixtureKey:''});
+      if(confirm('ยืนยันปิดรายการ Active บนจอ Live?')){
+        pendingFixtureKey='';
+        void flushSelection();
+      }
     });
     el('bang1CheckinRefresh').addEventListener('click',()=>refresh(true));
     el('bang1AthleteSearch').addEventListener('input',e=>{
       filter=e.target.value;renderRoster(true);
     });
-    el('bang1CheckinRoster').addEventListener('change',async e=>{
+    const onAthleteChange=async e=>{
       const box=e.target.closest('input[type="checkbox"][data-athlete]');
       if(!box)return;
       if(busy){
@@ -146,6 +202,9 @@
       if(!succeeded){
         box.checked=!checked;box.disabled=false;
       }
+    };
+    ['bang1CheckinRoster','bang1NextRoster'].forEach(id=>{
+      el(id).addEventListener('change',onAthleteChange);
     });
     const menu=document.querySelector('.menu button[data-page="checkin"]');
     if(menu)menu.addEventListener('click',()=>setTimeout(()=>refresh(),0));
