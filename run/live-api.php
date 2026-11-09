@@ -283,6 +283,37 @@ function live_counted_attendees(array $athletes,int $capacity):array {
 }
 
 /**
+ * Sport showcase previews real registered athletes without asserting that
+ * unconfirmed candidates have reported for their events. Prefer anyone
+ * already checked in; fill vacant slots with registered candidates in their
+ * original roster order. The school may only show 1 solo / 4 relay runners.
+ */
+function live_sport_candidates(array $athletes,int $capacity):array {
+    $checked=live_counted_attendees($athletes,$capacity);
+    $seen=[];
+    foreach($checked as $athlete)$seen[$athlete['athleteKey']]=true;
+    $preview=$checked;
+    foreach($athletes as $athlete){
+        if(count($preview)>=$capacity)break;
+        if(isset($seen[$athlete['athleteKey']]))continue;
+        $seen[$athlete['athleteKey']]=true;
+        $preview[]=$athlete;
+    }
+    return array_slice($preview,0,$capacity);
+}
+/** Global public display mode, separate from the Manager's Active fixture. */
+function live_display_state():array {
+    $row=single('SELECT display_mode,updated_at FROM race_live_display WHERE id=1');
+    $mode=($row['display_mode']??'checkin')==='sport'?'sport':'checkin';
+    $started=$row&&$row['updated_at']?strtotime((string)$row['updated_at']):false;
+    return [
+        'mode'=>$mode,
+        'startedAtMs'=>$started!==false?((int)$started*1000):0,
+        'slideSeconds'=>15
+    ];
+}
+
+/**
  * Prepare a public ticker item only from an actually saved event result.
  * The official Staff ranking is stored per event, round and heat in event_results.
  * Never infer winners from check-ins or announce unfinished registrations.
@@ -326,7 +357,7 @@ function live_latest_results():array {
     return $results;
 }
 
-function live_dataset(bool $manager=false):array {
+function live_dataset(bool $manager=false,?string $sportFixtureKey=null):array {
     $schedule=event_schedule_data();
     $roundIndex=live_official_round_index($schedule);
     $heatSlots=live_schedule_heat_slots($schedule);
@@ -409,7 +440,9 @@ function live_dataset(bool $manager=false):array {
             // Display any legacy over-limit check-ins to managers for correction.
             'excessCheckins'=>max(0,$allChecked-$capacity)
         ];
-        $team['athletes']=$manager?$athletes:$present;
+        $team['athletes']=$manager?$athletes:
+            ($sportFixtureKey!==null&&hash_equals($key,$sportFixtureKey)
+                ?live_sport_candidates($athletes,$capacity):$present);
         $teamsByKey[$key][]=$team;
     }
     foreach($fixtures as &$fixture){
@@ -436,7 +469,14 @@ function live_dataset(bool $manager=false):array {
     foreach($fixtures as $index=>$f)if($f['key']===$activeKey){
         $active=$f;$currentIndex=$index;break;
     }
-    $teams=$active?$teamsByKey[$activeKey]:[];
+    $sportFixture=null;
+    if($sportFixtureKey!==null){
+        foreach($fixtures as $fixture)if(hash_equals($fixture['key'],$sportFixtureKey)){
+            $sportFixture=$fixture;break;
+        }
+    }
+    $teams=$sportFixtureKey!==null?
+        ($teamsByKey[$sportFixtureKey]??[]):($active?$teamsByKey[$activeKey]:[]);
     usort($teams,static fn($a,$b)=>
         ($a['heat']<=>$b['heat'])
         ?:(($a['lane']??9999)<=>($b['lane']??9999))
@@ -468,14 +508,14 @@ function live_dataset(bool $manager=false):array {
         $columns[$columnIndex]['totalAthletes']+=(int)$team['totalAthletes'];
         $columns[$columnIndex]['checkedAthletes']+=(int)$team['checkedAthletes'];
         foreach($team['athletes'] as $athlete){
-            if($athlete['checkedAt']===null)continue;
+            if($sportFixtureKey===null&&$athlete['checkedAt']===null)continue;
             $publicAthlete=[
                 'name'=>$athlete['name'],'photo'=>$athlete['photo'],
                 'regId'=>$team['regId'],'school'=>$team['school'],'heat'=>$team['heat'],
                 'checkedAt'=>$athlete['checkedAt']
             ];
             $columns[$columnIndex]['athletes'][]=$publicAthlete;
-            $recent[]=$publicAthlete;
+            if($athlete['checkedAt']!==null)$recent[]=$publicAthlete;
         }
     }
     usort($recent,static fn($a,$b)=>strcmp($b['checkedAt'],$a['checkedAt']));
@@ -491,6 +531,9 @@ function live_dataset(bool $manager=false):array {
     return [
         'success'=>true,
         'serverTime'=>date('c'),
+        'serverNowMs'=>(int)round(microtime(true)*1000),
+        'display'=>live_display_state(),
+        'sportFixture'=>$sportFixture,
         'active'=>$active,
         'activeUpdatedAt'=>$state['updated_at']??null,
         'fixtures'=>$fixtures,
@@ -508,7 +551,26 @@ if($action==='live_state'){
     if(($_SERVER['REQUEST_METHOD']??'')!=='GET')json_out(['success'=>false,'message'=>'GET required'],405);
     json_out(live_dataset(false));
 }
-if(!in_array($action,['live_manager_data','live_select','live_runner_set'],true))return;
+if($action==='live_sport_fixture'){
+    if(($_SERVER['REQUEST_METHOD']??'')!=='GET')json_out(['success'=>false,'message'=>'GET required'],405);
+    if(live_display_state()['mode']!=='sport')
+        json_out(['success'=>false,'message'=>'โหมด Sport ยังไม่เปิดใช้งาน'],409);
+    $key=(string)($_GET['fixtureKey']??'');
+    if(!preg_match('/^[a-f0-9]{64}$/D',$key))
+        json_out(['success'=>false,'message'=>'รหัสรายการแข่งขันไม่ถูกต้อง'],422);
+    $state=live_dataset(false,$key);
+    if(!$state['sportFixture'])
+        json_out(['success'=>false,'message'=>'ไม่พบรายการแข่งขัน'],404);
+    // Only harmless public display fields; no proof, birth dates, citizenship
+    // numbers, private registration keys, or manager-only metadata.
+    json_out([
+        'success'=>true,
+        'fixture'=>$state['sportFixture'],
+        'schools'=>$state['schools'],
+        'display'=>$state['display']
+    ]);
+}
+if(!in_array($action,['live_manager_data','live_select','live_runner_set','live_display_set'],true))return;
 if(!isset($u)||!is_array($u))json_out(['success'=>false,'message'=>'กรุณาเข้าสู่ระบบ'],401);
 require_reviewer($u);
 
@@ -517,6 +579,21 @@ if($action==='live_manager_data'){
     json_out(live_dataset(true));
 }
 must_post();
+
+if($action==='live_display_set'){
+    $mode=trim((string)($input['mode']??''));
+    if(!in_array($mode,['checkin','sport'],true))
+        json_out(['success'=>false,'message'=>'โหมดการแสดงผลไม่ถูกต้อง'],422);
+    db()->prepare("INSERT INTO race_live_display(id,display_mode,updated_by,updated_at)
+        VALUES(1,?,?,NOW()) ON DUPLICATE KEY UPDATE
+        display_mode=VALUES(display_mode),updated_by=VALUES(updated_by),updated_at=NOW()")
+        ->execute([$mode,(int)$u['coachId']]);
+    log_action('LIVE_DISPLAY_MODE',$u,'SportShowcase',$mode,
+        $mode==='sport'?'Show competition carousel':'Restore live check-in board');
+    json_out(['success'=>true,'mode'=>$mode,
+        'message'=>$mode==='sport'?'เปิด Sport แสดงรายการแข่งขันวนอัตโนมัติแล้ว':
+            'กลับสู่หน้าจอ Check-in รายการ Active แล้ว']);
+}
 
 if($action==='live_select'){
     $key=trim((string)($input['fixtureKey']??''));
