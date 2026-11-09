@@ -488,35 +488,51 @@
   // Real, registered athlete pictures in a FIFA-style collectible player card.
   // Official results rank schools: these are representative CURRENT runners,
   // not independently verified individual medal winners.
+  // Championship graphics: a genuine Olympic 2–1–3 podium and portrait
+  // player cards. The official result ranks a SCHOOL; we only say that the
+  // pictured current registrants represent that school, not that each child
+  // individually earned the medal.
   function breakingPortrait(person){
     if(!person?.photo){
-      return '<div class="fifa-portrait-placeholder" aria-label="ยังไม่มีรูปนักกรีฑา">'+
+      return '<div class="fifa-portrait-placeholder" role="img" aria-label="ยังไม่มีรูปนักกรีฑา">'+
         '<span aria-hidden="true">🏃</span><small>ยังไม่มีรูป</small></div>';
     }
-    return '<img src="'+esc(person.photo)+'" alt="ภาพนักกรีฑา '+esc(person.name||'')+
+    const url=esc(person.photo);
+    const name=esc(person.name||'นักกรีฑา');
+    // Blurred background fills the frame while the ORIGINAL vertical photo
+    // remains intact in front (object-fit:contain, NEVER cropped to a square).
+    return '<img class="fifa-photo-backdrop-img" src="'+url+'" alt="" aria-hidden="true" decoding="async">'+
+      '<img class="fifa-photo-foreground" src="'+url+'" alt="นักกรีฑา '+name+
       '" loading="eager" decoding="async" referrerpolicy="no-referrer">';
   }
   function breakingPlayerImages(athletes,relay){
-    if(!athletes.length){
+    const people=Array.isArray(athletes)?athletes.slice(0,relay?4:1):[];
+    if(!people.length){
       return '<div class="fifa-player-portraits is-missing">'+
-        breakingPortrait(null)+'</div>';
+        '<div class="fifa-photo-frame">'+breakingPortrait(null)+'</div></div>';
     }
-    const photos=athletes.slice(0,relay?4:1);
-    return '<div class="fifa-player-portraits '+(relay?'is-relay':'is-solo')+'">'+
-      photos.map(person=>'<div class="fifa-player-photo">'+breakingPortrait(person)+
-        (relay?'<span class="fifa-mini-name">'+esc(person.name||'นักกรีฑา')+'</span>':'')+
-        '</div>').join('')+'</div>';
+    const portraitCards=people.map((person,i)=>
+      '<div class="fifa-player-photo">'+
+        '<div class="fifa-photo-frame">'+breakingPortrait(person)+'</div>'+
+        (relay?'<span class="fifa-mini-name"><b>'+(i+1)+'</b> '+
+          esc(person.name||'นักกรีฑา')+'</span>':'')+
+      '</div>'
+    ).join('');
+    return '<div class="fifa-player-portraits '+(relay?'is-relay':'is-solo')+
+      '" style="--portrait-count:'+people.length+'">'+portraitCards+'</div>';
   }
-  function breakingResultCard(place,relay){
+  function breakingResultCard(place,relay,finalRound=false){
     const rank=Number(place.place);
     const medals={1:'🥇',2:'🥈',3:'🥉'};
     const rankText=rank===1?'อันดับ 1':rank===2?'อันดับ 2':'อันดับ 3';
     const athletes=Array.isArray(place.athletes)?place.athletes.slice(0,relay?4:1):[];
     const caption=athletes.length===1&&!relay?athletes[0].name:
-      athletes.length>0?(relay?'นักกรีฑาทีมผลัด '+athletes.length+' คน':'นักกรีฑาของโรงเรียน'):
+      athletes.length>0?(relay?'นักกรีฑาที่ลงทะเบียน '+athletes.length+' / 4 คน':'นักกรีฑาของโรงเรียน'):
       'ยังไม่มีรูปนักกรีฑาที่ลงทะเบียน';
-    const status=rank===1?'CHAMPION':rank===2?'RUNNER-UP':'THIRD PLACE';
-    return '<article class="race-breaking-card fifa-race-card race-breaking-rank-'+rank+'">'+
+    const medalName=rank===1?'GOLD':rank===2?'SILVER':'BRONZE';
+    const resultLabel=finalRound?medalName+' MEDAL':'QUALIFIED • TOP 3';
+    const card='<article class="race-breaking-card fifa-race-card race-breaking-rank-'+rank+
+      (relay?' is-relay-team':' is-single-runner')+'">'+
       '<div class="fifa-card-header">'+
         '<span class="race-breaking-medal" aria-hidden="true">'+(medals[rank]||'🏅')+'</span>'+
         '<span class="fifa-card-place">'+rankText+'</span>'+
@@ -526,20 +542,24 @@
       '<div class="fifa-card-info">'+
         '<strong class="fifa-card-school">'+esc(place.school)+'</strong>'+
         '<span class="fifa-card-athlete">'+esc(caption)+'</span>'+
-        '<span class="fifa-card-status">'+status+'</span>'+
-      '</div>'+
-      '</article>';
+        '<span class="fifa-card-status">'+resultLabel+'</span>'+
+      '</div></article>';
+    if(!finalRound)return card;
+    return '<div class="race-podium-slot race-podium-rank-'+rank+'">'+card+
+      '<div class="race-podium-base" aria-label="แท่นรับเหรียญอันดับ '+rank+'">'+
+        '<span class="race-podium-number">'+rank+'</span>'+
+        '<span class="race-podium-metal">'+medalName+'</span>'+
+      '</div></div>';
   }
   function repairBreakingImages(){
     const root=el('breakingWinners');
     if(!root)return;
-    root.querySelectorAll('.fifa-player-photo img').forEach(img=>{
+    root.querySelectorAll('.fifa-photo-foreground').forEach(img=>{
       img.addEventListener('error',function(){
-        const fallback=document.createElement('div');
-        fallback.className='fifa-portrait-placeholder';
-        fallback.innerHTML='<span aria-hidden="true">🏃</span><small>ยังไม่มีรูป</small>';
-        fallback.setAttribute('aria-label','ไม่สามารถแสดงภาพนักกรีฑา');
-        this.replaceWith(fallback);
+        const frame=this.closest('.fifa-photo-frame');
+        if(!frame)return;
+        frame.innerHTML='<div class="fifa-portrait-placeholder" role="img" aria-label="ไม่สามารถแสดงภาพนักกรีฑา">'+
+          '<span aria-hidden="true">🏃</span><small>ยังไม่มีรูป</small></div>';
       },{once:true});
     });
   }
@@ -577,7 +597,7 @@
     winners.className='race-breaking-winners '+(finalRound?'is-podium':'is-qualifiers');
     const relay=/ผลัด/.test(String(result.eventName||''))||
       /ผลัด/.test(String(result.category||''));
-    winners.innerHTML=ordered.map(place=>breakingResultCard(place,relay)).join('');
+    winners.innerHTML=ordered.map(place=>breakingResultCard(place,relay,finalRound)).join('');
     repairBreakingImages();
     el('breakingMessage').textContent=finalRound?
       'สุดยอดความสำเร็จ • ขอแสดงความยินดีกับโรงเรียนที่ได้รับรางวัล':

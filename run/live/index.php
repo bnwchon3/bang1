@@ -11,7 +11,7 @@ header('Cache-Control: no-store, private');
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#06162c">
   <title>จอรายงานตัว LIVE | กรีฑากลุ่มโรงเรียนบางละมุง 1</title>
-  <link rel="stylesheet" href="./live.css?v=20261109-result-athlete-cards17">
+  <link rel="stylesheet" href="./live.css?v=20261109-olympic-podium18">
 </head>
 <body>
   <main class="live-screen">
@@ -157,6 +157,6 @@ header('Cache-Control: no-store, private');
       </footer>
     </section>
   </main>
-  <script defer src="./live.js?v=20261109-result-athlete-cards17"></script>
+  <script defer src="./live.js?v=20261109-olympic-podium18"></script>
 </body>
 </html>

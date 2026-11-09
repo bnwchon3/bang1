@@ -22,6 +22,8 @@ jobs:
         run: php .github/scripts/test_drive_bridge_errors.php
       - name: Historical champion persistence and official final selection
         run: php .github/scripts/test_champion_history.php
+      - name: Olympic podium and relay portrait regression
+        run: node .github/scripts/test_breaking_podium.js
       - name: JavaScript syntax
         run: |
           find run -type f -name '*.js' -print0 | xargs -0 -n1 node --check

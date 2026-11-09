@@ -1192,198 +1192,325 @@ body{background:#06162c}
 }
 
 
-/* ============================================================
-   TRACK FLASH / VICTORY MOMENT: athlete photo player cards
-   Main visual = authentic registered pupil portraits. Solo: 1,
-   relay: four individual portraits in a compact 2x2 grid.
-   ============================================================ */
-.race-breaking-card.fifa-race-card,
-.race-breaking.is-final .race-breaking-card.fifa-race-card{
-  position:relative;
-  display:flex;
-  flex-direction:column;
-  justify-content:flex-start;
-  align-items:stretch;
-  gap:0;
-  padding:0;
-  isolation:isolate;
-  border-radius:clamp(16px,1.55vw,25px);
-  background:linear-gradient(160deg,#1f5577 0%,#103254 43%,#071c37 100%);
-  border:2px solid #6ccae8;
-  box-shadow:0 20px 38px #0008,inset 0 1px 0 #d9faff5c;
+/* ===============================================================
+   OLYMPIC VICTORY PODIUM • PREMIUM FIFA / RELAY PLAYER CARDS
+   Gold above Silver and Bronze. Real PORTRAIT photos show ENTIRE
+   image via contain + soft mirrored backdrop, never face cropping.
+   =============================================================== */
+.race-breaking.is-final .race-breaking-winners.is-podium{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.16fr) minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr);
+  gap:clamp(8px,1.45vw,25px);align-items:end;
+  padding:clamp(2px,.6vh,9px) 0 0;overflow:visible;
 }
-.race-breaking-card.fifa-race-card:before{
-  content:"";position:absolute;inset:4px;z-index:-1;
-  border:1px solid #e4fbff26;border-radius:inherit;pointer-events:none;
-  background:
-    radial-gradient(ellipse at 50% 28%,#c1f4ff18,transparent 59%),
-    linear-gradient(115deg,transparent 23%,#ffffff0a 38%,transparent 49%);
+.race-podium-slot{
+  display:flex;flex-direction:column;justify-content:flex-end;
+  height:100%;min-width:0;min-height:0;position:relative;
+  --podium-height:clamp(38px,5.4vh,68px);
+  animation:race-podium-enter .85s cubic-bezier(.22,1,.27,1) both;
+}
+.race-podium-slot.race-podium-rank-1{
+  grid-column:2;grid-row:1;--podium-height:clamp(54px,7.3vh,89px);
+  z-index:3;animation-delay:.14s;
+}
+.race-podium-slot.race-podium-rank-2{
+  grid-column:1;grid-row:1;z-index:2;
+  padding-top:clamp(28px,5.2vh,60px);animation-delay:.29s;
+}
+.race-podium-slot.race-podium-rank-3{
+  grid-column:3;grid-row:1;z-index:1;
+  --podium-height:clamp(29px,4.1vh,51px);
+  padding-top:clamp(45px,8.4vh,91px);animation-delay:.42s;
+}
+.race-breaking.is-final .race-podium-slot>.race-breaking-card.fifa-race-card{
+  width:100%;height:auto;min-height:0;max-height:none;
+  flex:1 1 auto;align-self:stretch;display:flex;
+  margin:0;position:relative;
+}
+.race-podium-base{
+  flex:0 0 var(--podium-height);height:var(--podium-height);
+  display:flex;justify-content:center;align-items:center;gap:clamp(8px,1vw,20px);
+  position:relative;z-index:4;overflow:hidden;
+  background:linear-gradient(160deg,#dbe4fa 0%,#899fbe 43%,#445575 100%);
+  border:1px solid #e3f1ffad;border-top:4px solid #ffffffeb;
+  border-radius:2px 2px 9px 9px;
+  box-shadow:0 10px 20px #0006,inset -9px 0 19px #0002;
+}
+.race-podium-base:before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(110deg,transparent 18%,#fff6 30%,transparent 42%,transparent 68%,#fff2 80%,transparent 89%);
+}
+.race-podium-rank-1 .race-podium-base{
+  background:linear-gradient(160deg,#ffeb9a,#dba43c 46%,#87541f 100%);
+  border-color:#ffe6ab;border-top-color:#fff0aa;
+  box-shadow:0 10px 26px #0008,0 0 26px #ffdf7280,inset -10px 0 20px #7f4b2680;
+}
+.race-podium-rank-3 .race-podium-base{
+  background:linear-gradient(160deg,#e9be93,#ad714b 49%,#6f453b 100%);
+  border-color:#f7d6ba;border-top-color:#ffdab7;
+}
+.race-podium-number{
+  font-weight:1000;font-size:clamp(1.3rem,2.65vw,3.3rem);
+  color:#fff;text-shadow:0 2px 5px #0009;line-height:1;position:relative;
+}
+.race-podium-rank-1 .race-podium-number{color:#fff4bb}
+.race-podium-metal{
+  font-size:clamp(.62rem,1.07vw,1.26rem);letter-spacing:.17em;
+  font-weight:1000;color:#f6fdff;text-shadow:0 1px 4px #0009;position:relative;
+}
+.race-podium-rank-1 .race-podium-metal{color:#fff3be}
+
+/* All player cards remain in one self-contained podium slot. */
+.race-breaking .race-breaking-card.fifa-race-card{
+  flex:1 1 auto;display:flex;flex-direction:column;align-items:stretch;
+  justify-content:flex-start;gap:0;width:100%;height:100%;
+  min-width:0;min-height:0;max-height:none;
+  position:relative;isolation:isolate;padding:0;
+  border-radius:clamp(13px,1.4vw,23px) clamp(13px,1.4vw,23px) 4px 4px;
+  overflow:hidden;
+  border:2px solid #4ddcebdc;
+  background:linear-gradient(155deg,#23577b,#103451 52%,#071e3a);
+  box-shadow:0 12px 30px #0008,inset 0 1px 0 #ffffff45;
+}
+.race-breaking .fifa-race-card:before{
+  content:"";position:absolute;inset:3px;z-index:-1;
+  border:1px solid #ebffff30;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(125deg,transparent 19%,#ffffff19 38%,transparent 52%),
+    radial-gradient(ellipse at 50% 23%,#d5fcff16,transparent 70%);
 }
 .race-breaking.is-final .fifa-race-card.race-breaking-rank-1{
-  border:2.5px solid #ffe18a;
-  background:linear-gradient(151deg,#b08644 0%,#59412a 27%,#513d48 58%,#281b36 100%);
-  box-shadow:0 0 33px #ffd67952,0 20px 42px #0009,inset 0 1px 0 #fffae275;
+  background:linear-gradient(154deg,#9c7437,#634a33 36%,#322844 100%);
+  border:2.5px solid #ffe58b;
+  box-shadow:0 0 36px #ffd86a75,0 16px 32px #000a,inset 0 0 0 2px #ffffff28;
 }
 .race-breaking.is-final .fifa-race-card.race-breaking-rank-2{
-  border-color:#d8e5fe;
-  background:linear-gradient(152deg,#6c82a0,#343d60 48%,#1c2949);
+  background:linear-gradient(155deg,#7087a8,#354a72 42%,#182943);
+  border-color:#cddffd;
 }
 .race-breaking.is-final .fifa-race-card.race-breaking-rank-3{
-  border-color:#dfb18a;
-  background:linear-gradient(152deg,#8b5546,#594457 49%,#27294a);
+  background:linear-gradient(154deg,#a16e59,#604359 46%,#302947);
+  border-color:#dfaa7d;
 }
 .fifa-race-card .fifa-card-header{
-  display:flex;align-items:center;justify-content:space-between;
-  flex:0 0 auto;gap:7px;
-  min-height:clamp(31px,4.6vh,50px);
-  padding:clamp(4px,.6vh,9px) clamp(9px,.85vw,15px);
-  background:linear-gradient(100deg,#ffffff13,#0c274b22);
-  border-bottom:1px solid #f5ffff20;
+  position:relative;z-index:3;flex:0 0 auto;
+  display:flex;justify-content:space-between;align-items:center;gap:7px;
+  min-height:clamp(30px,4.1vh,47px);
+  padding:clamp(3px,.48vh,7px) clamp(8px,.8vw,15px);
+  border-bottom:1px solid #ecfcff2d;background:#08283c48;
 }
 .fifa-race-card .fifa-card-header .race-breaking-medal{
-  display:block;font-size:clamp(1.2rem,2.05vw,2.3rem);
-  line-height:1;filter:drop-shadow(0 3px 8px #0007);
+  display:inline-block;font-size:clamp(1.1rem,2vw,2.2rem);
+  line-height:1;filter:drop-shadow(0 3px 5px #0009);
 }
-.fifa-card-place{font-size:clamp(.76rem,1.12vw,1.3rem);
-  font-weight:1000;color:#e9faff;line-height:1.2}
-.fifa-card-diamond{color:#b6ffe3;font-size:clamp(.8rem,1.35vw,1.6rem)}
-.race-breaking.is-final .race-breaking-rank-1 .fifa-card-diamond{color:#ffe6a0}
+.fifa-race-card .fifa-card-place{
+  color:#fff;font-weight:1000;font-size:clamp(.78rem,1.13vw,1.3rem);
+  white-space:nowrap}
+.fifa-race-card .fifa-card-diamond{color:#ddffae;font-size:clamp(.75rem,1.3vw,1.55rem)}
+.race-breaking.is-final .race-breaking-rank-1 .fifa-card-diamond{color:#ffe48c}
+
+/* Photographs are truly preserved: the original aspect ratio is always
+   visible. A duplicate blurred image creates visual fill without clipping
+   faces or disguising the actual student photo. */
 .fifa-race-card .fifa-player-portraits{
-  width:clamp(105px,78%,355px);
-  flex:1 1 auto;min-height:0;
-  align-self:center;
-  display:grid;grid-template-rows:minmax(0,1fr);
-  align-items:stretch;justify-content:center;
-  padding:clamp(4px,.7vh,11px) 0;
-  position:relative;
+  display:flex;flex:1 1 auto;align-items:stretch;justify-content:center;
+  width:100%;height:auto;max-width:none;min-width:0;min-height:0;
+  padding:clamp(5px,.8vh,10px) clamp(6px,.72vw,12px);
+  gap:clamp(4px,.55vw,10px);position:relative;
 }
 .fifa-race-card .fifa-player-portraits.is-solo{
-  max-width:90%;
+  width:100%;max-width:none;padding-inline:clamp(10px,2vw,30px);
 }
 .fifa-race-card .fifa-player-portraits.is-relay{
-  width:min(97%,425px);
-  grid-template-columns:repeat(2,minmax(0,1fr));
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
   grid-template-rows:repeat(2,minmax(0,1fr));
-  gap:clamp(3px,.5vw,8px);
+  align-content:stretch;justify-content:stretch;
+  gap:clamp(4px,.65vw,9px);padding:clamp(5px,.8vh,10px) clamp(7px,.9vw,15px);
 }
-.fifa-race-card .fifa-player-portraits.is-missing{width:74%}
-.fifa-player-photo{position:relative;min-width:0;min-height:0;
-  overflow:hidden;display:grid;place-items:stretch;
-  border:1.5px solid #ffffff89;border-radius:clamp(9px,.9vw,16px);
-  background:linear-gradient(140deg,#29536a,#0d2441);
-  box-shadow:0 7px 19px #0008;
-  clip-path:polygon(8% 0,92% 0,100% 7%,100% 93%,92% 100%,8% 100%,0 93%,0 7%);
+.fifa-race-card .fifa-player-portraits.is-missing{
+  width:100%;max-width:none;padding-inline:15%;
 }
-.fifa-player-photo:after{
-  content:"";position:absolute;inset:0;pointer-events:none;
-  border-radius:inherit;background:linear-gradient(0deg,#02152a55,transparent 36%);
+.fifa-race-card .fifa-player-photo{
+  display:flex;flex-direction:column;flex:1 1 auto;
+  min-height:0;min-width:0;position:relative;
+  overflow:hidden;
+  border:1.5px solid #e8fbff8c;border-radius:clamp(8px,.9vw,15px);
+  background:linear-gradient(135deg,#2f5b75,#14243d);
+  box-shadow:0 6px 16px #0007;
+  /* Straight-sided frames retain the full portrait unlike clip-path cuts. */
+  clip-path:none;
 }
-.fifa-race-card .fifa-player-photo img{
-  display:block;width:100%;height:100%;min-height:0;
-  object-fit:cover;object-position:center 22%;filter:saturate(1.06) contrast(1.06);
+.fifa-race-card .fifa-player-portraits.is-solo .fifa-player-photo{
+  max-width:min(100%,340px);margin:0 auto;border-width:2px;
 }
-.fifa-player-portraits.is-relay .fifa-player-photo img{object-position:center 15%}
-.fifa-mini-name{
-  position:absolute;bottom:0;left:0;right:0;z-index:1;
-  background:linear-gradient(0deg,#04172cdd,transparent);
-  padding:10px 3px 3px;color:white;text-shadow:0 1px 4px #000;
-  font-size:clamp(.48rem,.66vw,.8rem);font-weight:900;
-  text-align:center;line-height:1.17;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+.fifa-photo-frame{
+  position:relative;flex:1 1 auto;min-height:0;min-width:0;
+  isolation:isolate;overflow:hidden;
+  background:linear-gradient(160deg,#2a596f,#10263f);
 }
-.fifa-portrait-placeholder{
-  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
-  flex-direction:column;gap:7px;text-align:center;
-  background:linear-gradient(150deg,#29506a,#13354d);
-  color:#c8e8f4;
+.fifa-photo-backdrop-img{
+  position:absolute;inset:-9%;width:118%;height:118%;
+  z-index:0;object-fit:cover;
+  filter:blur(18px) brightness(.44) saturate(1.22);
+  transform:scale(1.08);opacity:.88;
 }
-.fifa-portrait-placeholder span{font-size:clamp(1.4rem,3.2vw,3rem);filter:grayscale(.3)}
-.fifa-portrait-placeholder small{font-size:clamp(.53rem,.85vw,1rem);font-weight:850}
+.fifa-photo-foreground{
+  position:absolute;inset:0;width:100%;height:100%;z-index:1;
+  object-fit:contain!important;
+  object-position:center center!important;
+  filter:contrast(1.03) saturate(1.045);
+  background:transparent;display:block;
+}
+.fifa-photo-frame:after{
+  content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+  border:1px solid #ffffff18;
+  background:linear-gradient(0deg,#06132944,transparent 18%,transparent 80%,#ffffff10);
+}
+.fifa-race-card .fifa-mini-name{
+  position:relative;flex:0 0 auto;z-index:2;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  min-height:clamp(22px,3vh,33px);padding:3px 4px;
+  background:linear-gradient(95deg,#082336f8,#16556bd9);
+  color:#e6fbff;font-size:clamp(.49rem,.69vw,.83rem);
+  font-weight:850;text-align:center;line-height:1.13;
+  white-space:normal;overflow:hidden;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  text-overflow:ellipsis;
+}
+.fifa-race-card .fifa-mini-name b{
+  color:#c1ff68;font-size:.75em;
+}
+.fifa-race-card .fifa-portrait-placeholder{
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;
+  width:100%;height:100%;min-height:0;
+  background:radial-gradient(ellipse at 50% 40%,#377187,#18334b 84%);
+  color:#d0e8ef;text-align:center;
+}
+.fifa-portrait-placeholder span{font-size:clamp(1.2rem,2.5vw,2.8rem);filter:grayscale(.3)}
+.fifa-portrait-placeholder small{font-size:clamp(.53rem,.82vw,.94rem);font-weight:850}
+
+/* Footer text is balanced with the photo: no massive unused padding. */
 .fifa-race-card .fifa-card-info{
-  min-width:0;width:100%;flex:0 0 auto;
-  display:flex;align-items:center;justify-content:center;
-  flex-direction:column;gap:clamp(2px,.45vh,5px);
-  text-align:center;padding:clamp(6px,1vh,11px) clamp(9px,.8vw,13px);
-  border-top:1px solid #defaff3d;
-  background:linear-gradient(0deg,#061c32e8,#092946d6);
-  z-index:2;
+  position:relative;z-index:4;flex:0 0 auto;min-width:0;width:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:clamp(2px,.36vh,5px);padding:clamp(5px,.75vh,9px) clamp(7px,.8vw,13px);
+  border-top:1px solid #ffffff40;
+  background:linear-gradient(0deg,#061d33,#0a3552f0);
+  text-align:center;
 }
-.race-breaking.is-final .race-breaking-rank-1 .fifa-card-info{
-  background:linear-gradient(0deg,#30263be8,#5d493acc);
+.race-breaking.is-final .fifa-race-card.race-breaking-rank-1 .fifa-card-info{
+  background:linear-gradient(0deg,#30253a,#6c563cf0);
 }
 .fifa-race-card .fifa-card-info .fifa-card-school{
-  max-width:100%;display:block;
-  font-size:clamp(.94rem,1.55vw,1.85rem);
-  font-weight:1000;line-height:1.2;
-  color:#fff;overflow-wrap:anywhere;
-  max-height:2.5em;overflow:hidden;
+  display:block;max-width:100%;color:#fff;
+  font-size:clamp(.9rem,1.46vw,1.78rem);
+  font-weight:1000;line-height:1.16;max-height:2.4em;overflow:hidden;
+  overflow-wrap:anywhere;
 }
 .fifa-race-card .fifa-card-athlete{
-  max-width:100%;font-size:clamp(.65rem,.97vw,1.15rem);
-  color:#c4ecf6;font-weight:830;line-height:1.24;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:100%;color:#cdeeff;
+  font-size:clamp(.61rem,.93vw,1.1rem);font-weight:850;
+  line-height:1.24;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .fifa-race-card .fifa-card-status{
-  color:#c5ff7f;font-size:clamp(.53rem,.78vw,.9rem);
+  color:#bcff88;font-size:clamp(.53rem,.78vw,.92rem);
   letter-spacing:.1em;font-weight:1000;
 }
-.race-breaking.is-final .fifa-race-card .fifa-card-status{color:#ffe7a0}
-@media(max-width:960px){
- .fifa-race-card .fifa-player-portraits{width:87%}
- .fifa-race-card .fifa-player-portraits.is-relay{width:97%}
- .fifa-race-card .fifa-card-info{padding:5px}
- .fifa-race-card .fifa-card-info .fifa-card-school{font-size:clamp(.78rem,1.9vw,1.2rem)}
- .fifa-race-card .fifa-card-athlete{font-size:clamp(.55rem,1.1vw,.84rem)}
+.race-breaking.is-final .fifa-race-card .fifa-card-status{color:#ffe7ae}
+.fifa-race-card.is-relay-team .fifa-card-athlete{font-size:clamp(.55rem,.86vw,1.02rem)}
+.fifa-race-card.is-relay-team .fifa-player-portraits.is-relay{
+  background:radial-gradient(ellipse at center,#b3ddf50e,transparent 70%);
 }
-@media(max-width:600px) and (orientation:portrait){
+/* Tiny athletic stadium stripes add definition without covering photos. */
+.fifa-race-card .fifa-player-portraits.is-relay .fifa-player-photo:nth-child(1){border-color:#9ce8ec}
+.fifa-race-card .fifa-player-portraits.is-relay .fifa-player-photo:nth-child(2){border-color:#adf9af}
+.fifa-race-card .fifa-player-portraits.is-relay .fifa-player-photo:nth-child(3){border-color:#c4b9fd}
+.fifa-race-card .fifa-player-portraits.is-relay .fifa-player-photo:nth-child(4){border-color:#ffd99a}
+
+@keyframes race-podium-enter{
+ from{opacity:0;transform:translateY(18%) scale(.97);filter:blur(4px)}
+ to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+@media(max-width:960px){
+ .race-breaking.is-final .race-breaking-winners.is-podium{gap:7px}
+ .race-podium-slot.race-podium-rank-2{padding-top:clamp(18px,4.5vh,35px)}
+ .race-podium-slot.race-podium-rank-3{padding-top:clamp(30px,6.7vh,50px)}
+ .fifa-race-card .fifa-card-info{padding:4px 5px}
+ .fifa-race-card .fifa-card-info .fifa-card-school{font-size:clamp(.72rem,1.7vw,1.2rem)}
+ .fifa-race-card .fifa-card-athlete{font-size:clamp(.53rem,1vw,.79rem)}
+ .fifa-race-card .fifa-mini-name{font-size:clamp(.44rem,.72vw,.67rem)}
+}
+@media(max-width:720px) and (orientation:portrait){
+ /* On a narrow phone, preserve readable full portraits instead of squeezing
+    three Olympic columns: champion appears FIRST, then silver and bronze. */
+ .race-breaking.is-final .race-breaking-winners.is-podium{
+   display:flex;flex-direction:column;gap:6px;align-items:stretch;
+   overflow:hidden;min-height:0;
+ }
+ .race-podium-slot,.race-podium-slot.race-podium-rank-1,
+ .race-podium-slot.race-podium-rank-2,.race-podium-slot.race-podium-rank-3{
+   height:auto;min-height:0;flex:1 1 0;padding:0;
+   display:flex;flex-direction:row;align-items:stretch;
+ }
+ .race-podium-slot.race-podium-rank-1{order:0}
+ .race-podium-slot.race-podium-rank-2{order:1}
+ .race-podium-slot.race-podium-rank-3{order:2}
  .race-breaking .race-breaking-card.fifa-race-card,
- .race-breaking.is-final .race-breaking-card.fifa-race-card,
- .race-breaking.is-final .race-breaking-rank-1.fifa-race-card,
- .race-breaking.is-final .race-breaking-rank-3.fifa-race-card{
-   flex:1 1 0;height:auto;min-height:0;
-   display:grid;grid-template-columns:62px minmax(65px,27%) minmax(0,1fr);
-   grid-template-rows:minmax(0,1fr);
-   gap:5px;text-align:left;padding:4px 6px;
+ .race-breaking.is-final .race-podium-slot>.race-breaking-card.fifa-race-card{
+   flex:1 1 auto;min-width:0;width:100%;height:100%;min-height:0;
+   display:grid;grid-template-columns:53px minmax(92px,35%) minmax(0,1fr);
+   grid-template-rows:minmax(0,1fr);gap:4px;
+   padding:3px 4px;border-radius:11px;
  }
  .fifa-race-card .fifa-card-header{
-   grid-column:1;grid-row:1;min-width:0;min-height:0;
-   flex-direction:column;justify-content:center;padding:2px;
-   background:transparent;border:0;gap:3px;
+   grid-column:1;grid-row:1;padding:2px;
+   flex-direction:column;justify-content:center;min-width:0;min-height:0;
+   background:transparent;border:none;gap:4px;
  }
- .fifa-race-card .fifa-card-header .race-breaking-medal{font-size:1.55rem;grid-column:auto;grid-row:auto}
- .fifa-race-card .fifa-card-header .fifa-card-place{font-size:.7rem}
+ .fifa-race-card .fifa-card-header .race-breaking-medal{font-size:1.48rem}
+ .fifa-race-card .fifa-card-place{font-size:.62rem}
  .fifa-race-card .fifa-card-diamond{display:none}
  .fifa-race-card .fifa-player-portraits,
- .fifa-race-card .fifa-player-portraits.is-relay{
-   grid-column:2;grid-row:1;
-   width:100%;max-width:100%;height:100%;min-height:0;
+ .fifa-race-card .fifa-player-portraits.is-solo,
+ .fifa-race-card .fifa-player-portraits.is-relay,
+ .fifa-race-card .fifa-player-portraits.is-missing{
+   grid-column:2;grid-row:1;flex:none;
+   width:100%;max-width:none;height:100%;min-height:0;
    padding:0;gap:2px;
  }
- .fifa-race-card .fifa-card-info{
-   grid-column:3;grid-row:1;
+ .fifa-race-card .fifa-player-photo{border-radius:6px}
+ .fifa-race-card .fifa-mini-name{display:none}
+ .fifa-race-card .fifa-card-info,
+ .race-breaking.is-final .fifa-race-card.race-breaking-rank-1 .fifa-card-info{
+   grid-column:3;grid-row:1;min-height:0;min-width:0;
    justify-content:center;align-items:flex-start;
-   min-height:0;padding:2px 3px;text-align:left;border:0;background:transparent;
+   text-align:left;border:0;background:transparent;
+   padding:2px 3px;gap:4px;
  }
- .race-breaking.is-final .race-breaking-rank-1 .fifa-card-info{background:transparent}
  .fifa-race-card .fifa-card-info .fifa-card-school{
-   grid-column:auto;grid-row:auto;font-size:clamp(.75rem,2.8vw,1rem);
-   line-height:1.15;max-height:3.5em;
+   font-size:clamp(.74rem,2.7vw,1.01rem);max-height:3.5em;
  }
  .fifa-race-card .fifa-card-athlete{
-   grid-column:auto;grid-row:auto;font-size:.62rem;
-   max-width:100%;line-height:1.2;white-space:normal;
+   font-size:.57rem;white-space:normal;
    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
  }
- .fifa-race-card .fifa-card-status{font-size:.51rem}
- .fifa-mini-name{display:none}
- .fifa-portrait-placeholder span{font-size:1.4rem}
- .fifa-portrait-placeholder small{font-size:.54rem}
-}
-@media(max-height:480px) and (orientation:landscape){
- .fifa-race-card .fifa-card-header{min-height:21px;padding:2px 6px}
- .fifa-race-card .fifa-card-info{padding:3px 5px;gap:2px}
- .fifa-race-card .fifa-card-info .fifa-card-school{font-size:clamp(.7rem,1.25vw,1rem)}
- .fifa-race-card .fifa-card-athlete{font-size:clamp(.48rem,.9vw,.72rem)}
  .fifa-race-card .fifa-card-status{font-size:.48rem}
- .fifa-race-card .fifa-player-portraits{padding:2px 0}
+ .race-podium-base{display:none}
+ .fifa-race-card .fifa-photo-frame{border-radius:4px}
 }
+@media(max-height:500px) and (orientation:landscape){
+ .race-podium-base{--podium-height:24px!important;border-top-width:2px}
+ .race-podium-slot.race-podium-rank-2{padding-top:13px}
+ .race-podium-slot.race-podium-rank-3{padding-top:23px}
+ .race-podium-base .race-podium-number{font-size:1rem}
+ .race-podium-base .race-podium-metal{font-size:.6rem}
+ .fifa-race-card .fifa-card-header{min-height:21px;padding:2px 5px}
+ .fifa-race-card .fifa-card-info{padding:3px 4px;gap:2px}
+ .fifa-race-card .fifa-card-info .fifa-card-school{font-size:clamp(.65rem,1.2vw,.85rem)}
+ .fifa-race-card .fifa-card-athlete{font-size:clamp(.5rem,.8vw,.65rem)}
+ .fifa-race-card .fifa-mini-name{min-height:14px;font-size:.45rem}
+ .fifa-race-card .fifa-player-portraits{padding:3px 5px}
+}
+@media(prefers-reduced-motion:reduce){
+ .race-podium-slot{animation:none!important}
+}
+
