@@ -161,6 +161,50 @@ function live_athlete_rows(array $reg,array $runnerMap,array $checks):array {
     }
     return $athletes;
 }
+/**
+ * Prepare a public ticker item only from an actually saved event result.
+ * The official Staff ranking is stored per event, round and heat in event_results.
+ * Never infer winners from check-ins or announce unfinished registrations.
+ */
+function live_recent_result_item(array $row):?array {
+    $eventName=trim((string)($row['event_name']??''));
+    $ranking=json_decode((string)($row['ranking_json']??''),true);
+    if($eventName===''||!is_array($ranking))return null;
+    $places=[];
+    for($rank=1;$rank<=3;$rank++){
+        $school=trim((string)($ranking[(string)$rank]??$ranking[$rank]??''));
+        if($school!==''){
+            $places[]=['place'=>$rank,'school'=>$school];
+        }
+    }
+    if(!$places)return null;
+    $round=(string)($row['round_type']??'');
+    if(!in_array($round,['คัดเลือก','ชิงชนะเลิศ'],true))$round='คัดเลือก';
+    return [
+        'eventId'=>(int)($row['event_id']??0),
+        'eventName'=>$eventName,
+        'round'=>$round,
+        'heat'=>(int)($row['heat_no']??1),
+        'places'=>$places,
+        'updatedAt'=>(string)($row['updated_at']??'')
+    ];
+}
+function live_latest_results():array {
+    $results=[];
+    // Latest first. Only official Staff-saved results, no unsaved fixture rankings.
+    $saved=rows(
+        'SELECT r.event_id,r.round_type,r.heat_no,r.ranking_json,r.updated_at,e.name AS event_name
+         FROM event_results r INNER JOIN events e ON e.id=r.event_id
+         ORDER BY r.updated_at DESC,r.id DESC LIMIT 32'
+    );
+    foreach($saved as $record){
+        $item=live_recent_result_item($record);
+        if($item!==null)$results[]=$item;
+        if(count($results)>=8)break;
+    }
+    return $results;
+}
+
 function live_dataset(bool $manager=false):array {
     $order=[];
     foreach(rows('SELECT id,name,category,level,gender,source_order,remark,stage FROM events ORDER BY COALESCE(source_order,999999),id') as $e){
@@ -298,6 +342,7 @@ function live_dataset(bool $manager=false):array {
         'teams'=>$teams,
         'recent'=>array_slice($recent,0,10),
         'next'=>$nextFixtures,
+        'latestResults'=>live_latest_results(),
         'nextTeams'=>$nextTeams,
         'isManager'=>$manager
     ];
