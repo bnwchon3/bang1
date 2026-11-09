@@ -87,23 +87,89 @@
 #admin-sheet-schools td [data-school-name],
 #admin-sheet-schools td [data-school-nickname]{min-width:150px;max-width:260px}
 
-/* Ten-column Check-in: compact flags beside the team title, not over photos. */
+/* Live Check-in board: school HEADER remains text-only. Wide flag is the
+   intentional placeholder inside the empty column, never beside its name.
+   The board stays within the projector viewport without any scrolling. */
 .live-screen .school-column .school-name{
- display:flex;flex-direction:column;align-items:center;
- justify-content:center;gap:2px;padding:2px 2px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;padding:4px 3px;
 }
 .live-screen .school-name-main{
- min-width:0;width:100%;display:flex;
- align-items:center;justify-content:center;gap:3px;
+  min-width:0;width:100%;display:flex;align-items:center;
+  justify-content:center;text-align:center;
 }
 .live-screen .school-name-main .school-name-text{
- flex:1 1 auto;min-width:0;width:auto;
- line-height:1.12;
+  flex:1 1 auto;min-width:0;width:100%;line-height:1.15;
 }
-.live-screen .school-flag-heading{
- --school-flag-w:32px;--school-flag-h:23px;
+.live-screen .school-column .school-empty-state{
+  flex:1 1 auto;min-height:0;min-width:0;overflow:hidden;
+  width:100%;
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:center;
+  gap:clamp(8px,1.7vh,21px);
+  padding:clamp(5px,.72vw,13px) clamp(3px,.5vw,10px);
+  text-align:center;
+  background:linear-gradient(180deg,#ddffe5,#effff2);
 }
-.live-screen .school-flag-heading .school-flag-empty{display:none}
+.live-screen .school-column .school-empty-state.is-no-entry{
+  background:linear-gradient(180deg,#f7f9fc,#eff3f8);
+}
+.live-screen .school-empty-crest{
+  width:100%;height:auto;min-height:0;
+  display:flex;align-items:center;justify-content:center;
+  overflow:visible;flex:0 1 auto;
+}
+.live-screen .school-flag-empty-body{
+  --school-flag-w:100%;
+  --school-flag-h:clamp(58px,10.8vw,146px);
+  width:100%;max-width:100%;
+  height:var(--school-flag-h);
+  margin:0;
+  filter:drop-shadow(0 10px 12px #163f5760);
+}
+.live-screen .school-flag-empty-body .school-flag-fabric{
+  padding:4% 9% 4% 6%;
+  border-width:1.5px;
+}
+.live-screen .school-flag-empty-body .school-flag-logo{
+  width:100%;height:100%;object-fit:contain;
+  max-width:100%;max-height:100%;
+}
+.live-screen .school-empty-emblem-fallback{
+  width:min(100%,130px);height:clamp(61px,8.2vw,102px);
+  display:grid;place-items:center;font-size:clamp(1.9rem,3.2vw,3.7rem);
+  border-radius:15px;border:1px dashed #a6c9dd;
+  background:linear-gradient(145deg,#dceaf0,#f1f8fb);
+  color:#7690a4;
+}
+.live-screen .school-empty-caption{
+  max-width:100%;font-weight:950;line-height:1.28;
+  font-size:clamp(.8rem,1.05vw,1.3rem);
+  letter-spacing:-.02em;overflow-wrap:anywhere;
+  color:#096c4c;
+  padding:0 2px;
+}
+.live-screen .school-empty-state.is-no-entry .school-empty-caption{
+  color:#62778b;
+}
+.live-screen .school-column.is-not-entered .school-name{
+  background:#f2f6fc;color:#0a2b4c;
+}
+@media(max-width:950px){
+ .live-screen .school-flag-empty-body{
+   --school-flag-h:clamp(42px,9.3vw,90px);
+ }
+ .live-screen .school-empty-caption{font-size:clamp(.62rem,1.1vw,.85rem)}
+ .live-screen .school-column .school-empty-state{gap:7px;padding:4px 2px}
+}
+@media(max-height:500px){
+ .live-screen .school-flag-empty-body{
+   --school-flag-h:clamp(30px,12vh,58px);
+ }
+ .live-screen .school-empty-emblem-fallback{height:40px;font-size:1.4rem}
+ .live-screen .school-column .school-empty-state{gap:3px}
+ .live-screen .school-empty-caption{font-size:clamp(.57rem,1vw,.8rem)}
+}
 
 /* Sport hero: school flag sits before its NAME, below the athletes, so no face
    is covered. Rival flags stay small and aligned with their names. */

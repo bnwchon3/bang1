@@ -37,16 +37,26 @@
       '<img class="school-flag-logo" src="'+esc(url)+'" alt="" loading="eager" decoding="async">'+
       '</span></span>';
   }
-  // One error handler for refreshed Live and Sport card nodes.
-  // A missing file falls back to the school NAME, never a broken image icon.
+  // A missing or removed file never leaves a broken-image indicator.
+  // Keep a neutral icon and readable status inside empty Check-in columns.
   document.addEventListener('error',event=>{
     const image=event.target;
-    if(image?.matches?.('.school-flag-logo')){
-      image.closest('.school-flag')?.remove();
-    }
+    if(!image?.matches?.('.school-flag-logo'))return;
+    const flag=image.closest('.school-flag');
+    if(!flag)return;
+    const empty=flag.closest('.school-empty-state');
+    if(empty){
+      const placeholder=document.createElement('div');
+      placeholder.className='school-empty-emblem-fallback';
+      placeholder.textContent='🏫';
+      placeholder.setAttribute('aria-hidden','true');
+      flag.replaceWith(placeholder);
+    }else flag.remove();
   },true);
   function schoolCell(school,sport=false){
     const athletes=Array.isArray(school.athletes)?school.athletes:[];
+    // This is the server's REGISTERED entry flag, not the athlete check-in
+    // status. Only checked-in athletes are sent to the public Check-in board.
     const entered=Boolean(school.registered);
     const count=athletes.length;
     const layout=count<=1?'count-1':count===2?'count-2':
@@ -59,14 +69,26 @@
         heats.map(h=>'<span class="school-heat-badge '+(h===1?'heat-one':h===2?'heat-two':'heat-other')+
           '" aria-label="ฮีทที่ '+h+'" title="ฮีทที่ '+h+'">'+h+'</span>').join('')+
         '</span>':'';
-    return '<section class="school-column'+(entered?' is-entered':'')+'">'+
-      '<header class="school-name"><span class="school-name-main">'+
-      schoolFlag(school.logo,'heading')+
-      '<span class="school-name-text">'+
-      esc(String(school.name||'').replace(/^โรงเรียน/u,''))+'</span></span>'+badges+'</header>'+
-      '<div class="school-athletes '+layout+'" style="--athlete-rows:'+rows+'">'+
-      (count?athletes.map(a=>athleteCard(a,sport)).join(''):
-        '<span class="no-athletes">'+(entered?(sport?'รอภาพนักกรีฑา':'รอรายงานตัว'):'')+'</span>')+
+    const schoolName=esc(String(school.name||'').replace(/^โรงเรียน/u,''));
+    // The school title is ALWAYS text-only. A large logo belongs in the
+    // content panel while it is empty, and is hidden on the first check-in.
+    const header='<header class="school-name"><span class="school-name-main">'+
+      '<span class="school-name-text">'+schoolName+'</span></span>'+badges+'</header>';
+    if(count){
+      return '<section class="school-column'+(entered?' is-entered':'')+'">'+header+
+        '<div class="school-athletes '+layout+'" style="--athlete-rows:'+rows+'">'+
+          athletes.map(a=>athleteCard(a,sport)).join('')+
+        '</div></section>';
+    }
+    const label=entered?(sport?'รอภาพนักกรีฑา':'รอรายงานตัว'):'ไม่ได้ส่งแข่ง';
+    const crest=school.logo?
+      schoolFlag(school.logo,'empty-body'):
+      '<div class="school-empty-emblem-fallback" aria-hidden="true">🏫</div>';
+    return '<section class="school-column'+(entered?' is-entered':'')+
+      (entered?' is-waiting':' is-not-entered')+'">'+header+
+      '<div class="school-empty-state '+(entered?'is-waiting':'is-no-entry')+'">'+
+        '<div class="school-empty-crest">'+crest+'</div>'+
+        '<div class="school-empty-caption">'+esc(label)+'</div>'+
       '</div></section>';
   }
   function paintSchools(schools,sport=false){
