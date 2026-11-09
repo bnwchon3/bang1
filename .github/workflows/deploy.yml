@@ -119,7 +119,8 @@ jobs:
             --connect-timeout 15 --max-time 45 "${BASE%/}/live/" > /tmp/bang1-live-page.html
           grep -q 'schoolGrid' /tmp/bang1-live-page.html
           grep -q 'nextFixture' /tmp/bang1-live-page.html
+          grep -q 'latestResultTicker' /tmp/bang1-live-page.html
           curl --fail-with-body --silent --show-error --retry 2 \
             --connect-timeout 15 --max-time 45 "${BASE%/}/api.php?action=live_state" > /tmp/bang1-live-check.json
-          jq -e '.success == true and (.fixtures | type == "array") and (.next | type == "array") and (.schools | length == 10) and (.schools | all((.registered | type == "boolean") and (.athletes | type == "array") and (.totalAthletes | type == "number")))' /tmp/bang1-live-check.json >/dev/null
-          jq '{success,fixture_count:(.fixtures|length),school_columns:(.schools|length),checked_people:(.active.checked // 0)}' /tmp/bang1-live-check.json
+          jq -e '.success == true and (.fixtures | type == "array") and (.next | type == "array") and (.latestResults | type == "array") and (.schools | length == 10) and (.schools | all((.registered | type == "boolean") and (.athletes | type == "array") and (.totalAthletes | type == "number")))' /tmp/bang1-live-check.json >/dev/null
+          jq '{success,fixture_count:(.fixtures|length),school_columns:(.schools|length),recent_results:(.latestResults|length)}' /tmp/bang1-live-check.json
