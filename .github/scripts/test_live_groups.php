@@ -54,3 +54,25 @@ check($athletes[0]['photo']==='https://example.org/athlete101.jpg',
 check(!isset($athletes[0]['citizen_id']),'Do not expose identification numbers');
 echo "PASS per-athlete checkbox roster, photos, and ten-school grid\n";
 
+
+
+// Ticker must use ONLY saved official rankings. Unranked results are not news.
+$official=[
+    'event_id'=>82,'event_name'=>'วิ่งผลัด 4x100 เมตร (16 ปี หญิง)',
+    'round_type'=>'ชิงชนะเลิศ','heat_no'=>1,
+    'ranking_json'=>json_encode(['1'=>'โรงเรียนบ้านนาวัง','2'=>'โรงเรียนอนุบาลบางละมุง','3'=>'โรงเรียนบ้านทุ่งกราด'],JSON_UNESCAPED_UNICODE),
+    'updated_at'=>'2026-11-09 10:59:00'
+];
+$recent=live_recent_result_item($official);
+check(is_array($recent),'A Staff-saved ranking must become a public ticker result');
+check($recent['eventId']===82 && $recent['heat']===1,'Result must preserve event/heat');
+check($recent['round']==='ชิงชนะเลิศ','Result must show the official round');
+check(count($recent['places'])===3 && $recent['places'][0]['place']===1,
+    'The latest result must display podium ranking in its saved order');
+check($recent['places'][0]['school']==='โรงเรียนบ้านนาวัง',
+    'The first-place school must come from the saved ranking');
+$empty=$official;$empty['ranking_json']='{}';
+check(live_recent_result_item($empty)===null,'Do not announce an unranked result');
+$corrupt=$official;$corrupt['ranking_json']='this is not JSON';
+check(live_recent_result_item($corrupt)===null,'Corrupt ranking must not appear publicly');
+echo "PASS latest official result ticker ranking, round, heat, and no fake results\n";
