@@ -1,34 +1,194 @@
-/* Ten-column athletics race call board — TV and projector first. */
-:root{font-family:"Noto Sans Thai","Sarabun",Tahoma,system-ui,sans-serif;color:#101010;font-synthesis:none}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;height:100%;width:100%;background:white}
-body{overflow:hidden}
-.live-screen{height:100dvh;min-height:420px;display:flex;flex-direction:column;overflow:hidden;background:#fff}
-.event-number{background:#0808ec;color:#09f500;flex:none;display:flex;align-items:center;justify-content:center;text-align:center;min-height:clamp(75px,15vh,155px);padding:12px 16px;font-size:clamp(2rem,5vw,6.4rem);font-weight:900;line-height:1.06}
-.event-number strong{font-variant-numeric:tabular-nums;margin-left:10px}
-.event-banner{flex:none;display:grid;grid-template-columns:minmax(0,1fr) clamp(195px,20vw,410px);min-height:clamp(105px,19vh,210px);background:#ff9c00;border-top:2px solid #ffd58a}
-.event-banner h1{font-size:clamp(1.6rem,4.7vw,5.8rem);font-weight:900;line-height:1.12;letter-spacing:-.015em;color:#030303;margin:0;padding:14px 22px;display:flex;align-items:center;overflow-wrap:anywhere}
-.round-label{display:flex;align-items:center;justify-content:center;text-align:center;background:#f9fc00;border-left:2px solid #d98d00;color:#0808e8;padding:10px 16px;font-size:clamp(1.45rem,3vw,4.2rem);line-height:1.15;font-weight:900;white-space:normal}
-.event-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 14px;background:#f0f2f5;border-top:1px solid #222;border-bottom:2px solid #1c1c1c;min-height:36px;color:#343434;font-size:clamp(.75rem,1vw,.98rem);font-weight:700;flex:none}
-#checkedCount{color:#087846;white-space:nowrap}
-.school-board{min-height:0;flex:1 1 auto;overflow-x:auto;overflow-y:hidden;overscroll-behavior:contain;background:#fff}
-.school-grid{height:100%;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));min-width:1180px}
-.school-column{min-width:0;min-height:0;display:flex;flex-direction:column;border-left:2px solid #171717}
-.school-column:last-child{border-right:2px solid #171717}
-.school-name{flex:0 0 auto;min-height:54px;padding:8px 5px 6px;display:flex;align-items:center;justify-content:center;text-align:center;border-bottom:2px solid #111;background:#fff;color:#e11e1e;font-size:clamp(.75rem,1.1vw,1.22rem);font-weight:850;line-height:1.23;overflow-wrap:anywhere}
-.school-athletes{min-height:0;flex:1 1 auto;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#aaa #fff;overscroll-behavior:contain;padding:6px 5px 12px;display:flex;flex-direction:column;align-items:center;gap:7px}
-.athlete{width:100%;display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px 4px 9px;border:1px solid #d1d5db;border-radius:9px;background:#f8f9fc;text-align:center;animation:athlete-in .3s ease-out}
-.athlete img{display:block;width:clamp(55px,5.3vw,98px);height:clamp(70px,7.5vw,119px);object-fit:cover;object-position:50% 18%;border:2px solid #ddd;border-radius:7px;background:#e5e7eb}
-.athlete .portrait-placeholder{display:grid;place-items:center;width:clamp(55px,5.3vw,98px);height:clamp(70px,7.5vw,119px);border-radius:7px;background:#dbeafe;color:#1e40af;font-size:2rem}
-.athlete-name{width:100%;font-size:clamp(.75rem,1vw,1.12rem);font-weight:750;line-height:1.36;color:#0b1220;overflow-wrap:anywhere}
-.athlete-id{font-size:clamp(.62rem,.76vw,.8rem);color:#606e7b}
-.no-athletes{min-height:24px}
-.loading{grid-column:1/-1;align-self:center;justify-self:center;color:#475569;font-weight:700;padding:24px}
-.live-footer{flex:0 0 auto;min-height:32px;border-top:2px solid #222;background:#efefef;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:5px 10px;color:#313131;font-size:clamp(.65rem,.77vw,.9rem)}
-#connection{white-space:nowrap;color:#b45309;font-weight:750}
-#connection.connected{color:#087b4e}
-.live-footer button{border:1px solid #888;background:#fff;border-radius:6px;font:inherit;padding:3px 7px;white-space:nowrap;cursor:pointer}
-@keyframes athlete-in{from{transform:translateY(9px);opacity:.3}to{transform:translateY(0);opacity:1}}
-@media(min-width:1800px){.school-grid{min-width:0}.school-athletes{gap:10px;padding:10px}.athlete{padding:8px 6px}.school-name{min-height:60px}}
-@media(max-width:900px){.event-number{font-size:clamp(1.75rem,6vw,3rem);min-height:66px}.event-banner{grid-template-columns:minmax(0,1fr) minmax(100px,27%);min-height:93px}.event-banner h1{font-size:clamp(1.35rem,3.9vw,2.8rem);padding:10px}.round-label{font-size:clamp(1rem,3.2vw,1.7rem)}.school-grid{min-width:1100px}.event-meta{font-size:.73rem}.footer-brand{display:none}.school-name{font-size:.89rem}}
-@media(prefers-reduced-motion:reduce){.athlete{animation:none}}
+/* Banglamung Athletics • projector-fit live matrix v3
+   A single viewport without horizontal/vertical scrolling at any zoom size. */
+:root{
+  font-family:"Noto Sans Thai","Sarabun",Tahoma,system-ui,sans-serif;
+  color:#f2f9ff;background:#06162c;font-synthesis:none;
+  --ink:#07172d;--navy:#071e3b;--cyan:#35d7f6;--lime:#bbfa45;--gold:#ffd65b;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
+body{background:#06162c}
+.live-screen{
+  display:grid;
+  grid-template-rows:auto auto auto minmax(0,1fr) auto auto;
+  height:100vh;height:100dvh;min-height:0;width:100%;
+  overflow:hidden;background:#e9eff3;
+}
+.event-number{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  gap:clamp(7px,1.1vw,18px);overflow:hidden;
+  background:linear-gradient(115deg,#05132c 0%,#052a59 55%,#06182c 100%);
+  color:#b8ff50;
+  border-bottom:3px solid #00c8ea;
+  min-height:0;height:clamp(55px,9.2vh,104px);
+  padding:5px 16px;text-align:center;
+  font-size:clamp(1.3rem,3.6vw,4.25rem);font-weight:900;letter-spacing:-.02em;line-height:1.08;
+}
+.event-number::before,.event-number::after{
+  content:"";position:absolute;top:-90%;width:11vw;height:330%;
+  transform:skewX(-23deg);pointer-events:none;background:rgba(37,211,249,.08)
+}
+.event-number::before{left:7%}.event-number::after{right:12%}
+.event-number strong{font-variant-numeric:tabular-nums;font-size:1.1em;text-shadow:0 0 18px #a1ff4b66}
+.event-banner{
+  display:grid;grid-template-columns:minmax(0,1fr) clamp(118px,19%,330px);
+  min-height:0;height:clamp(87px,15.8vh,165px);
+  background:linear-gradient(120deg,#f9a51f,#ffc65c);border-bottom:2px solid #102744;
+}
+.event-banner h1{
+  min-width:0;margin:0;padding:clamp(9px,1.35vw,22px);
+  display:flex;align-items:center;overflow:hidden;
+  font-size:clamp(1.3rem,4.05vw,5rem);font-weight:950;line-height:1.08;
+  letter-spacing:-.035em;color:#092038;overflow-wrap:anywhere;
+}
+.round-label{
+  min-width:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;color:#e9feff;background:linear-gradient(130deg,#174aaf,#0879be);
+  border-left:3px solid #092d54;padding:8px;
+  font-size:clamp(1.08rem,2.4vw,3.4rem);font-weight:950;line-height:1.12;
+}
+.event-meta{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:0;
+  background:#0b2f4e;border-bottom:2px solid #0ac8a4;
+  color:#e5f8ff;padding:5px clamp(8px,.85vw,14px);height:clamp(28px,4vh,45px);
+  font-size:clamp(.69rem,1.02vw,1.13rem);font-weight:750;
+  white-space:nowrap;overflow:hidden;
+}
+#fixtureMeta{overflow:hidden;text-overflow:ellipsis}
+#checkedCount{white-space:nowrap;color:#a9ffdb}
+.school-board{min-height:0;min-width:0;overflow:hidden;background:#fff}
+.school-grid{
+  width:100%;height:100%;min-width:0;min-height:0;
+  display:grid;grid-template-columns:repeat(10,minmax(0,1fr));
+  overflow:hidden;
+}
+.school-column{
+  position:relative;min-width:0;min-height:0;
+  display:flex;flex-direction:column;overflow:hidden;
+  background:#fff;border-right:1px solid #b3c7d4;
+  isolation:isolate;
+}
+.school-column:first-child{border-left:1px solid #b3c7d4}
+.school-column.is-entered{
+  background:linear-gradient(180deg,#d5ffdc 0%,#effff2 100%);
+  border-right-color:#4ebf83;
+}
+.school-name{
+  min-width:0;flex:none;min-height:0;height:clamp(43px,6vh,72px);
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:5px 3px;overflow:hidden;
+  color:#0a2b4c;background:#f2f6fc;border-bottom:2px solid #ccd9e4;
+  font-size:clamp(.65rem,1.06vw,1.35rem);font-weight:900;line-height:1.16;overflow-wrap:anywhere;
+}
+.school-column.is-entered .school-name{
+  color:#f5fff9;background:linear-gradient(160deg,#047a57,#08ad69);
+  border-bottom:3px solid #00d29d;
+}
+.school-athletes{
+  min-height:0;min-width:0;flex:1;display:grid;
+  grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);
+  gap:clamp(3px,.35vw,8px);padding:clamp(3px,.4vw,9px);
+  overflow:hidden;align-items:stretch;justify-items:stretch;
+}
+.school-athletes.count-2{grid-template-rows:repeat(2,minmax(0,1fr))}
+.school-athletes.count-3,.school-athletes.count-4{
+  grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr))
+}
+.school-athletes.count-5,.school-athletes.count-6{
+  grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr))
+}
+.athlete{
+  min-width:0;min-height:0;max-height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:stretch;
+  gap:clamp(2px,.25vw,5px);padding:clamp(3px,.34vw,7px);
+  border-radius:clamp(6px,.65vw,12px);border:1px solid #69cc99;
+  background:linear-gradient(180deg,#f9fffc,#e1fbed);
+  box-shadow:0 3px 12px #14714911;overflow:hidden;
+}
+.athlete-portrait{
+  display:flex;align-items:center;justify-content:center;min-height:0;min-width:0;
+  width:100%;height:100%;flex:1 1 auto;
+  border-radius:clamp(4px,.4vw,9px);overflow:hidden;background:#cce8dc;
+}
+.athlete-portrait img{
+  width:100%;height:100%;display:block;object-fit:cover;object-position:center 18%;
+}
+.portrait-placeholder{width:100%;height:100%;display:grid;place-items:center;background:#e0f2e9;color:#006e51;font-size:clamp(1rem,2.6vw,3rem)}
+.athlete-name{
+  flex:0 0 auto;min-width:0;width:100%;max-height:29%;
+  overflow:hidden;text-align:center;overflow-wrap:anywhere;
+  color:#092b37;font-size:clamp(.59rem,.93vw,1.12rem);
+  font-weight:900;line-height:1.16;
+}
+.school-athletes.count-3 .athlete-name,
+.school-athletes.count-4 .athlete-name,
+.school-athletes.count-5 .athlete-name,
+.school-athletes.count-6 .athlete-name{
+  font-size:clamp(.48rem,.64vw,.88rem);line-height:1.1;max-height:37%;
+}
+.school-athletes.count-1 .athlete{
+  padding:clamp(5px,.6vw,13px);border-width:2px;
+  box-shadow:0 6px 20px #1c94451f;
+}
+.school-athletes.count-1 .athlete-portrait{border:1px solid #91deb4}
+.school-athletes.count-1 .athlete-name{font-size:clamp(.78rem,1.18vw,1.55rem);line-height:1.27;max-height:24%;padding:3px 0}
+.no-athletes{display:flex;align-items:center;justify-content:center;min-height:0;color:#0c7953;font-weight:700;font-size:clamp(.58rem,.85vw,.95rem)}
+.school-column:not(.is-entered) .no-athletes{color:transparent}
+.up-next{
+  display:grid;grid-template-columns:auto minmax(0,1fr) clamp(145px,23%,390px);
+  align-items:center;gap:clamp(7px,1.2vw,19px);
+  height:clamp(60px,10.2vh,115px);min-height:0;overflow:hidden;
+  background:linear-gradient(110deg,#08213c,#103959 72%,#0c5d70);
+  border-top:3px solid #3ee1db;border-bottom:2px solid #133f5d;
+  padding:6px clamp(10px,1.4vw,28px);color:#effdff;
+}
+.next-icon{width:clamp(34px,4vw,65px);height:clamp(34px,4vw,65px);border-radius:14px;background:#15cca833;display:grid;place-items:center;font-size:clamp(1.25rem,2.4vw,2.35rem)}
+.next-description{display:flex;flex-direction:column;min-width:0;gap:1px}
+.next-eyebrow{font-size:clamp(.65rem,.89vw,.98rem);color:#6bfadd;letter-spacing:.06em;font-weight:900}
+.next-accent{letter-spacing:0;color:#92cad9;font-weight:600}
+.next-description strong{font-size:clamp(.94rem,1.66vw,1.9rem);line-height:1.19;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#nextMeta{font-size:clamp(.64rem,.84vw,.96rem);color:#a4c8d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.next-progress{min-width:0;display:flex;flex-direction:column;gap:7px}
+.next-progress-numbers{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#a8f3df;font-size:clamp(.68rem,.93vw,1.04rem)}
+.next-progress-numbers strong{color:#bbff61;font-weight:900;font-size:clamp(1.04rem,1.7vw,2.15rem);font-variant-numeric:tabular-nums;white-space:nowrap}
+.next-track{height:clamp(7px,1vh,12px);border-radius:50px;background:#194967;overflow:hidden}
+.next-fill{height:100%;width:0%;background:linear-gradient(90deg,#15caa8,#b6f54b);transition:width .45s ease;border-radius:50px}
+.live-footer{
+  flex:none;display:flex;align-items:center;justify-content:space-between;gap:9px;
+  height:clamp(25px,3.5vh,40px);min-height:0;overflow:hidden;
+  padding:3px 10px;background:#06152a;color:#a9c2d2;
+  font-size:clamp(.61rem,.77vw,.94rem);
+}
+#connection{color:#facc6d;white-space:nowrap;font-weight:900}
+#connection.connected{color:#5cfdc5}
+.live-footer button{
+  cursor:pointer;border:1px solid #476788;border-radius:6px;
+  background:#0e3755;color:#e7faff;font:inherit;padding:3px 7px;white-space:nowrap;
+}
+@media(max-width:980px){
+  .event-number{font-size:clamp(1rem,3.9vw,2.5rem)}
+  .event-banner{grid-template-columns:minmax(0,1fr) clamp(92px,21%,185px)}
+  .event-banner h1{font-size:clamp(.98rem,3.4vw,2.9rem)}
+  .round-label{font-size:clamp(.88rem,2.4vw,1.85rem)}
+  .school-name{font-size:clamp(.43rem,1.1vw,.83rem);padding:3px 1px}
+  .school-athletes{padding:2px;gap:2px}
+  .athlete{padding:2px;border-radius:3px}
+  .athlete-name{font-size:clamp(.4rem,.82vw,.66rem)}
+  .school-athletes.count-1 .athlete-name{font-size:clamp(.44rem,1vw,.87rem)}
+  .school-athletes.count-3 .athlete-name,.school-athletes.count-4 .athlete-name,.school-athletes.count-5 .athlete-name,.school-athletes.count-6 .athlete-name{font-size:clamp(.34rem,.65vw,.57rem)}
+  .footer-brand{display:none}
+}
+@media(max-width:600px){
+  .event-number{height:8.5vh}
+  .event-banner{height:15vh}
+  .event-meta{font-size:.58rem;padding:3px 5px}
+  .school-name{height:clamp(41px,7.5vh,59px);font-size:clamp(.36rem,1.6vw,.59rem);line-height:1.1}
+  .next-description strong{font-size:.84rem}
+  .next-accent,#nextMeta{display:none}
+  .up-next{grid-template-columns:auto minmax(0,1fr) 95px;gap:5px;padding:4px}
+  .next-progress-numbers span{display:none}
+  .next-progress-numbers{justify-content:flex-end}
+  .next-progress-numbers strong{font-size:.85rem}
+  .athlete-name{font-size:clamp(.32rem,1.45vw,.54rem)!important}
+}
+@media(prefers-reduced-motion:reduce){.next-fill{transition:none}}
