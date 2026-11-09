@@ -99,8 +99,18 @@ function live_school_columns(array $schoolRows,array $registrations):array {
 /** Safe, display-only public photo URLs. Never include ID-card/proof attachments. */
 function live_photo_url(string $value):?string {
     $value=trim($value);
-    if($value==='')return null;
-    return safe_url($value);
+    $url=$value===''?null:safe_url($value);
+    if(!$url)return null;
+    $parts=parse_url($url);
+    if(strtolower((string)($parts['host']??''))==='drive.google.com'){
+        $query=[];parse_str((string)($parts['query']??''),$query);
+        $id=(string)($query['id']??'');
+        if($id==='' && preg_match('~/(?:file/d|d)/([A-Za-z0-9_-]{15,})(?:/|$)~',
+                                  (string)($parts['path']??''),$match))$id=$match[1];
+        if(preg_match('/^[A-Za-z0-9_-]{15,}$/D',$id))
+            return 'https://drive.google.com/thumbnail?id='.rawurlencode($id).'&sz=w800';
+    }
+    return $url;
 }
 function live_athlete_rows(array $reg,array $runnerMap,array $checks):array {
     $ids=array_map('trim',explode(',',(string)($reg['runner_ids']??'')));
