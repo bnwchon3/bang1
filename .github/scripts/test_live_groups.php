@@ -76,3 +76,32 @@ check(live_recent_result_item($empty)===null,'Do not announce an unranked result
 $corrupt=$official;$corrupt['ranking_json']='this is not JSON';
 check(live_recent_result_item($corrupt)===null,'Corrupt ranking must not appear publicly');
 echo "PASS latest official result ticker ranking, round, heat, and no fake results\n";
+
+
+// The official schedule, not per-heat team count, determines the label.
+// Event #11 is a qualifying competition split into heats; heat 1 may
+// contain only five schools while the entire event has ten.
+$roundIndex=live_official_round_index([
+    ['EventID'=>11,'EventName'=>'วิ่ง 80 เมตร (8 ปี ชาย)','Category'=>'วิ่งเดี่ยว',
+     'Level'=>'ประถม','Heat'=>1,'Stage'=>'คัดเลือก'],
+    ['EventID'=>11,'EventName'=>'วิ่ง 80 เมตร (8 ปี ชาย)','Category'=>'วิ่งเดี่ยว',
+     'Level'=>'ประถม','Heat'=>2,'Stage'=>'คัดเลือก'],
+    ['EventID'=>40,'EventName'=>'วิ่ง 80 เมตร (8 ปี ชาย)','Category'=>'วิ่งเดี่ยว',
+     'Level'=>'ประถม','Heat'=>1,'Stage'=>'ชิงชนะเลิศ'],
+]);
+$event11=['event_name'=>'วิ่ง 80 เมตร (8 ปี ชาย)',
+    'category'=>'วิ่งเดี่ยว','level'=>'ประถม','heat'=>1];
+check(live_fixture_round(11,$event11,$roundIndex)==='รอบคัดเลือก',
+    'Event 11 heat 1 must show qualifying even when it has five entries');
+$event11['heat']=2;
+check(live_fixture_round(11,$event11,$roundIndex)==='รอบคัดเลือก',
+    'Event 11 heat 2 must also show qualifying');
+$event11['heat']=1;
+check(live_fixture_round(40,$event11,$roundIndex)==='รอบชิง',
+    'The separately scheduled championship must still show final');
+check(live_fixture_round(999,$event11,$roundIndex)==='รอบคัดเลือก',
+    'Generated heat with reused event ID must use its matching official preliminary stage');
+$event11['event_name']='รายการที่ไม่อยู่ในตาราง';
+check(live_fixture_round(999,$event11,$roundIndex)==='รอยืนยันรอบ',
+    'Unknown competitions must not automatically be labelled finals');
+echo "PASS official round from full competition schedule, Event 11 two heats, final and unknown fixtures\n";
