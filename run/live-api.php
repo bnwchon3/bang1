@@ -245,7 +245,11 @@ function live_dataset(bool $manager=false):array {
         ?:($a['regId']<=>$b['regId']));
     $columns=[];
     foreach($schoolColumns as $school){
-        $columns[]=['name'=>$school['name'],'key'=>$school['key'],'athletes'=>[]];
+        $columns[]=[
+            'name'=>$school['name'],'key'=>$school['key'],
+            'registered'=>false,'teamCount'=>0,'totalAthletes'=>0,'checkedAthletes'=>0,
+            'athletes'=>[]
+        ];
     }
     $recent=[];
     foreach($teams as $team){
@@ -257,6 +261,12 @@ function live_dataset(bool $manager=false):array {
                str_contains($normalized,$col['key'])){$columnIndex=$i;break;}
         }
         if($columnIndex===null)continue;
+        // This is registration membership, not check-in state. A registered
+        // school must remain green even if none of its athletes has arrived.
+        $columns[$columnIndex]['registered']=true;
+        $columns[$columnIndex]['teamCount']++;
+        $columns[$columnIndex]['totalAthletes']+=(int)$team['totalAthletes'];
+        $columns[$columnIndex]['checkedAthletes']+=(int)$team['checkedAthletes'];
         foreach($team['athletes'] as $athlete){
             if($athlete['checkedAt']===null)continue;
             $publicAthlete=[
@@ -269,6 +279,15 @@ function live_dataset(bool $manager=false):array {
         }
     }
     usort($recent,static fn($a,$b)=>strcmp($b['checkedAt'],$a['checkedAt']));
+    $nextFixtures=$currentIndex>=0
+        ?array_slice($fixtures,$currentIndex+1,3)
+        :array_slice($fixtures,0,3);
+    $nextFixture=$currentIndex>=0?($nextFixtures[0]??null):null;
+    // Next-event roster is available only to Manager/Admin. It supports
+    // pre-reporting while the current event remains on the public screen.
+    $nextTeams=$manager && $nextFixture
+        ?($teamsByKey[$nextFixture['key']]??[])
+        :[];
     return [
         'success'=>true,
         'serverTime'=>date('c'),
@@ -278,7 +297,8 @@ function live_dataset(bool $manager=false):array {
         'schools'=>$columns,
         'teams'=>$teams,
         'recent'=>array_slice($recent,0,10),
-        'next'=>$currentIndex>=0?array_slice($fixtures,$currentIndex+1,3):array_slice($fixtures,0,3),
+        'next'=>$nextFixtures,
+        'nextTeams'=>$nextTeams,
         'isManager'=>$manager
     ];
 }
@@ -324,9 +344,14 @@ if($action==='live_runner_set'){
     }
     $reg=single('SELECT * FROM registrations WHERE id=? LIMIT 1',[$regId]);
     if(!$reg)json_out(['success'=>false,'message'=>'ไม่พบใบสมัคร'],404);
-    $active=(string)(live_dataset(false)['active']['key']??'');
-    if($active===''||!hash_equals($active,live_group_key($reg))){
-        json_out(['success'=>false,'message'=>'ต้องเลือกรายการ Active ที่ตรงกับนักกรีฑาก่อน'],409);
+    $state=live_dataset(false);
+    $active=(string)($state['active']['key']??'');
+    $next=(string)($state['next'][0]['key']??'');
+    $requestedKey=live_group_key($reg);
+    if($active==='' ||
+       (!hash_equals($active,$requestedKey) &&
+        ($next===''||!hash_equals($next,$requestedKey)))){
+        json_out(['success'=>false,'message'=>'เช็กชื่อได้เฉพาะรายการ Active หรือรายการถัดไปเท่านั้น'],409);
     }
     // The submitted key is merely a selector; only athletes actually present
     // on this registered roster may be checked in. Never accept name/school
