@@ -3,7 +3,7 @@
   'use strict';
   const el=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let snapshot=null,busy=false,loading=false,filter='',lastActionAt=0,lastRosterHash='',lastOptionHash=';
+  let snapshot=null,busy=false,loading=false,filter='',lastActionAt=0,lastRosterHash='',lastOptionHash='';
   function isManager(){
     const user=typeof currentUser==='undefined'?null:currentUser;
     return !!user&&['Manager','Admin','TopAdmin'].includes(user.role);
