@@ -105,3 +105,41 @@ $event11['event_name']='รายการที่ไม่อยู่ใน�
 check(live_fixture_round(999,$event11,$roundIndex)==='รอยืนยันรอบ',
     'Unknown competitions must not automatically be labelled finals');
 echo "PASS official round from full competition schedule, Event 11 two heats, final and unknown fixtures\n";
+
+
+// A competition is one Live selection across all its preliminary heats,
+// even though every registration retains its own persisted heat number.
+$h1=['event_name'=>'วิ่ง 80 เมตร (8 ปี ชาย)',
+    'category'=>'วิ่งเดี่ยว','level'=>'ประถม','heat'=>1];
+$h2=$h1;$h2['heat']=2;
+check(live_competition_key($h1,'รอบคัดเลือก')===live_competition_key($h2,'รอบคัดเลือก'),
+    'Event 11 and 12 must be merged into a single preliminary Live fixture');
+check(live_competition_key($h1,'รอบคัดเลือก')!==live_competition_key($h2,'รอบชิง'),
+    'A later final must never be merged with preliminary heats');
+check(live_competition_key($h1,'รอบคัดเลือก')!==live_competition_key(
+    array_merge($h1,['level'=>'อนุบาล']),'รอบคัดเลือก'),
+    'Competitions with different age/level must remain separate');
+$slots=live_schedule_heat_slots([
+    ['EventID'=>11,'EventName'=>$h1['event_name'],'Category'=>'วิ่งเดี่ยว',
+     'Level'=>'ประถม','Heat'=>1,'Stage'=>'คัดเลือก','SourceOrder'=>11],
+    ['EventID'=>12,'EventName'=>$h1['event_name'],'Category'=>'วิ่งเดี่ยว',
+     'Level'=>'ประถม','Heat'=>2,'Stage'=>'คัดเลือก','SourceOrder'=>12],
+    ['EventID'=>40,'EventName'=>$h1['event_name'],'Category'=>'วิ่งเดี่ยว',
+     'Level'=>'ประถม','Heat'=>1,'Stage'=>'ชิงชนะเลิศ','SourceOrder'=>40]
+]);
+$identity=live_event_order_key($h1);
+check($slots[$identity.'|รอบคัดเลือก|1']['eventId']===11,
+    'Heat 1 must retain the original scheduled EventID 11');
+check($slots[$identity.'|รอบคัดเลือก|2']['eventId']===12,
+    'Heat 2 must retain the original scheduled EventID 12');
+check($slots[$identity.'|รอบชิง|1']['eventId']===40,
+    'Finals must retain their own scheduled EventID');
+check(live_event_number_label([12,11,12])==='11–12',
+    'The combined live heading must say 11–12, not 11 or 12 alone');
+check(live_event_number_label([13,11])==='11, 13',
+    'Non-consecutive event numbers must not imply a nonexistent middle event');
+check(live_event_number_label([11])==='11','Single heat must retain single event number');
+$heats=[];
+live_add_heat($heats,2);live_add_heat($heats,1);live_add_heat($heats,2);
+check($heats===[1,2],'School heat badges must be unique and ordered');
+echo "PASS combined event 11–12, separate final, correct IDs and school heat badges\n";
