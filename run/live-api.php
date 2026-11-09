@@ -258,6 +258,31 @@ function live_athlete_rows(array $reg,array $runnerMap,array $checks):array {
     return $athletes;
 }
 /**
+ * Attendance capacity is per registered team, not every runner saved on its
+ * candidate list. A school may register two alternatives in a sprint but
+ * send only ONE athlete to the call point. Relays check in FOUR athletes.
+ * Never delete the alternative registrations or any historical check-ins.
+ */
+function live_attendance_capacity(array $registration):int {
+    $category=trim((string)($registration['category']??''));
+    $event=trim((string)($registration['event_name']??$registration['name']??''));
+    return str_contains($category,'ผลัด')||str_contains($event,'ผลัด')?4:1;
+}
+/**
+ * For old rows with more check-ins than the new limit, choose the earliest
+ * checked athletes for the public screen while retaining all audit records.
+ * Other checked athletes stay visible to the manager so they can uncheck
+ * them intentionally. This function never mutates the database.
+ */
+function live_counted_attendees(array $athletes,int $capacity):array {
+    $checked=array_values(array_filter($athletes,
+        static fn($athlete)=>($athlete['checkedAt']??null)!==null));
+    usort($checked,static fn($a,$b)=>
+        strcmp((string)$a['checkedAt'],(string)$b['checkedAt']));
+    return array_slice($checked,0,max(0,$capacity));
+}
+
+/**
  * Prepare a public ticker item only from an actually saved event result.
  * The official Staff ranking is stored per event, round and heat in event_results.
  * Never infer winners from check-ins or announce unfinished registrations.
@@ -366,19 +391,23 @@ function live_dataset(bool $manager=false):array {
             $fixtures[$key]['eventIds'][]=$eventId;
         $fixtures[$key]['order']=min($fixtures[$key]['order'],$sortOrder);
         $athletes=live_athlete_rows($r,$runnerMap,$checks);
-        $present=array_values(array_filter($athletes,static fn($a)=>$a['checkedAt']!==null));
-        $fixtures[$key]['total']+=count($athletes);
+        $capacity=live_attendance_capacity($r);
+        $present=live_counted_attendees($athletes,$capacity);
+        $allChecked=count(array_filter($athletes,static fn($a)=>$a['checkedAt']!==null));
+        $fixtures[$key]['total']+=$capacity;
         $fixtures[$key]['checked']+=count($present);
         $fixtures[$key]['teams']++;
-        if(count($athletes)>0&&count($present)===count($athletes))
-            $fixtures[$key]['teamsReady']++;
+        if(count($present)===$capacity)$fixtures[$key]['teamsReady']++;
         $team=[
             'regId'=>(int)$r['id'],
             'school'=>(string)$r['school_name'],
             'lane'=>$r['lane']===null?null:(int)$r['lane'],
             'heat'=>$heat,
-            'totalAthletes'=>count($athletes),
-            'checkedAthletes'=>count($present)
+            'totalAthletes'=>$capacity,
+            'checkedAthletes'=>count($present),
+            'registeredAthletes'=>count($athletes),
+            // Display any legacy over-limit check-ins to managers for correction.
+            'excessCheckins'=>max(0,$allChecked-$capacity)
         ];
         $team['athletes']=$manager?$athletes:$present;
         $teamsByKey[$key][]=$team;
@@ -543,9 +572,33 @@ if($action==='live_runner_set'){
     }
     if(!$valid)json_out(['success'=>false,'message'=>'นักกรีฑาคนนี้ไม่อยู่ในใบสมัครรายการ Active'],422);
     if($checked){
-        $stmt=db()->prepare('INSERT IGNORE INTO race_athlete_checkins (registration_id,athlete_key,checked_by,checked_at) VALUES(?,?,?,NOW())');
-        $stmt->execute([$regId,$athleteKey,(int)$u['coachId']]);
-        $changed=$stmt->rowCount()>0;
+        $capacity=live_attendance_capacity($reg);
+        try{
+            db()->beginTransaction();
+            // Lock a consistent parent row so simultaneous Manager clicks
+            // cannot both claim the final available attendance slot.
+            db()->prepare('SELECT id FROM registrations WHERE id=? FOR UPDATE')->execute([$regId]);
+            $existing=single('SELECT athlete_key FROM race_athlete_checkins WHERE registration_id=? AND athlete_key=?',[$regId,$athleteKey]);
+            if($existing){
+                $changed=false;
+            }else{
+                $used=(int)single('SELECT COUNT(*) AS n FROM race_athlete_checkins WHERE registration_id=?',[$regId])['n'];
+                if($used >= $capacity){
+                    db()->rollBack();
+                    json_out(['success'=>false,'message'=> $capacity===1
+                        ?'วิ่งเดี่ยวรายงานตัวได้เพียง 1 คนต่อทีม กรุณายกเลิกชื่อเดิมก่อนเลือกคนใหม่'
+                        :'วิ่งผลัดรายงานตัวได้ไม่เกิน 4 คนต่อทีม กรุณายกเลิกชื่อเดิมก่อนเลือกคนใหม่'],409);
+                }
+                $stmt=db()->prepare('INSERT IGNORE INTO race_athlete_checkins (registration_id,athlete_key,checked_by,checked_at) VALUES(?,?,?,NOW())');
+                $stmt->execute([$regId,$athleteKey,(int)$u['coachId']]);
+                $changed=$stmt->rowCount()>0;
+            }
+            db()->commit();
+        }catch(Throwable $e){
+            if(db()->inTransaction())db()->rollBack();
+            error_log('Bang1 runner check-in failed: '.$e->getMessage());
+            json_out(['success'=>false,'message'=>'ไม่สามารถบันทึกรายงานตัวได้ กรุณาลองอีกครั้ง'],500);
+        }
     }else{
         $stmt=db()->prepare('DELETE FROM race_athlete_checkins WHERE registration_id=? AND athlete_key=?');
         $stmt->execute([$regId,$athleteKey]);
