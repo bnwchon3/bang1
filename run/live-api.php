@@ -73,8 +73,7 @@ function live_school_columns(array $schoolRows,array $registrations):array {
         $name=trim((string)($school['name']??''));
         if($name!=='')$known[live_school_compact($name)]=$name;
     }
-    // The names from enrolled registrations are authoritative if a school
-    // was renamed or its nickname differs from the schools table.
+    // The current registration's school name wins over an obsolete nickname.
     foreach($registrations as $reg){
         $name=trim((string)($reg['school_name']??''));
         if($name!=='')$known[live_school_compact($name)]=$name;
@@ -84,18 +83,40 @@ function live_school_columns(array $schoolRows,array $registrations):array {
         $needle=live_school_compact($short);
         $found=null;
         foreach($known as $normalized=>$full){
-            if(isset($used[$normalized]))continue;
-            if($needle===$normalized || str_contains($normalized,$needle) ||
+            if($normalized===''||isset($used[$normalized]))continue;
+            if($needle===$normalized||str_contains($normalized,$needle)||
                str_contains($needle,$normalized)){
-                $found=['name'=>$full,'key'=>$normalized];break;
+                $found=['name'=>$full,'key'=>$normalized,'matched'=>true];break;
             }
         }
-        if($found===null){$found=['name'=>'โรงเรียน'.$short,'key'=>$needle];}
-        $used[$found['key']]=true;
+        if($found===null)$found=['name'=>'โรงเรียน'.$short,'key'=>$needle,'matched'=>false];
+        if($found['matched'])$used[$found['key']]=true;
         $columns[]=$found;
     }
-    return $columns;
+    // Guard against school spelling/name changes: if an actual enrolled
+    // school is not one of the ten expected aliases, give it an unmatched
+    // column rather than silently dropping its checked-in athletes.
+    $unmatched=[];
+    foreach($registrations as $reg){
+        $name=trim((string)($reg['school_name']??''));
+        $normalized=live_school_compact($name);
+        if($normalized!==''&&!isset($used[$normalized]))$unmatched[$normalized]=$name;
+    }
+    foreach($known as $normalized=>$name){
+        if($normalized!==''&&!isset($used[$normalized])&&!isset($unmatched[$normalized]))
+            $unmatched[$normalized]=$name;
+    }
+    foreach($unmatched as $normalized=>$name){
+        $index=null;
+        foreach($columns as $i=>$col)if(!$col['matched']){$index=$i;break;}
+        if($index===null)break; // Never expand beyond ten columns.
+        $columns[$index]=['name'=>$name,'key'=>$normalized,'matched'=>true];
+        $used[$normalized]=true;
+    }
+    return array_map(static fn($column)=>[
+        'name'=>$column['name'],'key'=>$column['key']],$columns);
 }
+
 /** Safe, display-only public photo URLs. Never include ID-card/proof attachments. */
 function live_photo_url(string $value):?string {
     $value=trim($value);
