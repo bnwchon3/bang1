@@ -11,7 +11,7 @@
   ];
   let requestBusy=false,loaded=false,lastSignature='',lastResultSignature='';
   let lastMode=null,lastPayload=null,clockOffsetMs=0,sportSlideIndex=-1;
-  let sportSlideToken=0,lastSportBoardSignature='',sportCache=new Map(),sportPending=new Map();
+  let sportSlideToken=0,lastSportBoardSignature='',sportCache=new Map(),sportPending=new Map(),sportRetryAt=0;
 
   function stamp(){
     return new Intl.DateTimeFormat('th-TH',{
@@ -181,12 +181,14 @@
         paintSchools(data.schools,true);
         lastSportBoardSignature=signature;
       }
+      sportRetryAt=0;
       const following=payload.fixtures[(index+1)%payload.fixtures.length];
       if(following&&following.key!==fixture.key)
         void getSportFixture(following.key).catch(()=>{});
     }catch(error){
       if(lastMode!=='sport'||token!==sportSlideToken)return;
-      el('schoolGrid').innerHTML='<div class="loading">ไม่สามารถโหลดภาพรายการนี้ได้ ระบบจะลองใหม่</div>';
+      el('schoolGrid').innerHTML='<div class="loading">ไม่สามารถโหลดภาพรายการนี้ได้ ระบบจะลองใหม่อัตโนมัติ</div>';
+      sportRetryAt=Date.now()+6000; // Avoid hammering the backend on outages.
       sportSlideIndex=-1; // Retry without changing the persisted display mode.
     }
   }
@@ -210,7 +212,7 @@
     const elapsed=Math.max(0,now-since);
     const index=Math.floor(elapsed/stepMs)%fixtures.length;
     sportCountdown({...payload,fixtures},index,elapsed,stepMs);
-    if(index===sportSlideIndex)return;
+    if(index===sportSlideIndex||Date.now()<sportRetryAt)return;
     sportSlideIndex=index;
     lastSportBoardSignature='';
     const token=++sportSlideToken;
@@ -227,6 +229,7 @@
       lastSignature='';
       lastSportBoardSignature='';
       sportSlideIndex=-1;
+      sportRetryAt=0;
       ++sportSlideToken; // Ignore previous-mode asynchronous responses.
       sportCache.clear();
       sportPending.clear();
