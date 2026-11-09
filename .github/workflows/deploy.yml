@@ -117,8 +117,8 @@ jobs:
           BASE="${PUBLIC_BASE_URL:-https://www.bannawang.ac.th/bang1/run}"
           curl --fail-with-body --location --silent --show-error --retry 2 \
             --connect-timeout 15 --max-time 45 "${BASE%/}/live/" > /tmp/bang1-live-page.html
-          grep -q 'ศูนย์รายงานตัวนักกรีฑา' /tmp/bang1-live-page.html
+          grep -q 'schoolGrid' /tmp/bang1-live-page.html
           curl --fail-with-body --silent --show-error --retry 2 \
             --connect-timeout 15 --max-time 45 "${BASE%/}/api.php?action=live_state" > /tmp/bang1-live-check.json
-          jq -e '.success == true and (.fixtures | type == "array") and (.teams | type == "array") and (.recent | type == "array")' /tmp/bang1-live-check.json >/dev/null
-          jq '{success,active,fixture_count:(.fixtures|length),teams_in_active:(.teams|length)}' /tmp/bang1-live-check.json
+          jq -e '.success == true and (.fixtures | type == "array") and (.schools | length == 10) and (.schools | all(.athletes | type == "array"))' /tmp/bang1-live-check.json >/dev/null
+          jq '{success,fixture_count:(.fixtures|length),school_columns:(.schools|length),checked_people:(.active.checked // 0)}' /tmp/bang1-live-check.json
