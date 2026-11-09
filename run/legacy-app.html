@@ -1535,7 +1535,7 @@ body{
   </style>
 <link rel="stylesheet" href="role-guidance.css?v=20261108-roles">
 <link rel="stylesheet" href="mobile-shell.css?v=20261109-account-icon-v6">
-<link rel="stylesheet" href="live-manager.css?v=20261109-scan1">
+<link rel="stylesheet" href="live-manager.css?v=20261109-checklist1">
 <link rel="stylesheet" href="account-portal.css?v=20261109-v1">
 </head>
 
@@ -1576,7 +1576,7 @@ body{
         <button data-page="schedule"><span class="icon">📜</span> รายการจัดแข่งขัน</button>
         <button data-page="results"><span class="icon">🏅</span> ผลการแข่งขัน</button>
         <button data-page="score-summary"><span class="icon">📊</span> สรุปผลการแข่งขัน</button>
-        <button data-page="checkin" hidden><span class="icon">📷</span> สแกน QR / รายงานตัว</button>
+        <button data-page="checkin" hidden><span class="icon">✅</span> เช็กชื่อรายงานตัว</button>
         <button data-page="admin"><span class="icon">🛠️</span> ผู้ดูแลระบบ</button>
         <button type="button" id="bang1LogoutButton" onclick="handleLogout()" hidden><span class="icon">🚪</span> ออกจากระบบ</button>
       </div>
@@ -3784,58 +3784,37 @@ function printRegSummary() {
       </section>
 
 
-      <!-- REPORTING / QR SCANNER: Manager and Admin only -->
+      <!-- LIVE REPORTING CONTROL: checkbox attendance per registered athlete -->
       <section class="page" id="page-checkin">
-        <h1>📷 รายงานตัวนักกรีฑา · QR Check-in</h1>
-        <div class="subtitle">Manager เลือกรายการแข่งขันที่กำลัง Active แล้วสแกน QR Code บนใบสมัครเข้าร่วมแข่งขัน</div>
+        <h1>✅ รายงานตัวนักกรีฑา</h1>
+        <div class="subtitle">Manager เลือกรายการแข่งขันที่กำลัง Active แล้วติ๊กชื่อนักกรีฑาที่มารายงานตัว ไม่ต้องสแกน QR Code</div>
         <div class="card">
-          <div class="bang1-checkin-grid">
-            <div class="bang1-checkin-panel">
-              <div class="bang1-checkin-heading">รายการที่กำลังเรียกรายงานตัว</div>
-              <label for="bang1ActiveFixture" class="bang1-checkin-caption">เรียงตามลำดับรายการแข่งขันอัตโนมัติ · เลือกรายการและฮีท</label>
-              <select id="bang1ActiveFixture"><option value="">กำลังโหลดรายการ...</option></select>
-              <div class="bang1-checkin-actions">
-                <button type="button" id="bang1SetActive" class="btn btn-primary">▶ เปิดรายการ Active บนจอ Live</button>
-                <button type="button" id="bang1ActiveEnd" class="btn btn-outline" disabled>■ ปิดรายการ Active</button>
-                <button type="button" id="bang1CheckinRefresh" class="btn btn-outline">↻ รีเฟรช</button>
-              </div>
-              <div class="bang1-active-banner">
-                <div><b id="bang1LiveActiveName">ยังไม่ได้เปิดรายการ Active</b><small id="bang1LiveActiveCount">เลือกการแข่งขันก่อนเริ่มเช็กอิน</small></div>
-                <a id="bang1OpenLiveLink" class="bang1-checkin-link" href="live/" target="_blank" rel="noopener">เปิดหน้าจอ Live ↗</a>
-              </div>
-              <p class="bang1-checkin-caption">หน้าจอ Live ใช้สำหรับฉายบนทีวีหรือโปรเจ็กเตอร์ ผู้ชมเห็นโรงเรียนและสถานะรายงานตัว แต่ไม่แสดงรายชื่อนักเรียน</p>
+          <div class="bang1-checkin-panel">
+            <div class="bang1-checkin-heading">ควบคุมรายการที่แสดงบนจอ Live</div>
+            <label for="bang1ActiveFixture" class="bang1-checkin-caption">เลือกรายการแข่งขัน / ฮีท (เรียงลำดับตามรายการจัดการแข่งขัน)</label>
+            <select id="bang1ActiveFixture"><option value="">กำลังโหลดรายการ...</option></select>
+            <div class="bang1-checkin-actions">
+              <button type="button" id="bang1SetActive" class="btn btn-primary">▶ แสดงรายการนี้บนจอ Live</button>
+              <button type="button" id="bang1ActiveEnd" class="btn btn-outline" disabled>■ ปิดรายการ Active</button>
+              <button type="button" id="bang1CheckinRefresh" class="btn btn-outline">↻ รีเฟรช</button>
+              <a id="bang1OpenLiveLink" class="btn btn-outline bang1-checkin-link" href="live/" target="_blank" rel="noopener">📺 เปิดจอ Live</a>
             </div>
-
-            <div class="bang1-checkin-panel">
-              <div class="bang1-checkin-heading">สแกน QR Code บนใบสมัคร</div>
-              <div class="bang1-camera">
-                <video id="bang1ScanVideo" muted autoplay playsinline aria-label="กล้องสแกน QR Code"></video>
-                <div class="bang1-qr-outline" aria-hidden="true"></div>
-                <div id="bang1CameraEmpty">เปิดกล้อง แล้วเล็ง QR Code ให้อยู่ในกรอบสีเขียว</div>
-              </div>
-              <div class="bang1-checkin-actions">
-                <button type="button" id="bang1CameraStart" class="btn btn-primary">📷 เปิดกล้องสแกน</button>
-                <button type="button" id="bang1CameraStop" class="btn btn-outline" disabled>หยุดกล้อง</button>
-              </div>
-              <div id="bang1ScanStatus" class="bang1-scan-status is-info" role="status" aria-live="polite">พร้อมสแกนเมื่อ Manager เลือกรายการ Active</div>
-              <div class="bang1-manager-manual">
-                <label for="bang1ManualCode">กรอกรหัสใบสมัคร หรือวางข้อความที่อ่านได้จาก QR แทนการสแกน</label>
-                <form id="bang1ManualForm">
-                  <input id="bang1ManualCode" autocomplete="off" placeholder="เช่น 137 หรือ 23|ประเภท|ระดับ|โรงเรียน">
-                  <button class="btn btn-primary" type="submit">✓ เช็กอิน</button>
-                </form>
-              </div>
+            <div class="bang1-active-banner">
+              <div><b id="bang1LiveActiveName">ยังไม่ได้เปิดรายการ Active</b><small id="bang1LiveActiveCount">กรุณาเลือกรายการแข่งขัน</small></div>
+              <span class="bang1-live-badge">LIVE CONTROL</span>
             </div>
           </div>
         </div>
         <div class="card">
-          <div class="card-header"><div class="card-title">รายงานตัวของรายการ Active</div><span class="tag">Manager / Admin</span></div>
-          <div class="bang1-checkin-table-scroll">
-            <table class="bang1-checkin-table">
-              <thead><tr><th>รหัสใบสมัคร</th><th>โรงเรียน</th><th>ชื่อนักกรีฑา</th><th>ลู่</th><th>สถานะ/เวลา</th><th>แก้ไข</th></tr></thead>
-              <tbody id="bang1CheckinTbody"><tr><td colspan="6">รอเลือกรายการ Active</td></tr></tbody>
-            </table>
+          <div class="card-header">
+            <div class="card-title">รายชื่อนักกรีฑาที่ลงทะเบียนในรายการ Active</div>
+            <span class="tag" id="bang1CheckinCount">0 / 0 รายงานตัว</span>
           </div>
+          <p class="bang1-checkin-caption">ติ๊กช่องหน้าชื่อเพื่อยืนยันการรายงานตัวทันที รูปและชื่อจะปรากฏในช่องโรงเรียนบนจอ Live อัตโนมัติ ยกเลิกได้ด้วยการเอาเครื่องหมายถูกออก</p>
+          <label for="bang1AthleteSearch" class="bang1-checkin-caption">ค้นหาชื่อนักกรีฑาหรือโรงเรียน</label>
+          <input id="bang1AthleteSearch" type="search" placeholder="พิมพ์ชื่อนักกรีฑา / โรงเรียน / รหัสใบสมัคร" autocomplete="off">
+          <div id="bang1ScanStatus" class="bang1-scan-status is-info" role="status" aria-live="polite">เลือกรายการแข่งขันเพื่อเริ่มบันทึกการรายงานตัว</div>
+          <div id="bang1CheckinRoster" class="bang1-registered-grid"><div class="bang1-roster-empty">รอข้อมูลรายการ Active</div></div>
         </div>
       </section>
     </main>
@@ -7752,6 +7731,6 @@ document.addEventListener('DOMContentLoaded', function () {
 <script src="mobile-shell.js?v=20261109-account-icon-v6"></script>
 <script src="account-portal.js?v=20261109-hide-directory-auth"></script>
 <script src="vendor/qrcode.js?v=20261109-print-qr"></script>
-<script src="live-manager.js?v=20261109-scan1"></script>
+<script src="live-manager.js?v=20261109-checklist1"></script>
 </body>
 </html>
