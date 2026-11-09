@@ -57,16 +57,27 @@
     const vw=window.innerWidth,vh=window.innerHeight;
     const width=Math.min(1000,Math.max(0,vw-16),Math.max(rect.width,260));
     const left=Math.min(Math.max(8,rect.left),Math.max(8,vw-width-8));
-    const height=Math.max(220,Math.min(620,Math.round(vh*.74),vh-16));
-    const below=vh-rect.bottom-10,above=rect.top-10;
-    let top;
-    if(below>=Math.min(320,height))top=rect.bottom+8;
-    else if(above>=Math.min(320,height))top=rect.top-height-8;
-    else top=Math.max(8,Math.min(rect.bottom+8,vh-height-8));
+    const desiredHeight=Math.min(620,Math.max(240,Math.round(vh*.74)),vh-16);
+    const below=Math.max(0,vh-rect.bottom-12);
+    const above=Math.max(0,rect.top-12);
+    let top,available;
+    if(below>=Math.min(320,desiredHeight)||below>=above){
+      top=rect.bottom+8;
+      available=vh-top-8;
+    }else{
+      available=above;
+      top=Math.max(8,rect.top-Math.min(desiredHeight,available)-8);
+    }
+    // On short phone viewports (or when the keyboard opens), display the
+    // picker as an on-screen panel instead of clipping the header above.
+    if(available<225){
+      top=8;
+      available=vh-16;
+    }
     menu.style.left=left+'px';
     menu.style.top=top+'px';
     menu.style.width=width+'px';
-    menu.style.maxHeight=Math.min(height,vh-top-8)+'px';
+    menu.style.maxHeight=Math.max(120,Math.min(desiredHeight,available))+'px';
   }
   function renderFixtureOptions(){
     const list=el('bang1FixtureList'),footer=el('bang1FixtureResults');
@@ -357,7 +368,8 @@
       button.addEventListener('click',()=>{
         fixtureRound=button.dataset.round;
         renderFixtureOptions();
-        el('bang1FixtureSearch').focus({preventScroll:true});
+        if(window.matchMedia('(pointer: fine)').matches)
+          el('bang1FixtureSearch').focus({preventScroll:true});
       });
     });
     menu.addEventListener('keydown',handleFixtureKeyboard);
