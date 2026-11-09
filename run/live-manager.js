@@ -129,7 +129,14 @@
     });
     el('bang1CheckinRoster').addEventListener('change',async e=>{
       const box=e.target.closest('input[type="checkbox"][data-athlete]');
-      if(!box||busy)return;
+      if(!box)return;
+      if(busy){
+        // Do not leave an unsubmitted checkbox visually checked if another
+        // athlete's write is still in flight.
+        box.checked=!box.checked;
+        message('กำลังบันทึกรายชื่อก่อนหน้า กรุณาติ๊กอีกครั้ง','info');
+        return;
+      }
       const regId=Number(box.dataset.reg);
       const athleteKey=box.dataset.athlete;
       const checked=box.checked;
