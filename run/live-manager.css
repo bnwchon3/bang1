@@ -68,3 +68,162 @@
 /* Existing over-limit check-ins remain editable instead of being discarded. */
 #page-checkin .bang1-oversubscribed{padding:9px 12px;background:#6d3715;color:#ffdbad;border-bottom:1px solid #c5874c;font-weight:750;font-size:.85rem;line-height:1.45}
 #page-checkin .bang1-athlete-row:has(input:disabled){cursor:not-allowed;opacity:.68}
+
+
+/* Athletics Live: compact searchable competition picker.
+   Rendered in <body> to avoid clipping by the Manager page and footer. */
+#page-checkin .bang1-fixture-control{position:relative;min-width:0}
+#page-checkin select.bang1-fixture-native{display:none!important}
+#page-checkin .bang1-fixture-trigger{
+  width:100%;min-width:0;min-height:75px;padding:11px 16px;
+  display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer;
+  border:1.5px solid #4479a1;border-radius:14px;
+  background:linear-gradient(110deg,#09213b,#10385c);
+  color:#f0faff;box-shadow:inset 0 1px 0 #ffffff16,0 7px 18px #020d2140;
+  font:inherit;transition:background .15s,border-color .15s,box-shadow .15s;
+}
+#page-checkin .bang1-fixture-trigger:hover{
+  border-color:#47c5ed;box-shadow:0 0 0 2px #2db8e324,0 7px 18px #020d2140;
+}
+#page-checkin .bang1-fixture-trigger:focus-visible{
+  outline:3px solid #4de0fe;outline-offset:2px;
+}
+#page-checkin .bang1-fixture-trigger.is-final{
+  border-color:#61ce9b;background:linear-gradient(110deg,#073d36,#14644e);
+}
+#page-checkin .bang1-fixture-trigger-icon{
+  width:43px;height:43px;display:grid;place-items:center;flex:none;
+  border-radius:11px;background:#46baf326;font-size:1.35rem;
+}
+#page-checkin .bang1-fixture-trigger.is-final .bang1-fixture-trigger-icon{background:#a6f3c533}
+#page-checkin .bang1-fixture-trigger-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+#page-checkin .bang1-fixture-trigger-copy strong{
+  font-size:clamp(.9rem,1.08vw,1.09rem);font-weight:850;line-height:1.3;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+}
+#page-checkin .bang1-fixture-trigger-copy small{
+  font-size:.78rem;color:#a8d1e6;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+}
+#page-checkin .bang1-fixture-trigger.is-final .bang1-fixture-trigger-copy small{color:#bff9dd}
+#page-checkin .bang1-fixture-trigger-chevron{
+  flex:none;color:#7de9fa;font-size:1.75rem;font-weight:700;transition:transform .15s;
+}
+#page-checkin .bang1-fixture-trigger[aria-expanded="true"] .bang1-fixture-trigger-chevron{transform:rotate(180deg)}
+.bang1-fixture-popover{
+  position:fixed;z-index:12000;box-sizing:border-box;
+  display:flex;flex-direction:column;min-height:190px;overflow:hidden;
+  border:1px solid #3683a6;border-radius:18px;
+  background:#081a30;color:#eaf8ff;
+  box-shadow:0 24px 80px #000a,0 0 0 1px #97edff24;
+  font-family:"Sarabun","Noto Sans Thai",Tahoma,system-ui,sans-serif;
+}
+.bang1-fixture-popover[hidden]{display:none!important}
+.bang1-fixture-popover *{box-sizing:border-box}
+.bang1-fixture-popover-header{
+  flex:none;padding:14px 15px 11px;background:linear-gradient(120deg,#103c62,#09273f);
+  border-bottom:1px solid #337093;
+}
+.bang1-fixture-popover-title{
+  display:flex;align-items:center;justify-content:space-between;gap:9px;
+  font-size:1.05rem;font-weight:900;margin-bottom:11px;
+}
+.bang1-fixture-popover-title strong{color:#e9fbff}
+.bang1-fixture-close{
+  width:34px;height:34px;display:grid;place-items:center;flex:none;
+  border:1px solid #567f9a;border-radius:9px;background:#0b2037;color:#bde8f6;
+  font-size:1.05rem;cursor:pointer;
+}
+.bang1-fixture-search-wrap{
+  min-width:0;height:46px;display:flex;align-items:center;gap:8px;
+  padding:0 12px;border-radius:11px;border:1px solid #467d9d;
+  background:#07182c;color:#80dcf4;
+}
+.bang1-fixture-search-wrap>span{font-size:1.45rem}
+.bang1-fixture-search-wrap input{
+  min-width:0;flex:1;min-height:42px;padding:5px 0;background:transparent;
+  border:0!important;box-shadow:none!important;outline:0!important;
+  color:#fff;font:inherit;font-size:16px;
+}
+.bang1-fixture-search-wrap input::placeholder{color:#91afc6}
+.bang1-fixture-search-wrap:focus-within{border-color:#4ae0ff;box-shadow:0 0 0 2px #36ccf533}
+.bang1-fixture-filters{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
+.bang1-fixture-filters button{
+  border:1px solid #37627c;border-radius:99px;background:#0d2a44;
+  color:#b3d3e5;padding:7px 13px;font:inherit;font-size:.79rem;cursor:pointer;
+  transition:border-color .15s,background .15s;
+}
+.bang1-fixture-filters button.is-active{
+  border-color:#36d6e5;background:#10647b;color:#eaffff;font-weight:850;
+}
+.bang1-fixture-filters button[data-round="final"].is-active{
+  background:#bbf7d0;color:#11643b;border-color:#70dbaa;
+}
+.bang1-fixture-option-list{
+  min-height:0;flex:1;overflow-y:auto;overscroll-behavior:contain;
+  padding:9px;display:flex;flex-direction:column;gap:6px;
+  scrollbar-color:#4d7f96 #0b2236;scrollbar-width:thin;
+}
+.bang1-fixture-option{
+  width:100%;min-height:67px;display:grid;grid-template-columns:minmax(58px,auto) minmax(0,1fr) auto;
+  align-items:center;gap:11px;text-align:left;padding:10px 12px;
+  border-radius:12px;border:1px solid #2c526e;
+  color:#eaf8ff;background:linear-gradient(115deg,#112d48,#0e233d);
+  font:inherit;cursor:pointer;transition:border-color .12s,background .12s;
+}
+.bang1-fixture-option:hover{border-color:#56bce1;background:#164467}
+.bang1-fixture-option:focus-visible{outline:3px solid #61e1fd;outline-offset:-2px}
+.bang1-fixture-option.is-selected:not(.is-final){border-color:#26c4dd;background:#0b4d62}
+.bang1-fixture-number{
+  display:grid;place-items:center;min-width:56px;min-height:37px;
+  padding:5px 8px;background:#173f62;color:#a1f2ff;
+  border:1px solid #356b8a;border-radius:9px;
+  font-variant-numeric:tabular-nums;font-weight:900;font-size:.93rem;
+}
+.bang1-fixture-option-copy{display:flex;min-width:0;flex-direction:column;gap:5px}
+.bang1-fixture-option-copy strong{font-size:.98rem;line-height:1.33;font-weight:900;overflow-wrap:anywhere}
+.bang1-fixture-option-copy small{color:#a5c0d4;font-size:.81rem;line-height:1.4;overflow-wrap:anywhere}
+.bang1-fixture-option-meta{
+  display:flex;align-items:flex-end;flex-direction:column;gap:6px;white-space:nowrap;
+}
+.bang1-fixture-round{
+  padding:5px 10px;border-radius:99px;font-size:.78rem;
+  border:1px solid #40718f;color:#b7dcf3;background:#173b55;font-weight:800;
+}
+.bang1-fixture-option-meta>small{font-size:.75rem;color:#a9c2d4}
+.bang1-fixture-option.is-final{
+  background:linear-gradient(115deg,#e5fced,#caf5dc);
+  color:#0b422b;border-color:#8bd9a7;
+}
+.bang1-fixture-option.is-final:hover{background:#b9efd0;border-color:#3bac70}
+.bang1-fixture-option.is-final .bang1-fixture-number{
+  color:#06543a;background:#d5fae3;border-color:#8ecfa9;
+}
+.bang1-fixture-option.is-final .bang1-fixture-option-copy small{color:#36715c}
+.bang1-fixture-option.is-final .bang1-fixture-round{
+  border-color:#7bcca1;background:#afe9c8;color:#075b3b;
+}
+.bang1-fixture-option.is-final .bang1-fixture-option-meta>small{color:#356e5b}
+.bang1-fixture-option.is-final.is-selected{border:2px solid #0b9b64;background:#baf3cf}
+.bang1-fixture-option.is-final:focus-visible{outline-color:#088358}
+.bang1-fixture-no-results{padding:25px 12px;text-align:center;color:#a6c6d5;font-size:.9rem}
+.bang1-fixture-popover-footer{
+  flex:none;padding:9px 14px;background:#0d304a;border-top:1px solid #2c6079;
+  color:#9dc8d8;font-size:.78rem;
+}
+@media(max-width:620px){
+  #page-checkin .bang1-fixture-trigger{padding:9px 11px;min-height:69px;gap:9px}
+  #page-checkin .bang1-fixture-trigger-icon{width:34px;height:38px;font-size:1.12rem}
+  #page-checkin .bang1-fixture-trigger-copy strong{font-size:.92rem}
+  #page-checkin .bang1-fixture-trigger-copy small{font-size:.72rem}
+  .bang1-fixture-popover{border-radius:13px}
+  .bang1-fixture-popover-header{padding:10px}
+  .bang1-fixture-option{grid-template-columns:55px minmax(0,1fr);gap:7px;padding:9px}
+  .bang1-fixture-option-meta{grid-column:2;flex-direction:row;justify-content:flex-start;align-items:center;flex-wrap:wrap}
+  .bang1-fixture-option-copy strong{font-size:.91rem}
+  .bang1-fixture-option-copy small{font-size:.77rem}
+  .bang1-fixture-number{min-width:50px}
+}
+@media(prefers-reduced-motion:reduce){
+  #page-checkin .bang1-fixture-trigger,.bang1-fixture-option{transition:none}
+}
