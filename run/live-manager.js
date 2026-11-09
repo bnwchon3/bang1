@@ -3,7 +3,7 @@
   'use strict';
   const el=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let snapshot=null,busy=false,loading=false,filter='',lastActionAt=0;
+  let snapshot=null,busy=false,loading=false,filter='',lastActionAt=0,lastRosterHash='',lastOptionHash=';
   function isManager(){
     const user=typeof currentUser==='undefined'?null:currentUser;
     return !!user&&['Manager','Admin','TopAdmin'].includes(user.role);
@@ -35,11 +35,15 @@
       '<span class="bang1-athlete-status'+(checked?' confirmed':'')+'">'+(checked?'✓':'○')+'</span>'+
       '</label>';
   }
-  function renderRoster(){
+  function renderRoster(force=false){
     const area=el('bang1CheckinRoster');
     if(!area)return;
     const teams=Array.isArray(snapshot?.teams)?snapshot.teams:[];
     const active=snapshot?.active;
+    const signature=JSON.stringify([active?.key||'',teams,filter]);
+    if(!force&&signature===lastRosterHash)return;
+    lastRosterHash=signature;
+    const previousScroll=area.closest('.main')?.scrollTop??null;
     if(!active){
       area.innerHTML='<div class="bang1-roster-empty">ยังไม่ได้เปิดรายการ Active · โปรดเลือกการแข่งขันด้านบน</div>';
       el('bang1CheckinCount').textContent='0 / 0 รายงานตัว';return;
@@ -62,17 +66,23 @@
       '<span>'+Number(team.checkedAthletes)+' / '+Number(team.totalAthletes)+' คน</span></header>'+
       '<div class="bang1-athlete-list">'+team.athletes.map(a=>athleteCard(a,team.regId)).join('')+'</div>'+
       '</section>').join('');
+    // Keep the Manager at the same scroll position after a successful check-in.
+    if(previousScroll!==null&&area.closest('.main'))area.closest('.main').scrollTop=previousScroll;
   }
   function render(data){
     snapshot=data;
     const select=el('bang1ActiveFixture');
     const selected=select.value;
     const fixtures=Array.isArray(data.fixtures)?data.fixtures:[];
-    select.replaceChildren(new Option('เลือกรายการแข่งขัน/ฮีท',''));
-    fixtures.forEach((f,i)=>select.appendChild(new Option(
-      (i+1)+'. '+fixtureName(f)+' · '+Number(f.checked)+'/'+Number(f.total)+' คน',f.key)));
-    if(selected&&fixtures.some(f=>f.key===selected))select.value=selected;
-    else if(data.active)select.value=data.active.key;
+    const optionHash=JSON.stringify(fixtures.map(f=>[f.key,f.eventName,f.category,f.level,f.gender,f.heat]));
+    if(optionHash!==lastOptionHash){
+      lastOptionHash=optionHash;
+      select.replaceChildren(new Option('เลือกรายการแข่งขัน/ฮีท',''));
+      fixtures.forEach((f,i)=>select.appendChild(new Option(
+        (i+1)+'. '+fixtureName(f),f.key)));
+      if(selected&&fixtures.some(f=>f.key===selected))select.value=selected;
+      else if(data.active)select.value=data.active.key;
+    }
     const active=data.active;
     el('bang1LiveActiveName').textContent=active?fixtureName(active):'ยังไม่ได้เปิดรายการ Active';
     el('bang1LiveActiveCount').textContent=active?
@@ -115,7 +125,7 @@
     });
     el('bang1CheckinRefresh').addEventListener('click',()=>refresh(true));
     el('bang1AthleteSearch').addEventListener('input',e=>{
-      filter=e.target.value;renderRoster();
+      filter=e.target.value;renderRoster(true);
     });
     el('bang1CheckinRoster').addEventListener('change',async e=>{
       const box=e.target.closest('input[type="checkbox"][data-athlete]');
