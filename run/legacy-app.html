@@ -4169,6 +4169,9 @@ function printRegSummary() {
       for (const key in r) {
         if (!Object.prototype.hasOwnProperty.call(r, key)) continue;
         const norm = key.toString().toLowerCase().replace(/\s/g, '');
+        // Review-only metadata must never be mistaken for the actual image.
+        if (norm === 'photoreviewmode' || norm === 'previousapprovedphoto' ||
+            norm === 'verifiedphoto' || norm === 'verifiedphotourl') continue;
         if (norm.includes('photo') || norm.includes('รูปภาพ')) {
           const v = r[key];
           if (v) return String(v).trim();
