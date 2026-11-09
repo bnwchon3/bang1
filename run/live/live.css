@@ -294,3 +294,48 @@ body{background:#06162c}
  .school-name,.school-column.is-entered .school-name{height:clamp(53px,8.4vh,76px)}
  .school-heat-badge{height:15px;min-width:15px;font-size:.65rem}
 }
+
+/* Sport presentation: no page scroll, same ten-school matrix, different mode. */
+.live-screen.is-sport .event-number{
+  background:linear-gradient(115deg,#061731 0%,#092e57 46%,#07565b 100%);
+  border-bottom-color:#a5f35b;
+}
+.live-screen.is-sport .event-number strong{color:#d2ff66}
+.live-screen.is-sport .event-banner{
+  background:linear-gradient(110deg,#ffc35a,#ff9f27);
+}
+.live-screen.is-sport .round-label{
+  background:linear-gradient(125deg,#0d7969,#146ea3);
+}
+.live-screen.is-sport .up-next{
+  background:linear-gradient(115deg,#062538,#07556b 65%,#0b7b6b);
+  border-top-color:#acfa55;
+}
+.live-screen.is-sport .next-eyebrow{color:#ccff71}
+.live-screen.is-sport .next-progress-numbers strong{color:#e3ff90}
+.live-screen.is-sport .next-fill{
+  background:linear-gradient(90deg,#15bcd1,#b7ff56);
+  box-shadow:0 0 14px #affd6377;
+}
+.live-screen.is-sport .school-athletes .athlete{
+  border-color:#4cbb91;background:#eefff4;
+}
+.live-screen.is-sport .athlete-name{color:#0a4539}
+.live-screen.is-sport .portrait-placeholder{
+  font-size:clamp(.6rem,.9vw,1.05rem);
+  font-weight:800;line-height:1.35;text-align:center;padding:4px;
+}
+.school-athletes.count-many{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-template-rows:repeat(var(--athlete-rows,4),minmax(0,1fr));
+}
+.school-athletes.count-many .athlete-name{
+  font-size:clamp(.44rem,.63vw,.78rem);line-height:1.1;
+  max-height:40%;
+}
+@media(max-width:980px){
+  .live-screen.is-sport .portrait-placeholder{font-size:clamp(.45rem,.9vw,.72rem)}
+}
+@media(prefers-reduced-motion:reduce){
+  .live-screen.is-sport .next-fill{transition:none}
+}
