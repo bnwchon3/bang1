@@ -343,19 +343,111 @@ function live_recent_result_item(array $row):?array {
         'updatedAt'=>(string)($row['updated_at']??'')
     ];
 }
+/**
+ * Look up today's REAL registered athletes for one ranked school. A Staff
+ * result ranks SCHOOLS, not individual runners: never claim the displayed
+ * pupils personally won without that being recorded in the results.
+ *
+ * Preliminary results must match the exact heat; final results use the
+ * competition's registrations across the preliminary heats. Otherwise the
+ * final screen could show a student from a different race.
+ */
+function live_result_place_athletes(
+    array $result,array $place,array $registrations,array $runnerMap,array $checks
+):array {
+    $eventKey=live_event_order_key([
+        'event_name'=>(string)($result['eventName']??''),
+        'category'=>(string)($result['category']??''),
+        'level'=>(string)($result['level']??'')
+    ]);
+    $schoolKey=live_school_compact((string)($place['school']??''));
+    if($schoolKey==='')return [];
+    $final=($result['round']??'')==='ชิงชนะเลิศ';
+    $heat=max(1,(int)($result['heat']??1));
+    $capacity=live_attendance_capacity([
+        'event_name'=>$result['eventName']??'',
+        'category'=>$result['category']??''
+    ]);
+    $candidates=[];
+    $seen=[];
+    foreach($registrations as $registration){
+        if(live_event_order_key($registration)!==$eventKey
+            ||live_school_compact((string)($registration['school_name']??''))!==$schoolKey)
+            continue;
+        if(!$final&&max(1,(int)($registration['heat']??1))!==$heat)continue;
+        foreach(live_athlete_rows($registration,$runnerMap,$checks) as $athlete){
+            $key=(string)$athlete['athleteKey'];
+            if(isset($seen[$key]))continue;
+            $seen[$key]=true;
+            $candidates[]=$athlete;
+        }
+    }
+    // Prefer recorded check-ins, then fill from the real registered roster.
+    // Return only public display fields, not runner IDs / check-in keys.
+    return array_map(static fn($athlete)=>[
+        'name'=>(string)$athlete['name'],
+        'photo'=>$athlete['photo']
+    ],live_sport_candidates($candidates,$capacity));
+}
 function live_latest_results():array {
     $results=[];
-    // Latest first. Only official Staff-saved results, no unsaved fixture rankings.
+    // Latest first. Only official Staff-saved results, no unsaved rankings.
     $saved=rows(
-        'SELECT r.id,r.event_id,r.round_type,r.heat_no,r.ranking_json,r.updated_at,e.name AS event_name
+        'SELECT r.id,r.event_id,r.round_type,r.heat_no,r.ranking_json,r.updated_at,
+                e.name AS event_name,e.category AS event_category,e.level AS event_level
          FROM event_results r INNER JOIN events e ON e.id=r.event_id
          ORDER BY r.updated_at DESC,r.id DESC LIMIT 32'
     );
     foreach($saved as $record){
         $item=live_recent_result_item($record);
-        if($item!==null)$results[]=$item;
+        if($item!==null){
+            $item['category']=(string)($record['event_category']??'');
+            $item['level']=(string)($record['event_level']??'');
+            $results[]=$item;
+        }
         if(count($results)>=8)break;
     }
+    if(!$results)return [];
+    // Fetch the candidate pool once, not one SQL query per winner/card.
+    $names=array_values(array_unique(array_column($results,'eventName')));
+    $placeholders=implode(',',array_fill(0,count($names),'?'));
+    $registrations=rows(
+        'SELECT id,event_id,event_name,category,level,school_name,runner_ids,
+                runner_names,photos,heat
+         FROM registrations WHERE event_name IN ('.$placeholders.') ORDER BY id',
+        $names
+    );
+    $runnerIds=[];$regIds=[];
+    foreach($registrations as $registration){
+        $regIds[]=(int)$registration['id'];
+        foreach(explode(',',(string)($registration['runner_ids']??'')) as $raw){
+            $raw=trim($raw);
+            if(ctype_digit($raw)&&(int)$raw>0)$runnerIds[(int)$raw]=true;
+        }
+    }
+    $runnerMap=[];$checks=[];
+    if($runnerIds){
+        $ids=array_keys($runnerIds);
+        $params=implode(',',array_fill(0,count($ids),'?'));
+        foreach(rows('SELECT id,first_name,last_name,photo_url FROM runners
+                      WHERE id IN ('.$params.')',$ids) as $runner)
+            $runnerMap[(int)$runner['id']]=$runner;
+    }
+    if($regIds){
+        $params=implode(',',array_fill(0,count($regIds),'?'));
+        foreach(rows('SELECT registration_id,athlete_key,checked_at
+                      FROM race_athlete_checkins WHERE registration_id IN ('.$params.')',$regIds) as $check)
+            $checks[(int)$check['registration_id']][(string)$check['athlete_key']]=
+                (string)$check['checked_at'];
+    }
+    foreach($results as &$result){
+        foreach($result['places'] as &$place){
+            $place['athletes']=live_result_place_athletes(
+                $result,$place,$registrations,$runnerMap,$checks);
+        }
+        unset($place);
+    }
+    unset($result);
     return $results;
 }
 

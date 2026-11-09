@@ -232,3 +232,81 @@ check(count(live_sport_candidates([] ,4))===0,
 check(count($registeredSport)===5 && $registeredSport[0]['checkedAt']===null,
     'Sport display selection must not mutate registration or check-in data');
 echo "PASS Sport showcase registered roster: 1 solo, 4 relay, authentic photos and no check-in mutation\n";
+
+
+// --------------------------------------------------------------
+// Official podium / qualifiers use ACTUAL current student portraits.
+// A scored school is NOT evidence that one particular pupil won.
+$rankedRace=[
+    'eventName'=>'วิ่ง 80 เมตร (8 ปี ชาย)',
+    'category'=>'วิ่งเดี่ยว','level'=>'ประถม',
+    'round'=>'คัดเลือก','heat'=>1
+];
+$rankedSchool=['place'=>1,'school'=>'โรงเรียนบ้านนาวัง'];
+$registrationsForCards=[
+    ['id'=>501,'event_name'=>'วิ่ง 80 เมตร (8 ปี ชาย)',
+     'category'=>'วิ่งเดี่ยว','level'=>'ประถม','school_name'=>'โรงเรียนบ้านนาวัง',
+     'heat'=>1,'runner_ids'=>'101,102','runner_names'=>'ก,ข',
+     'photos'=>'https://example.org/old101.jpg,https://example.org/old102.jpg'],
+    ['id'=>502,'event_name'=>'วิ่ง 80 เมตร (8 ปี ชาย)',
+     'category'=>'วิ่งเดี่ยว','level'=>'ประถม','school_name'=>'โรงเรียนบ้านนาวัง',
+     'heat'=>2,'runner_ids'=>'103','runner_names'=>'ค',
+     'photos'=>'https://example.org/old103.jpg'],
+    ['id'=>503,'event_name'=>'วิ่ง 80 เมตร (8 ปี ชาย)',
+     'category'=>'วิ่งเดี่ยว','level'=>'ประถม','school_name'=>'โรงเรียนบ้านทุ่งกราด',
+     'heat'=>1,'runner_ids'=>'104','runner_names'=>'ง',
+     'photos'=>'https://example.org/old104.jpg'],
+    ['id'=>504,'event_name'=>'วิ่ง 80 เมตร (8 ปี หญิง)',
+     'category'=>'วิ่งเดี่ยว','level'=>'ประถม','school_name'=>'โรงเรียนบ้านนาวัง',
+     'heat'=>1,'runner_ids'=>'105','runner_names'=>'จ',
+     'photos'=>'https://example.org/wrong-gender.jpg'],
+];
+$runnersForCards=[
+  101=>['first_name'=>'เด็กชาย','last_name'=>'ตัวสำรอง','photo_url'=>'https://example.org/101.jpg'],
+  102=>['first_name'=>'เด็กชาย','last_name'=>'ตัวจริง','photo_url'=>'https://example.org/102.jpg'],
+  103=>['first_name'=>'เด็กชาย','last_name'=>'ฮีทสอง','photo_url'=>'https://example.org/103.jpg'],
+  104=>['first_name'=>'เด็กชาย','last_name'=>'โรงเรียนอื่น','photo_url'=>'https://example.org/104.jpg'],
+  105=>['first_name'=>'เด็กหญิง','last_name'=>'คนละรายการ','photo_url'=>'https://example.org/wrong.jpg']
+];
+$checksForCards=[501=>['runner:102'=>'2026-11-09 10:11:00']];
+$photoCardAthletes=live_result_place_athletes(
+    $rankedRace,$rankedSchool,$registrationsForCards,$runnersForCards,$checksForCards);
+check(count($photoCardAthletes)===1,'Solo podium must feature only one current student');
+check($photoCardAthletes[0]['photo']==='https://example.org/102.jpg',
+    'Choose actual checked runner photo ahead of unused alternate/registration snapshot');
+check($photoCardAthletes[0]['name']==='เด็กชาย ตัวจริง',
+    'Display the exact student name from the registered runner');
+check(!array_key_exists('runnerId',$photoCardAthletes[0]) &&
+      !array_key_exists('athleteKey',$photoCardAthletes[0]) &&
+      !array_key_exists('checkedAt',$photoCardAthletes[0]),
+    'Do not expose runner identifiers or attendance history in podium API');
+check(live_result_place_athletes(
+    $rankedRace,['school'=>'โรงเรียนที่ไม่ได้ลงแข่ง'],
+    $registrationsForCards,$runnersForCards,$checksForCards)===[],
+    'Never borrow a photo from another ranked school');
+$secondHeat=$rankedRace;$secondHeat['heat']=2;
+$secondHeatAthletes=live_result_place_athletes(
+    $secondHeat,$rankedSchool,$registrationsForCards,$runnersForCards,$checksForCards);
+check($secondHeatAthletes[0]['photo']==='https://example.org/103.jpg',
+    'A qualifying heat must use its OWN school entry, not another heat');
+$finalSameRace=$rankedRace;$finalSameRace['round']='ชิงชนะเลิศ';$finalSameRace['heat']=9;
+$finalAthletes=live_result_place_athletes(
+    $finalSameRace,$rankedSchool,$registrationsForCards,$runnersForCards,$checksForCards);
+check(count($finalAthletes)===1&&$finalAthletes[0]['photo']==='https://example.org/102.jpg',
+    'A final may draw from qualifying registrations across heats');
+$relayRace=['eventName'=>'วิ่งผลัด 4x50 เมตร (6 ปี หญิง)',
+    'category'=>'วิ่งผลัด','level'=>'อนุบาล','round'=>'ชิงชนะเลิศ','heat'=>1];
+$relayReg=[[
+    'id'=>520,'event_name'=>$relayRace['eventName'],'category'=>'วิ่งผลัด',
+    'level'=>'อนุบาล','school_name'=>'โรงเรียนบ้านนาวัง',
+    'heat'=>1,'runner_ids'=>'201,202,203,204,205',
+    'runner_names'=>'หนึ่ง,สอง,สาม,สี่,ห้า',
+    'photos'=>'https://example.org/201.jpg,https://example.org/202.jpg,https://example.org/203.jpg,https://example.org/204.jpg,https://example.org/205.jpg'
+]];
+$relayPhotos=live_result_place_athletes($relayRace,$rankedSchool,$relayReg,[],[]);
+check(count($relayPhotos)===4,'Relay FIFA player card must show exactly four real athletes');
+check($relayPhotos[3]['photo']==='https://example.org/204.jpg',
+    'Use individual registration images for the 2 by 2 relay card');
+check(live_result_place_athletes($rankedRace,$rankedSchool,[],[],[])===[],
+    'A score with no matching student registration must show a safe placeholder');
+echo "PASS true athlete portraits: podium single, relay four, exact school/event/heat, no private IDs\n";

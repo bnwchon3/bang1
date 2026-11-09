@@ -11,7 +11,7 @@ header('Cache-Control: no-store, private');
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#06162c">
   <title>จอรายงานตัว LIVE | กรีฑากลุ่มโรงเรียนบางละมุง 1</title>
-  <link rel="stylesheet" href="./live.css?v=20261109-race-breaking16">
+  <link rel="stylesheet" href="./live.css?v=20261109-result-athlete-cards17">
 </head>
 <body>
   <main class="live-screen">
@@ -153,10 +153,10 @@ header('Cache-Control: no-store, private');
       <footer class="race-breaking-footer">
         <div class="race-breaking-footer-copy"><span>⚡</span><strong id="breakingFooterText">รายงานผลการแข่งขันอย่างเป็นทางการ</strong></div>
         <div class="race-breaking-progress"><div id="breakingProgressFill"></div></div>
-        <div id="breakingRemaining" class="race-breaking-remaining">10</div>
+        <div id="breakingRemaining" class="race-breaking-remaining">15</div>
       </footer>
     </section>
   </main>
-  <script defer src="./live.js?v=20261109-race-breaking16"></script>
+  <script defer src="./live.js?v=20261109-result-athlete-cards17"></script>
 </body>
 </html>

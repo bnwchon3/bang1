@@ -463,7 +463,7 @@
   // TRACK FLASH interrupts either Live mode only for NEW Staff-saved rankings.
   // Existing records on initial load are baselined: page refresh never replays
   // all earlier score results or an entire previous competition.
-  const BREAKING_DURATION_MS=10000;
+  const BREAKING_DURATION_MS=15000;
   let breakingBootstrapped=false,breakingSeen=new Set(),breakingCurrent=null;
   let breakingQueued=null,breakingStarted=0,newsSoundEnabled=false,newsAudio=null;
   const soundButtons=['newsSoundLive','newsSoundSport','newsSoundBreaking'];
@@ -485,17 +485,63 @@
     // MariaDB stores times in Asia/Bangkok (+07), not the visitor's time zone.
     return Date.parse(date.replace(' ','T')+'+07:00');
   }
-  function breakingResultCard(place){
+  // Real, registered athlete pictures in a FIFA-style collectible player card.
+  // Official results rank schools: these are representative CURRENT runners,
+  // not independently verified individual medal winners.
+  function breakingPortrait(person){
+    if(!person?.photo){
+      return '<div class="fifa-portrait-placeholder" aria-label="ยังไม่มีรูปนักกรีฑา">'+
+        '<span aria-hidden="true">🏃</span><small>ยังไม่มีรูป</small></div>';
+    }
+    return '<img src="'+esc(person.photo)+'" alt="ภาพนักกรีฑา '+esc(person.name||'')+
+      '" loading="eager" decoding="async" referrerpolicy="no-referrer">';
+  }
+  function breakingPlayerImages(athletes,relay){
+    if(!athletes.length){
+      return '<div class="fifa-player-portraits is-missing">'+
+        breakingPortrait(null)+'</div>';
+    }
+    const photos=athletes.slice(0,relay?4:1);
+    return '<div class="fifa-player-portraits '+(relay?'is-relay':'is-solo')+'">'+
+      photos.map(person=>'<div class="fifa-player-photo">'+breakingPortrait(person)+
+        (relay?'<span class="fifa-mini-name">'+esc(person.name||'นักกรีฑา')+'</span>':'')+
+        '</div>').join('')+'</div>';
+  }
+  function breakingResultCard(place,relay){
     const rank=Number(place.place);
     const medals={1:'🥇',2:'🥈',3:'🥉'};
     const rankText=rank===1?'อันดับ 1':rank===2?'อันดับ 2':'อันดับ 3';
-    return '<article class="race-breaking-card race-breaking-rank-'+rank+'">'+
-      '<span class="race-breaking-medal" aria-hidden="true">'+(medals[rank]||'🏅')+'</span>'+
-      '<div class="race-breaking-card-rank">'+rankText+'</div>'+
-      '<strong>'+esc(place.school)+'</strong>'+
-      '<span class="race-breaking-card-note">'+(rank===1?'THE LEADER':
-       rank===2?'RUNNER-UP':'TOP THREE')+'</span>'+
+    const athletes=Array.isArray(place.athletes)?place.athletes.slice(0,relay?4:1):[];
+    const caption=athletes.length===1&&!relay?athletes[0].name:
+      athletes.length>0?(relay?'นักกรีฑาทีมผลัด '+athletes.length+' คน':'นักกรีฑาของโรงเรียน'):
+      'ยังไม่มีรูปนักกรีฑาที่ลงทะเบียน';
+    const status=rank===1?'CHAMPION':rank===2?'RUNNER-UP':'THIRD PLACE';
+    return '<article class="race-breaking-card fifa-race-card race-breaking-rank-'+rank+'">'+
+      '<div class="fifa-card-header">'+
+        '<span class="race-breaking-medal" aria-hidden="true">'+(medals[rank]||'🏅')+'</span>'+
+        '<span class="fifa-card-place">'+rankText+'</span>'+
+        '<span class="fifa-card-diamond" aria-hidden="true">✦</span>'+
+      '</div>'+
+      breakingPlayerImages(athletes,relay)+
+      '<div class="fifa-card-info">'+
+        '<strong class="fifa-card-school">'+esc(place.school)+'</strong>'+
+        '<span class="fifa-card-athlete">'+esc(caption)+'</span>'+
+        '<span class="fifa-card-status">'+status+'</span>'+
+      '</div>'+
       '</article>';
+  }
+  function repairBreakingImages(){
+    const root=el('breakingWinners');
+    if(!root)return;
+    root.querySelectorAll('.fifa-player-photo img').forEach(img=>{
+      img.addEventListener('error',function(){
+        const fallback=document.createElement('div');
+        fallback.className='fifa-portrait-placeholder';
+        fallback.innerHTML='<span aria-hidden="true">🏃</span><small>ยังไม่มีรูป</small>';
+        fallback.setAttribute('aria-label','ไม่สามารถแสดงภาพนักกรีฑา');
+        this.replaceWith(fallback);
+      },{once:true});
+    });
   }
   function breakingDecorations(finalRound){
     const container=el('breakingConfetti');
@@ -529,7 +575,10 @@
       [2,1,3].flatMap(rank=>places.filter(p=>Number(p.place)===rank)):places;
     const winners=el('breakingWinners');
     winners.className='race-breaking-winners '+(finalRound?'is-podium':'is-qualifiers');
-    winners.innerHTML=ordered.map(breakingResultCard).join('');
+    const relay=/ผลัด/.test(String(result.eventName||''))||
+      /ผลัด/.test(String(result.category||''));
+    winners.innerHTML=ordered.map(place=>breakingResultCard(place,relay)).join('');
+    repairBreakingImages();
     el('breakingMessage').textContent=finalRound?
       'สุดยอดความสำเร็จ • ขอแสดงความยินดีกับโรงเรียนที่ได้รับรางวัล':
       'TOP 3 • 3 อันดับแรกของฮีทนี้ได้รับการประกาศเข้ารอบต่อไป';
