@@ -88,6 +88,62 @@ function live_fixture_round(int $eventId,array $registration,array $index):strin
     return $index['byGroup'][$groupKey]??'รอยืนยันรอบ';
 }
 
+/**
+ * The Live board selects a competition/round rather than an individual heat.
+ * Heat membership stays on each registration and is still independently
+ * audited in race_athlete_checkins by registration ID + athlete key.
+ */
+function live_competition_key(array $row,string $round):string {
+    return hash('sha256',json_encode([
+        live_event_order_key($row),$round
+    ],JSON_UNESCAPED_UNICODE|JSON_INVALID_UTF8_SUBSTITUTE));
+}
+/** Official event number/ordering for each heat from the published schedule. */
+function live_schedule_heat_slots(array $schedule):array {
+    $slots=[];
+    foreach($schedule as $slot){
+        $id=(int)($slot['EventID']??0);
+        $heat=max(1,(int)($slot['Heat']??1));
+        $stage=trim((string)($slot['Stage']??''));
+        $round=match($stage){
+            'คัดเลือก'=>'รอบคัดเลือก',
+            'ชิงชนะเลิศ'=>'รอบชิง',
+            default=>'รอยืนยันรอบ'
+        };
+        $identity=live_event_order_key([
+            'event_name'=>(string)($slot['EventName']??''),
+            'category'=>(string)($slot['Category']??''),
+            'level'=>(string)($slot['Level']??'')
+        ]);
+        $key=$identity.'|'.$round.'|'.$heat;
+        if(!isset($slots[$key])){
+            $slots[$key]=[
+                'eventId'=>$id,
+                'order'=>(int)($slot['SourceOrder']??$id),
+                'heat'=>$heat
+            ];
+        }
+    }
+    return $slots;
+}
+function live_event_number_label(array $ids):string {
+    $ids=array_values(array_unique(array_filter(array_map('intval',$ids),
+        static fn($v)=>$v>0)));
+    sort($ids,SORT_NUMERIC);
+    if(!$ids)return '—';
+    if(count($ids)===1)return (string)$ids[0];
+    $sequence=range($ids[0],$ids[count($ids)-1]);
+    if($sequence===$ids)return $ids[0].'–'.$ids[count($ids)-1];
+    return implode(', ',$ids);
+}
+/** Add a unique school heat without changing registration order. */
+function live_add_heat(array &$heats,int $heat):void {
+    if($heat>0&&!in_array($heat,$heats,true)){
+        $heats[]=$heat;
+        sort($heats,SORT_NUMERIC);
+    }
+}
+
 /** Ten fixed presentation columns, in the reference screen's order. */
 function live_school_order():array {
     return [
@@ -246,7 +302,9 @@ function live_latest_results():array {
 }
 
 function live_dataset(bool $manager=false):array {
-    $roundIndex=live_official_round_index(event_schedule_data());
+    $schedule=event_schedule_data();
+    $roundIndex=live_official_round_index($schedule);
+    $heatSlots=live_schedule_heat_slots($schedule);
     $order=[];
     foreach(rows('SELECT id,name,category,level,gender,source_order,remark,stage FROM events ORDER BY COALESCE(source_order,999999),id') as $e){
         $k=live_event_order_key($e);
@@ -272,42 +330,67 @@ function live_dataset(bool $manager=false):array {
     $schoolColumns=live_school_columns(rows('SELECT name FROM schools ORDER BY id'),$registrations);
     $fixtures=[];$teamsByKey=[];$legacyToCurrent=[];
     foreach($registrations as $r){
-        $key=live_group_key($r);
+        $ord=$order[live_event_order_key($r)]??null;
+        $oldEventId=(int)($ord['eventId']??$r['event_id']??0);
+        $round=live_fixture_round($oldEventId,$r,$roundIndex);
+        $key=live_competition_key($r,$round);
+        // Upgrade stored Active selections from both earlier per-heat formats
+        // without changing or clearing the persisted selection/check-ins.
+        $legacyToCurrent[live_group_key($r)]=$key;
         $legacyToCurrent[live_legacy_group_key($r)]=$key;
+        $heat=max(1,(int)($r['heat']??1));
+        $slotKey=live_event_order_key($r).'|'.$round.'|'.$heat;
+        $slot=$heatSlots[$slotKey]??null;
+        $eventId=(int)($slot['eventId']??$r['event_id']??$oldEventId);
+        $sortOrder=(int)($slot['order']??$ord['order']??999999);
         if(!isset($fixtures[$key])){
-            $ord=$order[live_event_order_key($r)]??null;
             $fixtures[$key]=[
                 'key'=>$key,
-                'eventId'=>(int)($ord['eventId']??$r['event_id']??0),
+                'eventId'=>$eventId,
+                'eventIds'=>[],
+                'eventNumberLabel'=>'',
                 'eventName'=>(string)$r['event_name'],
                 'category'=>(string)$r['category'],
                 'level'=>(string)$r['level'],
                 'gender'=>(string)($ord['gender']??live_gender((string)$r['gender'])),
-                'heat'=>(int)$r['heat'],
-                'round'=>live_fixture_round((int)($ord['eventId']??$r['event_id']??0),$r,$roundIndex),
-                'order'=>(int)($ord['order']??999999),
+                'heat'=>$heat,
+                'heats'=>[],
+                'round'=>$round,
+                'order'=>$sortOrder,
                 'total'=>0,'checked'=>0,'teams'=>0,'teamsReady'=>0
             ];
             $teamsByKey[$key]=[];
         }
+        live_add_heat($fixtures[$key]['heats'],$heat);
+        if($eventId>0&&!in_array($eventId,$fixtures[$key]['eventIds'],true))
+            $fixtures[$key]['eventIds'][]=$eventId;
+        $fixtures[$key]['order']=min($fixtures[$key]['order'],$sortOrder);
         $athletes=live_athlete_rows($r,$runnerMap,$checks);
         $present=array_values(array_filter($athletes,static fn($a)=>$a['checkedAt']!==null));
         $fixtures[$key]['total']+=count($athletes);
         $fixtures[$key]['checked']+=count($present);
         $fixtures[$key]['teams']++;
-        if(count($athletes)>0&&count($present)===count($athletes))$fixtures[$key]['teamsReady']++;
+        if(count($athletes)>0&&count($present)===count($athletes))
+            $fixtures[$key]['teamsReady']++;
         $team=[
             'regId'=>(int)$r['id'],
             'school'=>(string)$r['school_name'],
             'lane'=>$r['lane']===null?null:(int)$r['lane'],
-            'heat'=>(int)$r['heat'],
+            'heat'=>$heat,
             'totalAthletes'=>count($athletes),
             'checkedAthletes'=>count($present)
         ];
-        if($manager)$team['athletes']=$athletes;
-        else $team['athletes']=$present;
+        $team['athletes']=$manager?$athletes:$present;
         $teamsByKey[$key][]=$team;
     }
+    foreach($fixtures as &$fixture){
+        sort($fixture['eventIds'],SORT_NUMERIC);
+        $fixture['eventNumberLabel']=live_event_number_label($fixture['eventIds']);
+        $fixture['eventId']=$fixture['eventIds'][0]??$fixture['eventId'];
+        // Heat number is shown only when there is exactly one heat.
+        $fixture['heat']=count($fixture['heats'])===1?$fixture['heats'][0]:0;
+    }
+    unset($fixture);
     $fixtures=array_values($fixtures);
     usort($fixtures,static function(array $a,array $b):int{
         return ($a['order']<=>$b['order'])
@@ -326,14 +409,15 @@ function live_dataset(bool $manager=false):array {
     }
     $teams=$active?$teamsByKey[$activeKey]:[];
     usort($teams,static fn($a,$b)=>
-        ($a['lane']??9999)<=>($b['lane']??9999)
+        ($a['heat']<=>$b['heat'])
+        ?:(($a['lane']??9999)<=>($b['lane']??9999))
         ?:strcmp($a['school'],$b['school'])
         ?:($a['regId']<=>$b['regId']));
     $columns=[];
     foreach($schoolColumns as $school){
         $columns[]=[
             'name'=>$school['name'],'key'=>$school['key'],
-            'registered'=>false,'teamCount'=>0,'totalAthletes'=>0,'checkedAthletes'=>0,
+            'registered'=>false,'heats'=>[],'teamCount'=>0,'totalAthletes'=>0,'checkedAthletes'=>0,
             'athletes'=>[]
         ];
     }
@@ -350,6 +434,7 @@ function live_dataset(bool $manager=false):array {
         // This is registration membership, not check-in state. A registered
         // school must remain green even if none of its athletes has arrived.
         $columns[$columnIndex]['registered']=true;
+        live_add_heat($columns[$columnIndex]['heats'],(int)$team['heat']);
         $columns[$columnIndex]['teamCount']++;
         $columns[$columnIndex]['totalAthletes']+=(int)$team['totalAthletes'];
         $columns[$columnIndex]['checkedAthletes']+=(int)$team['checkedAthletes'];
@@ -357,7 +442,7 @@ function live_dataset(bool $manager=false):array {
             if($athlete['checkedAt']===null)continue;
             $publicAthlete=[
                 'name'=>$athlete['name'],'photo'=>$athlete['photo'],
-                'regId'=>$team['regId'],'school'=>$team['school'],
+                'regId'=>$team['regId'],'school'=>$team['school'],'heat'=>$team['heat'],
                 'checkedAt'=>$athlete['checkedAt']
             ];
             $columns[$columnIndex]['athletes'][]=$publicAthlete;
@@ -431,13 +516,12 @@ if($action==='live_runner_set'){
     }
     $reg=single('SELECT * FROM registrations WHERE id=? LIMIT 1',[$regId]);
     if(!$reg)json_out(['success'=>false,'message'=>'ไม่พบใบสมัคร'],404);
-    $state=live_dataset(false);
+    $state=live_dataset(true);
     $active=(string)($state['active']['key']??'');
-    $next=(string)($state['next'][0]['key']??'');
-    $requestedKey=live_group_key($reg);
-    if($active==='' ||
-       (!hash_equals($active,$requestedKey) &&
-        ($next===''||!hash_equals($next,$requestedKey)))){
+    $available=array_merge($state['teams']??[],$state['nextTeams']??[]);
+    $allowed=false;
+    foreach($available as $team)if((int)$team['regId']===$regId){$allowed=true;break;}
+    if($active===''||!$allowed){
         json_out(['success'=>false,'message'=>'เช็กชื่อได้เฉพาะรายการ Active หรือรายการถัดไปเท่านั้น'],409);
     }
     // The submitted key is merely a selector; only athletes actually present
