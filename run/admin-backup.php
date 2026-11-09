@@ -3,7 +3,7 @@ declare(strict_types=1);
 // Encrypted, authenticated in-memory backup/restore. No exports saved to public directories.
 if(!in_array($action,['admin_backup_export','admin_backup_preview','admin_backup_restore'],true))return;
 must_post();
-const BACKUP_TABLES=['source_rows','schools','coaches','runners','events','registrations','heats','feature_config','audit_logs','race_results','certificates','import_batches','event_results'];
+const BACKUP_TABLES=['source_rows','schools','coaches','runners','events','registrations','heats','feature_config','audit_logs','race_results','certificates','import_batches','event_results','race_history_batches','race_history_results'];
 const BACKUP_MAX_BYTES=31457280;
 const BACKUP_MAX_PLAINTEXT=83886080;
 function backup_columns(string $table): array {
@@ -47,11 +47,14 @@ function backup_decrypt(string $bytes,string $passphrase): array {
     if(!is_array($decoded)||($decoded['format']??'')!=='bang1-snapshot'||($decoded['version']??null)!==1||
        !isset($decoded['tables'])||!is_array($decoded['tables']))
         json_out(['success'=>false,'message'=>'ไฟล์ Backup ไม่ตรงกับระบบบางละมุง 1'],422);
-    // Allow older encrypted backups from before Staff scoring was introduced.
-    // Restoring an old snapshot will correctly restore an empty scores table.
-    if(!array_key_exists('event_results',$decoded['tables']) &&
-       array_keys($decoded['tables'])===array_slice(BACKUP_TABLES,0,-1)){
-        $decoded['tables']['event_results']=['columns'=>backup_columns('event_results'),'rows'=>[]];
+    // Previous encrypted snapshots may lack Staff results or immutable
+    // championship archive tables. Allow strict ordered prefixes and preserve
+    // existing on-host champions when the backup does not contain them.
+    $present=array_keys($decoded['tables']);
+    if($present!==array_slice(BACKUP_TABLES,0,count($present))||count($present)<12)
+        json_out(['success'=>false,'message'=>'ตารางในไฟล์ Backup ไม่ตรงกับระบบ'],422);
+    foreach(array_slice(BACKUP_TABLES,count($present)) as $missing){
+        $decoded['tables'][$missing]=['columns'=>backup_columns($missing),'rows'=>[]];
     }
     if(array_keys($decoded['tables'])!==BACKUP_TABLES)
         json_out(['success'=>false,'message'=>'จำนวนตารางในไฟล์ Backup ไม่ตรงกับระบบ'],422);
@@ -142,8 +145,16 @@ try{
           strtolower((string)($row['email']??''))!==strtolower((string)$own['email'])));
     $snapshot['tables']['coaches']['rows'][]=$own;
     // InnoDB DELETE + INSERT (never TRUNCATE) allows a rollback if any step fails.
-    foreach(array_reverse(BACKUP_TABLES) as $table)db()->exec('DELETE FROM '.chr(96).$table.chr(96));
+    // If this host already has archived champions, never replace them with
+    // older snapshots. This is historical data, not a season reset.
+    $hasHistory=(int)db()->query('SELECT COUNT(*) FROM race_history_batches')->fetchColumn()>0;
+    $historyTables=['race_history_batches','race_history_results'];
+    foreach(array_reverse(BACKUP_TABLES) as $table){
+        if($hasHistory&&in_array($table,$historyTables,true))continue;
+        db()->exec('DELETE FROM '.chr(96).$table.chr(96));
+    }
     foreach(BACKUP_TABLES as $table){
+        if($hasHistory&&in_array($table,$historyTables,true))continue;
         $cols=$snapshot['tables'][$table]['columns'];
         $columnsSql=implode(',',array_map(static fn($c)=>chr(96).$c.chr(96),$cols));
         $holders=implode(',',array_fill(0,count($cols),'?'));

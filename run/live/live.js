@@ -204,28 +204,46 @@
       },{once:true});
     });
   }
-  function paintSportTeams(schools,index){
+  function paintSportTeams(schools,index,formerChampion){
     const input=Array.isArray(schools)?schools:[];
-    // Prefer a registered school with a real stored portrait; cycle the hero
-    // between schools so all teams get attention across event slides.
+    // Show the confirmed former CHAMPION SCHOOL, not a falsely identified
+    // "former champion student". Portraits belong to the current roster only.
+    const champion=formerChampion?.school?formerChampion:null;
+    const normalizeSchool=name=>sportSchoolName(name)
+      .replace(/\s+/g,'').toLocaleLowerCase('th');
+    const championTeam=champion?input.find(s=>
+      s.registered&&normalizeSchool(s.name)===normalizeSchool(champion.school)):null;
     const populated=input.filter(s=>s.registered&&Array.isArray(s.athletes)&&s.athletes.some(a=>a.photo));
     const registered=input.filter(s=>s.registered);
     const pool=populated.length?populated:(registered.length?registered:input);
-    const hero=pool.length?pool[index%pool.length]:null;
-    const others=hero?input.filter(s=>s!==hero):input;
+    const fallback=pool.length?pool[index%pool.length]:null;
+    // If the old champion does not take part, show its school as archival
+    // context with no student portrait. Never pass a different child off as a champion.
+    const hero=champion?(championTeam||{name:champion.school,athletes:[],heats:[],registered:false}):fallback;
+    const others=championTeam?input.filter(s=>s!==championTeam):
+      !champion?input.filter(s=>s!==fallback):input;
     const people=Array.isArray(hero?.athletes)?hero.athletes.slice(0,4):[];
     const multi=people.length>1;
     const pics=el('sportHeroPhotos');
     pics.className='sport-hero-photos'+(multi?' is-multi':'')+
       (people.length===2?' is-duo':'');
     pics.innerHTML=sportPhotoTiles(people);
+    el('sportHeroLabel').textContent=champion?'🏆 FORMER CHAMPION':'★ FEATURED ATHLETE';
+    el('sportHeroCaptionLabel').textContent=champion
+      ?'โรงเรียนแชมป์เก่า · '+champion.season
+      :'ตัวแทนนักกรีฑาในรายการปัจจุบัน';
     el('sportHeroSchool').textContent=hero?sportSchoolName(hero.name):'รอข้อมูลโรงเรียน';
-    el('sportHeroName').textContent=people.length===1?people[0].name:
-      people.length>1?people.length+' นักกรีฑาที่ลงทะเบียน':
+    el('sportHeroName').textContent=champion&&!championTeam
+      ?'แชมป์เก่าไม่ได้ส่งนักกรีฑาในรายการนี้':
+      people.length===1?people[0].name:
+      people.length>1?people.length+' นักกรีฑาที่ลงทะเบียนในปีปัจจุบัน':
       'ยังไม่มีรูปนักกรีฑาที่ลงทะเบียน';
     const heat=Array.isArray(hero?.heats)?hero.heats.filter(n=>Number(n)>0):[];
-    el('sportHeroHeat').textContent=heat.length?'HEAT '+heat.join('–'):'ATHLETICS';
-    el('sportRivalGrid').innerHTML=others.slice(0,9).map(sportRivalCard).join('')||
+    el('sportHeroHeat').textContent=champion?'🏆 '+champion.season:
+      heat.length?'HEAT '+heat.join('–'):'ATHLETICS';
+    const rivalGrid=el('sportRivalGrid');
+    rivalGrid.classList.toggle('is-ten',others.length>9);
+    rivalGrid.innerHTML=others.slice(0,10).map(sportRivalCard).join('')||
       '<div class="sport-loading">รอข้อมูลโรงเรียนที่เข้าร่วมแข่งขัน</div>';
     el('sportTeamCount').textContent=input.filter(s=>s.registered).length+
       ' / '+input.length+' TEAMS';
@@ -294,7 +312,7 @@
       if(lastMode!=='sport'||token!==sportSlideToken)return;
       const signature=JSON.stringify([fixture.key,data.schools]);
       if(lastSportBoardSignature!==signature){
-        paintSportTeams(data.schools,index);
+        paintSportTeams(data.schools,index,data.formerChampion||null);
         lastSportBoardSignature=signature;
       }
       sportRetryAt=0;

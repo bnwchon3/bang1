@@ -41,7 +41,7 @@
    tabs.className='btn-row admin-sheet-tabs';
    tabs.setAttribute('role','tablist');
    tabs.setAttribute('aria-label','แท็บผู้ดูแลระบบ');
-   var names=[['check','ตรวจสอบนักวิ่ง'],['settings','ตั้งค่าเปิด–ปิดระบบ'],['schools','โรงเรียน'],['coaches','ผู้ฝึกซ้อม'],['logs','ประวัติการใช้งาน'],['reset','รีเซ็ตข้อมูล'],['backup','สำรองข้อมูล']];
+   var names=[['check','ตรวจสอบนักวิ่ง'],['settings','ตั้งค่าเปิด–ปิดระบบ'],['schools','โรงเรียน'],['coaches','ผู้ฝึกซ้อม'],['logs','ประวัติการใช้งาน'],['champions','คลังแชมป์เก่า'],['reset','รีเซ็ตข้อมูล'],['backup','สำรองข้อมูล']];
    names.forEach(function(pair){
      var b=document.createElement('button');b.type='button';b.className='btn btn-outline btn-xs';
      b.dataset.adminTab=pair[0];b.textContent=pair[1];
@@ -105,6 +105,36 @@
       '<input type="password" id="admin-reset-login-password" class="input" autocomplete="current-password" placeholder="รหัสเข้าสู่ระบบ Admin"></label>'+
       '<div class="btn-row"><button type="button" id="admin-reset-execute" class="btn btn-primary" disabled>ยืนยันรีเซ็ตข้อมูลที่เลือก</button></div>'+
       '</div><p data-admin-message role="status" aria-live="polite"></p></div>';
+   // Permanent championship archive. Reset history starts as UNVERIFIED so
+   // test scores cannot become a publicly advertised former champion.
+   const champions=document.createElement('div');
+   champions.id='admin-sheet-champions';
+   champions.dataset.adminSheetPanel='champions';
+   champions.hidden=true;
+   champions.innerHTML=
+     '<div class="card"><div class="card-header"><div class="card-title">🏆 คลังประวัติแชมป์เก่า / ตัวเต็ง</div></div>'+
+     '<p>สำรองผลการแข่งขันก่อนล้างข้อมูลเพื่อใช้อ้างอิงบน Sport Showcase '+
+     'เฉพาะประวัติที่ Admin ตรวจและรับรองว่าเป็นผลแข่งขันจริงเท่านั้นที่จะขึ้นเป็นแชมป์เก่า</p>'+
+     '<div class="btn-row"><button type="button" id="admin-champion-preview-button" class="btn btn-outline">ตรวจผลรอบชิงที่มีอยู่</button></div>'+
+     '<div id="admin-champion-preview-result" class="admin-champion-preview" role="status" aria-live="polite">ยังไม่ได้ตรวจสอบผล</div>'+
+     '<form id="admin-champion-form" autocomplete="off">'+
+       '<div class="form-grid">'+
+         '<div class="field"><label>ปีการแข่งขันเดิม / ชื่อชุดประวัติ</label><input id="admin-champion-season" class="input" maxlength="70" required placeholder="เช่น ปีการศึกษา 2568 (ผลจริง)"></div>'+
+         '<div class="field"><label>รหัสผ่าน Admin เพื่อยืนยัน</label><input id="admin-champion-password" type="password" class="input" required autocomplete="current-password"></div>'+
+         '<div class="field"><label>พิมพ์คำว่า ยืนยันแชมป์เก่า เมื่อได้ตรวจผลจริงแล้ว</label><input id="admin-champion-confirmation" class="input" placeholder="ยืนยันแชมป์เก่า" autocomplete="off" required></div>'+
+       '</div>'+
+       '<div class="btn-row"><button type="submit" class="btn btn-primary">📁 บันทึกแชมป์เก่าและรับรองผลจริง</button></div>'+
+     '</form>'+
+     '<p class="admin-champion-warning">⚠️ หากเป็นข้อมูลทดสอบ ห้ามยืนยันว่าเป็นแชมป์จริง '+
+     'การรีเซ็ตข้อมูลจะเก็บผลเป็นประวัติที่ “ยังไม่รับรอง” โดยอัตโนมัติและไม่แสดงบน Sport</p>'+
+     '<p data-admin-message role="status" aria-live="polite"></p></div>'+
+     '<div class="card"><div class="card-header"><div class="card-title">ประวัติที่เก็บไว้ใน MariaDB</div></div>'+
+     '<div class="table-wrap"><div class="table-scroller"><table class="table"><thead><tr>'+
+       '<th>ชุดข้อมูล / ปีแข่งขัน</th><th>บันทึกเมื่อ</th><th>ผลที่เก็บ</th>'+
+       '<th>แชมป์รอบชิง</th><th>สถานะ</th><th>จัดการ</th>'+
+     '</tr></thead><tbody id="admin-champion-archives"><tr><td colspan="6">กำลังโหลด...</td></tr></tbody>'+
+     '</table></div></div></div>';
+
    // Explicitly requested backup and restore tab, using the same card and form styles.
    const backup=document.createElement('div');
    backup.id='admin-sheet-backup';
@@ -135,7 +165,7 @@
       '<input type="text" id="admin-backup-confirm-text" class="input" autocomplete="off" placeholder="กู้คืนข้อมูล"></label>'+
       '<div class="btn-row"><button type="button" class="btn btn-primary" id="admin-backup-do-restore" disabled>ยืนยันกู้คืนข้อมูล</button></div>'+
       '</div></form><p data-admin-message role="status" aria-live="polite"></p></div>';
-   [settings,schools,coaches,logs,reset,backup].forEach(function(p){page.appendChild(p)});
+   [settings,schools,coaches,logs,champions,reset,backup].forEach(function(p){page.appendChild(p)});
 
 
 
@@ -199,6 +229,7 @@
      if(key==='schools')await loadSchools();
      if(key==='coaches')await loadCoaches();
      if(key==='logs')await loadLogs(1);
+     if(key==='champions')await loadChampions();
      if(key==='reset')clearResetPreview();
      if(key==='backup')clearRestorePreview();
    }
@@ -367,6 +398,83 @@
      finally{save.disabled=false;coachForm.elements.password.value=''}
    });
    coachForm.addEventListener('reset',function(){setTimeout(function(){coachForm.elements.id.value=''},0)});
+
+   // Separate historical score archive workflow, isolated from resetting.
+   async function loadChampions(){
+     const preview=el('#admin-champion-preview-result',champions);
+     const list=el('#admin-champion-archives',champions);
+     list.innerHTML='<tr><td colspan="6">กำลังโหลด...</td></tr>';
+     const data=await api('admin_champions_preview');
+     const found=(data.samples||[]).map(x=>'• '+x.eventName+' · '+
+       'แชมป์ '+x.school+' (ฮีท '+x.heat+')');
+     preview.textContent='มีผลที่บันทึกไว้ '+(data.rows||0)+' รายการ · '+
+       'พบแชมป์รอบชิงที่ไม่ขัดแย้ง '+(data.finalWinners||0)+' รายการ\n'+
+       (found.length?found.slice(0,8).join('\n'):'ยังไม่มีผลรอบชิงอันดับ 1 ที่บันทึกไว้')+
+       '\n\nโปรดตรวจว่าเป็นผลการแข่งขันจริง ไม่ใช่ข้อมูลทดสอบ';
+     const items=data.archives||[];
+     list.innerHTML=items.map(x=>
+       '<tr data-champion-id="'+escapeText(x.id)+'">'+
+       '<td>'+escapeText(x.season_label)+'</td>'+
+       '<td>'+escapeText(x.captured_at)+'</td>'+
+       '<td>'+escapeText(x.result_count)+'</td>'+
+       '<td>'+escapeText(x.final_count)+'</td>'+
+       '<td>'+(Number(x.is_confirmed)?'<span class="admin-champion-good">รับรองแล้ว</span>':
+         '<span class="admin-champion-pending">ยังไม่รับรอง</span>')+'</td>'+
+       '<td>'+(Number(x.is_confirmed)||!Number(x.final_count)?'—':
+         '<button class="btn btn-outline btn-xs" type="button" data-confirm-champion="'+
+         escapeText(x.id)+'">ตรวจและรับรอง</button>')+'</td></tr>'
+     ).join('')||'<tr><td colspan="6">ยังไม่มีคลังประวัติแชมป์เก่า</td></tr>';
+     inform(champions,'');
+   }
+   el('#admin-champion-preview-button',champions).addEventListener('click',async event=>{
+     const btn=event.currentTarget;
+     btn.disabled=true;
+     try{await loadChampions()}catch(e){inform(champions,e.message,true)}
+     finally{btn.disabled=false}
+   });
+   const championsForm=el('#admin-champion-form',champions);
+   championsForm.addEventListener('submit',async event=>{
+     event.preventDefault();
+     const season=el('#admin-champion-season',champions).value.trim();
+     const confirmation=el('#admin-champion-confirmation',champions).value.trim();
+     const password=el('#admin-champion-password',champions).value;
+     if(!season||confirmation!=='ยืนยันแชมป์เก่า'||!password){
+       inform(champions,'กรุณาระบุปีแข่งขัน รหัส Admin และคำยืนยันตามกำหนด',true);return;
+     }
+     if(!window.confirm('ยืนยันว่าผลรอบชิงในระบบเป็นผลการแข่งขันจริง ไม่ใช่ข้อมูลทดสอบ?'))return;
+     const button=championsForm.querySelector('[type="submit"]');
+     button.disabled=true;
+     try{
+       const response=await api('admin_champions_archive',
+         {season,confirmation,adminPassword:password});
+       championsForm.reset();
+       await loadChampions();
+       inform(champions,response.message||'เก็บประวัติแชมป์แล้ว');
+     }catch(error){inform(champions,error.message,true)}
+     finally{
+       el('#admin-champion-password',champions).value='';
+       button.disabled=false;
+     }
+   });
+   el('#admin-champion-archives',champions).addEventListener('click',async event=>{
+     const button=event.target.closest('[data-confirm-champion]');
+     if(!button)return;
+     const id=Number(button.dataset.confirmChampion);
+     // Admin must actively verify a pre-reset snapshot, not silently accept
+     // an automatic archive created from possible test results.
+     const password=window.prompt('กรุณากรอกรหัสผ่าน Admin เพื่อรับรองผลการแข่งขันจริงของชุดประวัตินี้');
+     if(!password)return;
+     const phrase=window.prompt('เมื่อยืนยันว่าไม่ใช่ผลทดสอบ ให้พิมพ์ ยืนยันแชมป์เก่า');
+     if(phrase!=='ยืนยันแชมป์เก่า')return;
+     button.disabled=true;
+     try{
+       const response=await api('admin_champions_confirm',
+         {archiveId:id,confirmation:phrase,adminPassword:password});
+       await loadChampions();
+       inform(champions,response.message||'รับรองประวัติแล้ว');
+     }catch(error){inform(champions,error.message,true)}
+     finally{button.disabled=false}
+   });
 
    // Two-stage confirmation keeps a checkbox selection from deleting records by accident.
    let resetPreviewToken='';

@@ -42,6 +42,7 @@ function reset_counts(int $selfId): array {
     }
     return $out;
 }
+require_once __DIR__.'/champion-history.php';
 must_post();
 $selected=reset_selection($input,$validResetSections);
 $counts=reset_counts((int)$u['coachId']);
@@ -62,7 +63,9 @@ if ($action==='admin_reset_preview') {
         'บัญชี Admin ที่กำลังใช้งานจะยังอยู่เพื่อป้องกันการล็อกระบบ',
         'เคลียร์รูปและหลักฐานจะล้างลิงก์ใน MariaDB เท่านั้น ไฟล์ Google Drive ไม่ถูกลบ',
         'ข้อมูลนำเข้าเดิมใน source_rows จะยังอยู่เพื่อเป็นสำเนาอ้างอิง',
-        'หากล้าง Log จะคงรายการบันทึกการรีเซ็ตล่าสุดหนึ่งรายการ'
+        'หากล้าง Log จะคงรายการบันทึกการรีเซ็ตล่าสุดหนึ่งรายการ',
+        'ก่อนล้างผลการแข่งขัน/ใบสมัคร/นักวิ่ง ระบบจะสำรองผลที่มีลงคลังประวัติแบบยังไม่รับรองโดยอัตโนมัติ',
+        'ประวัติที่ยังไม่รับรองจะไม่ถูกประกาศเป็นแชมป์เก่าบนจอ Sport จนกว่า Admin จะตรวจและยืนยัน'
       ]]);
 }
 $confirmed=$_SESSION['admin_reset_confirmation']??null;
@@ -86,6 +89,16 @@ try {
       if($number>0)throw new RuntimeException('ห้ามลบนักวิ่งโดยยังมีรายการสมัครค้างอยู่');
     }
     $affected=[];
+    // Snapshot existing scored results BEFORE any destructive operation,
+    // in the SAME transaction. A failed archive aborts the whole reset.
+    // Do not promote unverified test winners to public champions.
+    $archive=null;
+    if(array_intersect($selected,['results','registrations','runners','photos'])){
+        $archive=champion_history_capture($u,
+            'ก่อนล้าง '.date('Y-m-d H:i:s').' #'.bin2hex(random_bytes(3)),
+            false,'auto_reset');
+        if($archive['id'])$affected['historyArchiveId']=$archive['id'];
+    }
     // Order intentionally avoids stale references between the registration, roster and heat tables.
     if(in_array('registrations',$selected,true)){
       $affected['registrations']=db()->exec('DELETE FROM registrations');

@@ -5,7 +5,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !hash_equals(config('deploy
     json_out(['success'=>false,'message'=>'Forbidden'],403);
 }
 header('Cache-Control: no-store, private');
-$tables=['source_rows','schools','coaches','runners','events','registrations','heats','feature_config','audit_logs','race_results','certificates','import_batches'];
+$tables=['source_rows','schools','coaches','runners','events','registrations','heats','feature_config','audit_logs','race_results','certificates','import_batches','race_history_batches','race_history_results'];
 $out=[];
 try {
   foreach($tables as $t) {

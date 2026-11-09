@@ -15,6 +15,7 @@ if(in_array($action,['admin_account_applications','admin_account_review'],true))
 require __DIR__.'/admin-security.php';
 require __DIR__.'/admin-reset.php';
 require __DIR__.'/admin-backup.php';
+require __DIR__.'/admin-champions.php';
 
 function admin_date($value): ?string {
     $value = trim((string)($value ?? ''));

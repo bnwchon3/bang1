@@ -1,0 +1,27 @@
+/* Administrative archive of historical school champions. */
+#admin-sheet-champions .admin-champion-preview{
+  white-space:pre-line;max-height:280px;overflow:auto;
+  border:1px solid #2c7794;border-radius:12px;
+  padding:13px;margin:12px 0;
+  background:linear-gradient(130deg,#07283c,#112c47);
+  color:#c5f7f5;font-size:.86rem;line-height:1.6;
+}
+#admin-sheet-champions .admin-champion-warning{
+  padding:12px;border-left:4px solid #fbbf24;
+  background:#854d0e27;color:#fde68a;border-radius:8px;
+  font-size:.86rem;line-height:1.5;
+}
+#admin-sheet-champions .admin-champion-good,
+#admin-sheet-champions .admin-champion-pending{
+  display:inline-block;padding:4px 9px;
+  border-radius:99px;font-weight:900;white-space:nowrap;
+  background:#064e3b;color:#b4f7d9;border:1px solid #22c55e;
+}
+#admin-sheet-champions .admin-champion-pending{
+  background:#713f1233;color:#ffdfaa;border-color:#d97706;
+}
+#admin-sheet-champions .table-scroller{max-height:470px;overflow:auto}
+#admin-sheet-champions form .form-grid{margin:13px 0}
+#admin-sheet-champions [data-admin-message]{
+  white-space:pre-line;font-size:.85rem;
+}

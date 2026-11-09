@@ -11,7 +11,7 @@ header('Cache-Control: no-store, private');
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#06162c">
   <title>จอรายงานตัว LIVE | กรีฑากลุ่มโรงเรียนบางละมุง 1</title>
-  <link rel="stylesheet" href="./live.css?v=20261109-game-intro10">
+  <link rel="stylesheet" href="./live.css?v=20261109-champion-history11">
 </head>
 <body>
   <main class="live-screen">
@@ -80,10 +80,10 @@ header('Cache-Control: no-store, private');
       </section>
       <section class="sport-stage" aria-label="ภาพนักกรีฑาและโปรแกรมการแข่งขัน">
         <article class="sport-hero">
-          <div class="sport-hero-top"><span class="sport-small-label">FEATURED SCHOOL</span><span id="sportHeroHeat" class="sport-hero-heat">ATHLETE</span></div>
+          <div class="sport-hero-top"><span class="sport-small-label" id="sportHeroLabel">FEATURED ATHLETE</span><span id="sportHeroHeat" class="sport-hero-heat">ATHLETE</span></div>
           <div id="sportHeroPhotos" class="sport-hero-photos"><div class="sport-image-placeholder">🏃</div></div>
           <div class="sport-hero-caption">
-            <span class="sport-small-label">ตัวแทนนักกรีฑา</span>
+            <span class="sport-small-label" id="sportHeroCaptionLabel">ตัวแทนนักกรีฑาปัจจุบัน</span>
             <h2 id="sportHeroSchool">กำลังโหลดข้อมูลโรงเรียน</h2>
             <p id="sportHeroName">—</p>
           </div>
@@ -120,6 +120,6 @@ header('Cache-Control: no-store, private');
       </div>
     </section>
   </main>
-  <script defer src="./live.js?v=20261109-game-intro10"></script>
+  <script defer src="./live.js?v=20261109-champion-history11"></script>
 </body>
 </html>

@@ -12,6 +12,7 @@ if (!isset($action)) { http_response_code(403); exit; }
 // The public and manager Live boards must use the same officially generated
 // competition schedule as the event list and Staff result entry.
 require_once __DIR__.'/event-management.php';
+require_once __DIR__.'/champion-history.php';
 
 function live_gender(string $gender): string {
     $first=trim(explode(',',str_replace('，',',',$gender))[0]);
@@ -567,7 +568,11 @@ if($action==='live_sport_fixture'){
         'success'=>true,
         'fixture'=>$state['sportFixture'],
         'schools'=>$state['schools'],
-        'display'=>$state['display']
+        'display'=>$state['display'],
+        // Null until Admin confirms an archived official championship.
+        // The former winner is school-level; the visible photos are current
+        // registered athletes, never historical student identity claims.
+        'formerChampion'=>champion_history_for_fixture($state['sportFixture'])
     ]);
 }
 if(!in_array($action,['live_manager_data','live_select','live_runner_set','live_display_set'],true))return;

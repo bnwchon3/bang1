@@ -625,3 +625,17 @@ body{background:#06162c}
  .sport-intro.is-playing{animation:none!important;visibility:hidden}
  .sport-intro-slash{animation:none!important}
 }
+
+/* Confirmed historical champion: the SCHOOL owns the title. New photos are
+   current runners, and are never labeled as the former winning individuals. */
+.sport-hero:has(#sportHeroLabel){border-color:#bffb74}
+.sport-hero-top #sportHeroLabel{color:#d8ff7a}
+.sport-hero-caption #sportHeroCaptionLabel{color:#c6f77c}
+.sport-hero-heat{max-width:65%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sport-rival-grid.is-ten{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-rows:repeat(3,minmax(0,1fr));
+}
+@media(max-width:1000px){
+ .sport-rival-grid.is-ten .sport-rival-photo{flex-basis:33%}
+}
