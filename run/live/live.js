@@ -171,7 +171,7 @@
     if(!people.length)return '<div class="sport-image-placeholder">ยังไม่มีรูปนักกรีฑา</div>';
     return people.map(p=>sportImageHTML(p,people.length>1)).join('');
   }
-  function sportRivalCard(school){
+  function sportRivalCard(school,desktopSpan=1,mobileSpan=1){
     const people=Array.isArray(school.athletes)?school.athletes.slice(0,4):[];
     const team=Boolean(school.registered);
     const multi=people.length>1;
@@ -183,7 +183,7 @@
     const badge=heat.length?'ฮีท '+[...new Set(heat)].join(', '):'';
     const subtitle=!team?'ไม่ได้ลงรายการ':
       (people.length>1?people.length+' นักกรีฑา':people[0]?.name||'รอข้อมูลนักกรีฑา');
-    return '<article class="sport-rival-card'+(team?' is-registered':' is-empty')+'">'+
+    return '<article class="sport-rival-card'+(team?' is-registered':' is-empty')+'" style="--sport-span:'+desktopSpan+';--sport-mobile-span:'+mobileSpan+';">'+
       '<div class="sport-rival-photo'+(multi?' is-relay':'')+'">'+tiles+'</div>'+
       '<div class="sport-rival-copy"><strong>'+esc(sportSchoolName(school.name))+'</strong>'+
       '<small>'+esc(subtitle)+'</small>'+
@@ -204,6 +204,16 @@
       },{once:true});
     });
   }
+  // Pack only participating schools; incomplete rows grow to use all columns.
+  function sportGridLayout(total,mobile=false){
+    const columns=total<=1?1:total<=6?2:total<=9?3:mobile?3:4;
+    const units=columns===4?12:columns===3?6:columns;
+    return {columns,units,rows:Math.max(1,Math.ceil(total/columns))};
+  }
+  function sportGridSpan(index,total,layout){
+    const finalRowCount=total%layout.columns||layout.columns;
+    return layout.units/(index>=total-finalRowCount?finalRowCount:layout.columns);
+  }
   function paintSportTeams(schools,index,formerChampion){
     const input=Array.isArray(schools)?schools:[];
     // Show the confirmed former CHAMPION SCHOOL, not a falsely identified
@@ -215,13 +225,13 @@
       s.registered&&normalizeSchool(s.name)===normalizeSchool(champion.school)):null;
     const populated=input.filter(s=>s.registered&&Array.isArray(s.athletes)&&s.athletes.some(a=>a.photo));
     const registered=input.filter(s=>s.registered);
-    const pool=populated.length?populated:(registered.length?registered:input);
+    const pool=populated.length?populated:registered;
     const fallback=pool.length?pool[index%pool.length]:null;
     // If the old champion does not take part, show its school as archival
     // context with no student portrait. Never pass a different child off as a champion.
     const hero=champion?(championTeam||{name:champion.school,athletes:[],heats:[],registered:false}):fallback;
-    const others=championTeam?input.filter(s=>s!==championTeam):
-      !champion?input.filter(s=>s!==fallback):input;
+    // The featured current school is already shown in the hero panel.
+    const others=registered.filter(s=>s!==hero);
     const people=Array.isArray(hero?.athletes)?hero.athletes.slice(0,4):[];
     const multi=people.length>1;
     const pics=el('sportHeroPhotos');
@@ -242,11 +252,17 @@
     el('sportHeroHeat').textContent=champion?'🏆 '+champion.season:
       heat.length?'HEAT '+heat.join('–'):'ATHLETICS';
     const rivalGrid=el('sportRivalGrid');
-    rivalGrid.classList.toggle('is-ten',others.length>9);
-    rivalGrid.innerHTML=others.slice(0,10).map(sportRivalCard).join('')||
-      '<div class="sport-loading">รอข้อมูลโรงเรียนที่เข้าร่วมแข่งขัน</div>';
-    el('sportTeamCount').textContent=input.filter(s=>s.registered).length+
-      ' / '+input.length+' TEAMS';
+    const desktop=sportGridLayout(others.length);
+    const mobile=sportGridLayout(others.length,true);
+    rivalGrid.style.setProperty('--sport-grid-units',String(desktop.units));
+    rivalGrid.style.setProperty('--sport-grid-rows',String(desktop.rows));
+    rivalGrid.style.setProperty('--sport-mobile-grid-units',String(mobile.units));
+    rivalGrid.style.setProperty('--sport-mobile-grid-rows',String(mobile.rows));
+    rivalGrid.innerHTML=others.map((school,i)=>sportRivalCard(school,
+      sportGridSpan(i,others.length,desktop),
+      sportGridSpan(i,others.length,mobile))).join('')||
+      '<div class="sport-loading">ยังไม่มีโรงเรียนสมัครแข่งขันในรายการนี้</div>';
+    el('sportTeamCount').textContent=registered.length+' TEAMS';
     bindSportPhotos();
   }
   function paintSportSchedule(fixtures,index){
