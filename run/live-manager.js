@@ -4,6 +4,7 @@
   const el=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let snapshot=null,busy=false,loading=false,filter='',lastActionAt=0,lastRosterHash='',lastNextRosterHash='',lastOptionHash='',pendingFixtureKey=null,switchInFlight=false;
+  let fixtureItems=[],fixtureMenuOpen=false,fixtureQuery='',fixtureRound='all';
   function isManager(){
     const user=typeof currentUser==='undefined'?null:currentUser;
     return !!user&&['Manager','Admin','TopAdmin'].includes(user.role);
@@ -23,6 +24,147 @@
     const heat=Array.isArray(f.heats)&&f.heats.length>1?
       'ฮีท '+f.heats.join('–'):(f.heat?'ฮีท '+f.heat:'');
     return number+[f.eventName,f.category,f.level,f.gender,heat].filter(Boolean).join(' · ');
+  }
+  function isFinalFixture(f){
+    return /^(รอบชิง|ชิงชนะเลิศ)/.test(String(f?.round||''));
+  }
+  function fixtureTitle(f){
+    return 'รายการที่ '+(f.eventNumberLabel||f.eventId||'—')+' · '+(f.eventName||'ไม่ระบุรายการ');
+  }
+  function fixtureDetails(f){
+    const heat=Array.isArray(f.heats)&&f.heats.length>1
+      ?'ฮีท '+f.heats.join('–'):(f.heat?'ฮีท '+f.heat:'');
+    return [f.category,f.level,f.gender,heat].filter(Boolean).join(' · ');
+  }
+  function updateFixtureTrigger(){
+    const trigger=el('bang1FixtureTrigger');
+    if(!trigger)return;
+    const selected=fixtureItems.find(f=>f.key===el('bang1ActiveFixture')?.value)||
+      snapshot?.active||null;
+    el('bang1FixtureCurrentTitle').textContent=selected?
+      fixtureTitle(selected):'เลือกรายการแข่งขัน';
+    el('bang1FixtureCurrentDetail').textContent=selected?
+      [fixtureDetails(selected),selected.round].filter(Boolean).join(' · '):
+      'ค้นหาและเลือกรายการแข่งขันเพื่อเปลี่ยนจอ Live ทันที';
+    trigger.classList.toggle('is-final',Boolean(selected&&isFinalFixture(selected)));
+    trigger.classList.toggle('has-selection',Boolean(selected));
+  }
+  function positionFixtureMenu(){
+    if(!fixtureMenuOpen)return;
+    const trigger=el('bang1FixtureTrigger'),menu=el('bang1FixturePopover');
+    if(!trigger||!menu)return;
+    const rect=trigger.getBoundingClientRect();
+    const vw=window.innerWidth,vh=window.innerHeight;
+    const width=Math.min(1000,Math.max(0,vw-16),Math.max(rect.width,260));
+    const left=Math.min(Math.max(8,rect.left),Math.max(8,vw-width-8));
+    const height=Math.max(220,Math.min(620,Math.round(vh*.74),vh-16));
+    const below=vh-rect.bottom-10,above=rect.top-10;
+    let top;
+    if(below>=Math.min(320,height))top=rect.bottom+8;
+    else if(above>=Math.min(320,height))top=rect.top-height-8;
+    else top=Math.max(8,Math.min(rect.bottom+8,vh-height-8));
+    menu.style.left=left+'px';
+    menu.style.top=top+'px';
+    menu.style.width=width+'px';
+    menu.style.maxHeight=Math.min(height,vh-top-8)+'px';
+  }
+  function renderFixtureOptions(){
+    const list=el('bang1FixtureList'),footer=el('bang1FixtureResults');
+    if(!list||!footer)return;
+    const query=fixtureQuery.toLocaleLowerCase('th').replace(/\s+/g,'');
+    const visible=fixtureItems.filter(f=>{
+      if(fixtureRound==='final'&&!isFinalFixture(f))return false;
+      if(fixtureRound==='prelim'&&isFinalFixture(f))return false;
+      const haystack=[fixtureTitle(f),fixtureDetails(f),f.round||'']
+        .join(' ').toLocaleLowerCase('th').replace(/\s+/g,'');
+      return !query||haystack.includes(query);
+    });
+    list.replaceChildren();
+    if(!visible.length){
+      const empty=document.createElement('p');
+      empty.className='bang1-fixture-no-results';
+      empty.textContent='ไม่พบรายการแข่งขันที่ตรงกับคำค้นหา';
+      list.appendChild(empty);
+    }
+    const selected=el('bang1ActiveFixture')?.value||'';
+    visible.forEach((f)=>{
+      const option=document.createElement('button');
+      option.type='button';
+      option.className='bang1-fixture-option'+
+        (isFinalFixture(f)?' is-final':'')+
+        (selected===f.key?' is-selected':'');
+      option.setAttribute('role','option');
+      option.setAttribute('aria-selected',selected===f.key?'true':'false');
+      option.dataset.key=f.key;
+      option.innerHTML=
+        '<span class="bang1-fixture-number">'+esc(f.eventNumberLabel||f.eventId||'—')+'</span>'+
+        '<span class="bang1-fixture-option-copy">'+
+          '<strong>'+esc(f.eventName||'ไม่ระบุรายการ')+'</strong>'+
+          '<small>'+esc(fixtureDetails(f))+'</small>'+
+        '</span>'+
+        '<span class="bang1-fixture-option-meta">'+
+          '<span class="bang1-fixture-round">'+(isFinalFixture(f)?'🏆 รอบชิง':esc(f.round||'รอยืนยันรอบ'))+'</span>'+
+          '<small>'+Number(f.checked||0)+'/'+Number(f.total||0)+' คน</small>'+
+        '</span>';
+      option.addEventListener('click',()=>{
+        if(el('bang1ActiveFixture').value!==f.key){
+          el('bang1ActiveFixture').value=f.key;
+          el('bang1ActiveFixture').dispatchEvent(new Event('change',{bubbles:true}));
+        }
+        updateFixtureTrigger();
+        closeFixtureMenu(true);
+      });
+      list.appendChild(option);
+    });
+    footer.textContent='แสดง '+visible.length+' จาก '+fixtureItems.length+' รายการแข่งขัน · รอบชิงพื้นสีเขียวอ่อน';
+    el('bang1FixturePopover').querySelectorAll('[data-round]').forEach(btn=>{
+      const active=btn.dataset.round===fixtureRound;
+      btn.classList.toggle('is-active',active);
+      btn.setAttribute('aria-pressed',active?'true':'false');
+    });
+  }
+  function openFixtureMenu(){
+    const trigger=el('bang1FixtureTrigger'),menu=el('bang1FixturePopover');
+    if(!menu||!trigger||!activePage())return;
+    if(menu.parentElement!==document.body)document.body.appendChild(menu);
+    fixtureMenuOpen=true;
+    fixtureQuery='';
+    fixtureRound='all';
+    el('bang1FixtureSearch').value='';
+    menu.hidden=false;
+    trigger.setAttribute('aria-expanded','true');
+    renderFixtureOptions();
+    positionFixtureMenu();
+    const selected=menu.querySelector('.bang1-fixture-option.is-selected');
+    if(selected)selected.scrollIntoView({block:'nearest'});
+    if(window.matchMedia('(pointer: fine)').matches)
+      el('bang1FixtureSearch').focus({preventScroll:true});
+  }
+  function closeFixtureMenu(restoreFocus=false){
+    if(!fixtureMenuOpen)return;
+    fixtureMenuOpen=false;
+    const menu=el('bang1FixturePopover'),trigger=el('bang1FixtureTrigger');
+    if(menu)menu.hidden=true;
+    if(trigger){
+      trigger.setAttribute('aria-expanded','false');
+      if(restoreFocus)trigger.focus({preventScroll:true});
+    }
+  }
+  function handleFixtureKeyboard(event){
+    if(!fixtureMenuOpen)return;
+    if(event.key==='Escape'){
+      event.preventDefault();closeFixtureMenu(true);return;
+    }
+    if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+    const buttons=[...el('bang1FixtureList').querySelectorAll('button[role="option"]')];
+    if(!buttons.length)return;
+    event.preventDefault();
+    const focused=buttons.indexOf(document.activeElement);
+    const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:
+      event.key==='ArrowDown'?(focused<0?0:(focused+1)%buttons.length):
+      (focused<0?buttons.length-1:(focused-1+buttons.length)%buttons.length);
+    buttons[next].focus({preventScroll:true});
+    buttons[next].scrollIntoView({block:'nearest'});
   }
   function athleteCard(athlete,regId,slotsFull=false){
     const checked=Boolean(athlete.checkedAt);
@@ -112,7 +254,8 @@
     const select=el('bang1ActiveFixture');
     const selected=select.value;
     const fixtures=Array.isArray(data.fixtures)?data.fixtures:[];
-    const optionHash=JSON.stringify(fixtures.map(f=>[f.key,f.eventNumberLabel,f.eventName,f.category,f.level,f.gender,f.heat,f.heats]));
+    fixtureItems=fixtures;
+    const optionHash=JSON.stringify(fixtures.map(f=>[f.key,f.eventNumberLabel,f.eventName,f.category,f.level,f.gender,f.heat,f.heats,f.round]));
     if(optionHash!==lastOptionHash){
       lastOptionHash=optionHash;
       select.replaceChildren(new Option('เลือกรายการแข่งขัน/ฮีท',''));
@@ -120,6 +263,8 @@
         fixtureName(f),f.key)));
       }
     if(!switchInFlight)select.value=data.active?.key||'';
+    updateFixtureTrigger();
+    if(fixtureMenuOpen)renderFixtureOptions();
     const active=data.active;
     el('bang1LiveActiveName').textContent=active?fixtureName(active):'ยังไม่ได้เปิดรายการ Active';
     el('bang1LiveActiveCount').textContent=active?
@@ -171,6 +316,7 @@
       const state=await request('live_manager_data');
       render(state);
       el('bang1ActiveFixture').value=state.active?.key||'';
+      updateFixtureTrigger();
       if(state.active)message('✓ แสดงรายการ '+fixtureName(state.active)+' บนจอ Live แล้ว','success');
     }catch(error){
       message(error.message||'อ่านสถานะจอ Live ไม่สำเร็จ','error');
@@ -185,6 +331,37 @@
       pendingFixtureKey=event.target.value||'';
       void flushSelection();
     });
+    const menu=el('bang1FixturePopover'),trigger=el('bang1FixtureTrigger');
+    trigger.addEventListener('click',()=>{
+      if(fixtureMenuOpen)closeFixtureMenu();
+      else openFixtureMenu();
+    });
+    el('bang1FixtureClose').addEventListener('click',()=>closeFixtureMenu(true));
+    el('bang1FixtureSearch').addEventListener('input',event=>{
+      fixtureQuery=event.target.value;
+      renderFixtureOptions();
+    });
+    menu.querySelectorAll('[data-round]').forEach(button=>{
+      button.addEventListener('click',()=>{
+        fixtureRound=button.dataset.round;
+        renderFixtureOptions();
+        el('bang1FixtureSearch').focus({preventScroll:true});
+      });
+    });
+    menu.addEventListener('keydown',handleFixtureKeyboard);
+    document.addEventListener('pointerdown',event=>{
+      if(fixtureMenuOpen&&!menu.contains(event.target)&&!trigger.contains(event.target))
+        closeFixtureMenu();
+    });
+    window.addEventListener('resize',positionFixtureMenu);
+    document.addEventListener('scroll',positionFixtureMenu,true);
+    // The popover is rendered in body to prevent nested cards from clipping it.
+    // Close it when users move away from the check-in page.
+    const originalObserver=new MutationObserver(()=>{
+      if(!activePage())closeFixtureMenu();
+    });
+    originalObserver.observe(page,{attributes:true,attributeFilter:['class']});
+
     el('bang1ActiveEnd').addEventListener('click',()=>{
       if(confirm('ยืนยันปิดรายการ Active บนจอ Live?')){
         pendingFixtureKey='';
