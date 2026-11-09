@@ -24,27 +24,35 @@
       'ฮีท '+f.heats.join('–'):(f.heat?'ฮีท '+f.heat:'');
     return number+[f.eventName,f.category,f.level,f.gender,heat].filter(Boolean).join(' · ');
   }
-  function athleteCard(athlete,regId){
+  function athleteCard(athlete,regId,slotsFull=false){
     const checked=Boolean(athlete.checkedAt);
+    const disabled=slotsFull&&!checked;
     const photo=athlete.photo
       ?'<img src="'+esc(athlete.photo)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display=&quot;none&quot;">'
       :'<span class="bang1-avatar-fallback" aria-hidden="true">🏃</span>';
     return '<label class="bang1-athlete-row'+(checked?' is-checked':'')+'">'+
       '<input type="checkbox" data-reg="'+Number(regId)+'" data-athlete="'+esc(athlete.athleteKey)+'"'+
-        (checked?' checked':'')+' aria-label="รายงานตัว '+esc(athlete.name)+'">'+
+        (checked?' checked':'')+(disabled?' disabled':'')+
+        ' aria-label="รายงานตัว '+esc(athlete.name)+'">'+
       '<span class="bang1-athlete-photo">'+photo+'</span>'+
       '<span class="bang1-athlete-info"><strong>'+esc(athlete.name)+'</strong>'+
-       '<small>'+(checked?'✓ รายงานตัวแล้ว '+esc(athlete.checkedAt):'ยังไม่รายงานตัว')+'</small></span>'+
+       '<small>'+(checked?'✓ รายงานตัวแล้ว '+esc(athlete.checkedAt):
+         disabled?'เต็มจำนวนแล้ว · ยกเลิกชื่อเดิมก่อน':'ยังไม่รายงานตัว')+'</small></span>'+
       '<span class="bang1-athlete-status'+(checked?' confirmed':'')+'">'+(checked?'✓':'○')+'</span>'+
       '</label>';
   }
   function teamMarkup(team){
+    const limit=Number(team.totalAthletes)||1;
+    const checked=Number(team.checkedAthletes)||0;
+    const full=checked>=limit;
+    const over=Number(team.excessCheckins)||0;
     return '<section class="bang1-roster-school">'+
       '<header><div><strong>'+esc(team.school)+'</strong><small>ใบสมัคร #'+Number(team.regId)+
       (team.heat?' · ฮีท '+Number(team.heat):'')+
       (team.lane?' · ลู่ '+Number(team.lane):'')+'</small></div>'+
-      '<span>'+Number(team.checkedAthletes)+' / '+Number(team.totalAthletes)+' คน</span></header>'+
-      '<div class="bang1-athlete-list">'+team.athletes.map(a=>athleteCard(a,team.regId)).join('')+'</div>'+
+      '<span>'+checked+' / '+limit+' คน</span></header>'+
+      (over?'<div class="bang1-oversubscribed">⚠️ มีการติ๊กเกินจำนวนที่กำหนด '+over+' คน กรุณาตรวจสอบ</div>':'')+
+      '<div class="bang1-athlete-list">'+team.athletes.map(a=>athleteCard(a,team.regId,full)).join('')+'</div>'+
       '</section>';
   }
   function renderRoster(force=false){
