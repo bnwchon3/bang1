@@ -1535,7 +1535,7 @@ body{
   </style>
 <link rel="stylesheet" href="role-guidance.css?v=20261108-roles">
 <link rel="stylesheet" href="mobile-shell.css?v=20261109-account-icon-v6">
-<link rel="stylesheet" href="live-manager.css?v=20261109-attendance-capacity6">
+<link rel="stylesheet" href="live-manager.css?v=20261109-fixture-design7">
 <link rel="stylesheet" href="account-portal.css?v=20261109-v1">
 <link rel="stylesheet" href="runner-photo-review.css?v=20261109-comparison1">
 </head>
@@ -3841,7 +3841,36 @@ function printRegSummary() {
           <div class="bang1-checkin-panel">
             <div class="bang1-checkin-heading">ควบคุมรายการที่แสดงบนจอ Live</div>
             <label for="bang1ActiveFixture" class="bang1-checkin-caption">เลือกรายการแข่งขัน / ฮีท — เปลี่ยนจอ Live ทันทีโดยไม่ต้องกดปุ่มยืนยัน</label>
-            <select id="bang1ActiveFixture"><option value="">กำลังโหลดรายการ...</option></select>
+            <div class="bang1-fixture-control" id="bang1FixtureControl">
+              <select id="bang1ActiveFixture" class="bang1-fixture-native" tabindex="-1" aria-hidden="true"><option value="">กำลังโหลดรายการ...</option></select>
+              <button type="button" id="bang1FixtureTrigger" class="bang1-fixture-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="bang1FixtureList" aria-label="เลือกรายการแข่งขันที่แสดงบน Live">
+                <span class="bang1-fixture-trigger-icon" aria-hidden="true">🏟️</span>
+                <span class="bang1-fixture-trigger-copy">
+                  <strong id="bang1FixtureCurrentTitle">เลือกรายการแข่งขัน</strong>
+                  <small id="bang1FixtureCurrentDetail">ค้นหาและเลือกรายการแข่งขันเพื่อเปลี่ยนจอ Live ทันที</small>
+                </span>
+                <span class="bang1-fixture-trigger-chevron" aria-hidden="true">⌄</span>
+              </button>
+            </div>
+            <div id="bang1FixturePopover" class="bang1-fixture-popover" hidden>
+              <div class="bang1-fixture-popover-header">
+                <div class="bang1-fixture-popover-title">
+                  <strong>🏃 เลือกรายการแข่งขัน</strong>
+                  <button type="button" class="bang1-fixture-close" id="bang1FixtureClose" aria-label="ปิดตัวเลือกรายการแข่งขัน">✕</button>
+                </div>
+                <label class="bang1-fixture-search-wrap" for="bang1FixtureSearch">
+                  <span aria-hidden="true">⌕</span>
+                  <input type="search" id="bang1FixtureSearch" placeholder="ค้นหาหมายเลขรายการ ระยะทาง รุ่นอายุ..." autocomplete="off">
+                </label>
+                <div class="bang1-fixture-filters" role="group" aria-label="กรองรอบการแข่งขัน">
+                  <button type="button" data-round="all" class="is-active" aria-pressed="true">ทั้งหมด</button>
+                  <button type="button" data-round="prelim" aria-pressed="false">รอบคัดเลือก</button>
+                  <button type="button" data-round="final" aria-pressed="false">รอบชิง</button>
+                </div>
+              </div>
+              <div class="bang1-fixture-option-list" id="bang1FixtureList" role="listbox" aria-label="รายการแข่งขันที่เลือกได้" tabindex="-1"></div>
+              <div class="bang1-fixture-popover-footer" id="bang1FixtureResults" role="status" aria-live="polite">กำลังโหลดรายการแข่งขัน</div>
+            </div>
             <div class="bang1-checkin-actions">
               <span class="bang1-autoswitch-hint">⚡ เลือกรายการแล้วแสดงทันที</span>
               <button type="button" id="bang1ActiveEnd" class="btn btn-outline" disabled>■ ปิดรายการ Active</button>
@@ -7794,6 +7823,6 @@ document.addEventListener('DOMContentLoaded', function () {
 <script src="mobile-shell.js?v=20261109-account-icon-v6"></script>
 <script src="account-portal.js?v=20261109-hide-directory-auth"></script>
 <script src="vendor/qrcode.js?v=20261109-print-qr"></script>
-<script src="live-manager.js?v=20261109-attendance-capacity6"></script>
+<script src="live-manager.js?v=20261109-fixture-design7"></script>
 </body>
 </html>
