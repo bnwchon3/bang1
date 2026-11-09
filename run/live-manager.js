@@ -19,7 +19,10 @@
     node.className='bang1-scan-status is-'+kind;
   }
   function fixtureName(f){
-    return [f.eventName,f.category,f.level,f.gender,f.heat?'ฮีท '+f.heat:''].filter(Boolean).join(' · ');
+    const number=f.eventNumberLabel?'รายการที่ '+f.eventNumberLabel+' · ':'';
+    const heat=Array.isArray(f.heats)&&f.heats.length>1?
+      'ฮีท '+f.heats.join('–'):(f.heat?'ฮีท '+f.heat:'');
+    return number+[f.eventName,f.category,f.level,f.gender,heat].filter(Boolean).join(' · ');
   }
   function athleteCard(athlete,regId){
     const checked=Boolean(athlete.checkedAt);
@@ -38,6 +41,7 @@
   function teamMarkup(team){
     return '<section class="bang1-roster-school">'+
       '<header><div><strong>'+esc(team.school)+'</strong><small>ใบสมัคร #'+Number(team.regId)+
+      (team.heat?' · ฮีท '+Number(team.heat):'')+
       (team.lane?' · ลู่ '+Number(team.lane):'')+'</small></div>'+
       '<span>'+Number(team.checkedAthletes)+' / '+Number(team.totalAthletes)+' คน</span></header>'+
       '<div class="bang1-athlete-list">'+team.athletes.map(a=>athleteCard(a,team.regId)).join('')+'</div>'+
@@ -100,12 +104,12 @@
     const select=el('bang1ActiveFixture');
     const selected=select.value;
     const fixtures=Array.isArray(data.fixtures)?data.fixtures:[];
-    const optionHash=JSON.stringify(fixtures.map(f=>[f.key,f.eventName,f.category,f.level,f.gender,f.heat]));
+    const optionHash=JSON.stringify(fixtures.map(f=>[f.key,f.eventNumberLabel,f.eventName,f.category,f.level,f.gender,f.heat,f.heats]));
     if(optionHash!==lastOptionHash){
       lastOptionHash=optionHash;
       select.replaceChildren(new Option('เลือกรายการแข่งขัน/ฮีท',''));
       fixtures.forEach((f,i)=>select.appendChild(new Option(
-        (i+1)+'. '+fixtureName(f),f.key)));
+        fixtureName(f),f.key)));
       }
     if(!switchInFlight)select.value=data.active?.key||'';
     const active=data.active;
