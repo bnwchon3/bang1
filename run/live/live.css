@@ -226,7 +226,7 @@ body{background:#06162c}
   animation:bang1-results-marquee var(--ticker-duration,95s) linear infinite;
 }
 .ticker-sequence{
-  min-width:100%;flex:none;display:inline-flex;align-items:center;gap:0;
+  min-width:100vw;flex:none;display:inline-flex;align-items:center;gap:0;
   height:100%;padding-right:clamp(45px,5vw,100px);
 }
 .ticker-result{
