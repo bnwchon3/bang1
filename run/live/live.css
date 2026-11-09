@@ -426,6 +426,10 @@ body{background:#06162c}
 .sport-hero-photos{position:relative;flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);
  grid-template-rows:minmax(0,1fr);gap:6px;overflow:hidden;padding:7px;background:linear-gradient(145deg,#0e3e51,#04152d)}
 .sport-hero-photos.is-multi{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr))}
+.sport-hero-photos.is-duo{grid-template-rows:minmax(0,1fr)}
+.sport-hero-photo img{background:#12455c}
+.sport-image-placeholder{overflow-wrap:anywhere}
+
 .sport-hero-photo{min-height:0;position:relative;border-radius:10px;overflow:hidden;
  background:linear-gradient(160deg,#1a6676,#15415d);border:1px solid #77d5bf80}
 .sport-hero-photo img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 22%;
