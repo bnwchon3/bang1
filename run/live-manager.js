@@ -288,11 +288,20 @@
       lastMenuHash=menuHash;
       renderFixtureOptions();
     }
+    const sport=data.display?.mode==='sport';
+    const sportBtn=el('bang1SportToggle');
+    if(sportBtn){
+      sportBtn.textContent=sport?'✅ Check-in':'🏃 Sport';
+      sportBtn.classList.toggle('is-sport-on',sport);
+      sportBtn.setAttribute('aria-pressed',sport?'true':'false');
+      sportBtn.title=sport?'กลับสู่จอ Live รายงานตัวรายการ Active':'เปิดจอ Sport แสดงรายการและภาพนักกรีฑาหมุนเวียนอัตโนมัติ';
+    }
     const active=data.active;
     el('bang1LiveActiveName').textContent=active?fixtureName(active):'ยังไม่ได้เปิดรายการ Active';
     el('bang1LiveActiveCount').textContent=active?
-      'รายงานตัว '+active.checked+'/'+active.total+' คน · '+active.teams+' โรงเรียนที่ลงทะเบียน':
-      'เลือกการแข่งขันแล้วกดแสดงรายการบนจอ Live';
+      'รายงานตัว '+active.checked+'/'+active.total+' คน · '+active.teams+' โรงเรียนที่ลงทะเบียน'+
+        (sport?' · จอ Live กำลังแสดงโหมด Sport':''):
+      (sport?'โหมด Sport กำลังหมุนเวียนรายการแข่งขัน':'เลือกรายการแข่งขันเพื่อเปิดจอ Live');
     el('bang1ActiveEnd').disabled=!active;
     renderRoster();
     renderNextRoster();
@@ -390,6 +399,18 @@
       if(confirm('ยืนยันปิดรายการ Active บนจอ Live?')){
         pendingFixtureKey='';
         void flushSelection();
+      }
+    });
+    el('bang1SportToggle').addEventListener('click',async()=>{
+      if(busy)return;
+      const button=el('bang1SportToggle');
+      const mode=snapshot?.display?.mode==='sport'?'checkin':'sport';
+      button.disabled=true;
+      closeFixtureMenu();
+      try{
+        await update('live_display_set',{mode});
+      }finally{
+        button.disabled=false;
       }
     });
     el('bang1CheckinRefresh').addEventListener('click',()=>refresh(true));
