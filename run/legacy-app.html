@@ -1535,7 +1535,7 @@ body{
   </style>
 <link rel="stylesheet" href="role-guidance.css?v=20261108-roles">
 <link rel="stylesheet" href="mobile-shell.css?v=20261109-account-icon-v6">
-<link rel="stylesheet" href="live-manager.css?v=20261109-checklist1">
+<link rel="stylesheet" href="live-manager.css?v=20261109-sport2">
 <link rel="stylesheet" href="account-portal.css?v=20261109-v1">
 </head>
 
@@ -3787,20 +3787,20 @@ function printRegSummary() {
       <!-- LIVE REPORTING CONTROL: checkbox attendance per registered athlete -->
       <section class="page" id="page-checkin">
         <h1>✅ รายงานตัวนักกรีฑา</h1>
-        <div class="subtitle">Manager เลือกรายการแข่งขันที่กำลัง Active แล้วติ๊กชื่อนักกรีฑาที่มารายงานตัว ไม่ต้องสแกน QR Code</div>
+        <div class="subtitle">เลือกรายการแข่งขันเพื่อเปลี่ยนจอ Live ทันที และติ๊กผู้มารายงานตัวได้ทั้งรายการปัจจุบันและรายการถัดไป</div>
         <div class="card">
           <div class="bang1-checkin-panel">
             <div class="bang1-checkin-heading">ควบคุมรายการที่แสดงบนจอ Live</div>
-            <label for="bang1ActiveFixture" class="bang1-checkin-caption">เลือกรายการแข่งขัน / ฮีท (เรียงลำดับตามรายการจัดการแข่งขัน)</label>
+            <label for="bang1ActiveFixture" class="bang1-checkin-caption">เลือกรายการแข่งขัน / ฮีท — เปลี่ยนจอ Live ทันทีโดยไม่ต้องกดปุ่มยืนยัน</label>
             <select id="bang1ActiveFixture"><option value="">กำลังโหลดรายการ...</option></select>
             <div class="bang1-checkin-actions">
-              <button type="button" id="bang1SetActive" class="btn btn-primary">▶ แสดงรายการนี้บนจอ Live</button>
+              <span class="bang1-autoswitch-hint">⚡ เลือกรายการแล้วแสดงทันที</span>
               <button type="button" id="bang1ActiveEnd" class="btn btn-outline" disabled>■ ปิดรายการ Active</button>
               <button type="button" id="bang1CheckinRefresh" class="btn btn-outline">↻ รีเฟรช</button>
               <a id="bang1OpenLiveLink" class="btn btn-outline bang1-checkin-link" href="live/" target="_blank" rel="noopener">📺 เปิดจอ Live</a>
             </div>
             <div class="bang1-active-banner">
-              <div><b id="bang1LiveActiveName">ยังไม่ได้เปิดรายการ Active</b><small id="bang1LiveActiveCount">กรุณาเลือกรายการแข่งขัน</small></div>
+              <div><b id="bang1LiveActiveName">ยังไม่ได้เปิดรายการ Active</b><small id="bang1LiveActiveCount">เลือกรายการแข่งขันเพื่อเปิดจอ Live</small></div>
               <span class="bang1-live-badge">LIVE CONTROL</span>
             </div>
           </div>
@@ -3815,6 +3815,17 @@ function printRegSummary() {
           <input id="bang1AthleteSearch" type="search" placeholder="พิมพ์ชื่อนักกรีฑา / โรงเรียน / รหัสใบสมัคร" autocomplete="off">
           <div id="bang1ScanStatus" class="bang1-scan-status is-info" role="status" aria-live="polite">เลือกรายการแข่งขันเพื่อเริ่มบันทึกการรายงานตัว</div>
           <div id="bang1CheckinRoster" class="bang1-registered-grid"><div class="bang1-roster-empty">รอข้อมูลรายการ Active</div></div>
+        </div>
+        <div class="card bang1-next-checkin-card" id="bang1NextCard">
+          <div class="card-header">
+            <div class="card-title">⏭️ จุดรายงานตัวรายการถัดไป</div>
+            <span class="tag" id="bang1NextCheckinCount">—</span>
+          </div>
+          <p class="bang1-next-fixture-name" id="bang1NextFixtureName">รอรายการถัดไป</p>
+          <p class="bang1-checkin-caption">สามารถติ๊กรายชื่อนักกรีฑาของรายการถัดไปล่วงหน้าได้ โดยไม่เปลี่ยนจอ Live รายการปัจจุบัน</p>
+          <div id="bang1NextRoster" class="bang1-registered-grid">
+            <div class="bang1-roster-empty">ไม่มีรายการถัดไป</div>
+          </div>
         </div>
       </section>
     </main>
@@ -7731,6 +7742,6 @@ document.addEventListener('DOMContentLoaded', function () {
 <script src="mobile-shell.js?v=20261109-account-icon-v6"></script>
 <script src="account-portal.js?v=20261109-hide-directory-auth"></script>
 <script src="vendor/qrcode.js?v=20261109-print-qr"></script>
-<script src="live-manager.js?v=20261109-checklist1"></script>
+<script src="live-manager.js?v=20261109-sport2"></script>
 </body>
 </html>
