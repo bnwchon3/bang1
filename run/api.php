@@ -4,17 +4,23 @@ require __DIR__.'/inc/bootstrap.php';
 session_open();
 $action=(string)($_GET['action']??'');
 $input=body();
+require_once __DIR__.'/runner-photo-review.php';
 function rows(string $sql,array $params=[]):array{$s=db()->prepare($sql);$s->execute($params);return $s->fetchAll();}
 function single(string $sql,array $params=[]):?array{$x=rows($sql,$params);return $x[0]??null;}
 function must_post():void{if($_SERVER['REQUEST_METHOD']!=='POST')json_out(['success'=>false,'message'=>'POST required'],405);csrf_check();}
 function school_access(array $u,string $school):void {
  if(!is_admin($u)&&$school!==($u['schoolName']??''))json_out(['success'=>false,'message'=>'ไม่มีสิทธิ์จัดการโรงเรียนอื่น'],403);
 }
-function runner_map(array $r,bool $withProof=false):array {
+function runner_map(array $r,bool $withProof=false,bool $forReviewer=false):array {
  $birth=(int)($r['birth_year']??0);
+ $photoMode=$forReviewer?runner_photo_review_mode($r):'document';
  return ['RunnerID'=>$r['id'],'SchoolName'=>$r['school_name'],'Level'=>$r['level'],'FirstName'=>$r['first_name'],'LastName'=>$r['last_name'],
  'CitizenID'=>$withProof?$r['citizen_id']:null,'BirthYear'=>$birth,'Age'=>$birth?max(0,(int)date('Y')+543-$birth):null,
- 'Photo'=>$r['photo_url'],'IDProofURL'=>$withProof?$r['proof_url']:null,'Gender'=>$r['gender'],'Status'=>$r['status'],'FailReason'=>$r['fail_reason']??''];
+ 'Photo'=>$r['photo_url'],'IDProofURL'=>$withProof?$r['proof_url']:null,'Gender'=>$r['gender'],'Status'=>$r['status'],'FailReason'=>$r['fail_reason']??'',
+ // Historical reference photos are exposed only to authenticated reviewers,
+ // and only when a NEW photo actually needs to be compared to the old one.
+ 'PhotoReviewMode'=>$forReviewer?$photoMode:null,
+ 'PreviousApprovedPhoto'=>$forReviewer&&$photoMode==='face'?($r['verified_photo_url']??null):null];
 }
 function reg_map(array $r):array{
  return ['RegID'=>$r['id'],'EventID'=>$r['event_id'],'EventName'=>$r['event_name'],'Category'=>$r['category'],
@@ -100,7 +106,9 @@ if($action==='runners'){
  $p=[];$sql='SELECT * FROM runners WHERE 1=1';
  if($school!==''){$sql.=' AND school_name=?';$p[]=$school;}
  $sql.=' ORDER BY id DESC';
- $data=array_map(fn($r)=>runner_map($r,is_reviewer($u)||$r['school_name']===$u['schoolName']),rows($sql,$p));
+ $data=array_map(fn($r)=>runner_map(
+    $r,is_reviewer($u)||$r['school_name']===$u['schoolName'],is_reviewer($u)
+ ),rows($sql,$p));
  json_out(['success'=>true,'data'=>$data]);
 }
 if($action==='save_runner'){
@@ -143,9 +151,38 @@ if($action==='update_status'){
  if(!in_array($status,['รอตรวจสอบ','รอตรวจภาพอีกครั้ง','ผ่านการตรวจสอบ','ไม่ผ่านการตรวจสอบ'],true))json_out(['success'=>false,'message'=>'สถานะไม่ถูกต้อง'],422);
  $reason=trim((string)($input['reason']??''));
  if($status==='ไม่ผ่านการตรวจสอบ'&&!$reason)json_out(['success'=>false,'message'=>'กรุณาระบุเหตุผล'],422);
- $q=db()->prepare('UPDATE runners SET status=?,fail_reason=?,checked_by=? WHERE id=?');$q->execute([$status,$reason,$u['name'],$id]);
- if(!$q->rowCount())json_out(['success'=>false,'message'=>'ไม่พบข้อมูลหรือสถานะเดิม'],404);
- log_action('RUNNER_STATUS_UPDATE',$u,'Runner',(string)$id,$status);json_out(['success'=>true]);
+ $runner=single('SELECT * FROM runners WHERE id=?',[$id]);
+ if(!$runner)json_out(['success'=>false,'message'=>'ไม่พบนักวิ่ง'],404);
+ $reviewMode=runner_photo_review_mode($runner);
+ if($status==='ผ่านการตรวจสอบ'&&!runner_photo_can_approve($runner)){
+    json_out(['success'=>false,'message'=>'การตรวจครั้งแรกต้องมีทั้งรูปนักวิ่งและเอกสารหลักฐาน หรือมีรูปที่เคยผ่านการตรวจเพื่อเปรียบเทียบ'],422);
+ }
+ try {
+    db()->beginTransaction();
+    $runner=single('SELECT * FROM runners WHERE id=? FOR UPDATE',[$id]);
+    if(!$runner){db()->rollBack();json_out(['success'=>false,'message'=>'ไม่พบนักวิ่ง'],404);}
+    $reviewMode=runner_photo_review_mode($runner);
+    if($status==='ผ่านการตรวจสอบ'&&!runner_photo_can_approve($runner)){
+        db()->rollBack();
+        json_out(['success'=>false,'message'=>'กรุณาตรวจเทียบเอกสารครั้งแรก หรือเทียบรูปเดิมที่อนุมัติกับรูปใหม่'],422);
+    }
+    if($status==='ผ่านการตรวจสอบ'){
+        // The reviewed current image becomes the next trusted reference;
+        // never overwrite the previous reference on upload or rejection.
+        db()->prepare('UPDATE runners SET status=?,fail_reason=?,checked_by=?,verified_photo_url=photo_url,verified_photo_at=NOW() WHERE id=?')
+            ->execute([$status,'',$u['name'],$id]);
+    }else{
+        db()->prepare('UPDATE runners SET status=?,fail_reason=?,checked_by=? WHERE id=?')
+            ->execute([$status,$reason,$u['name'],$id]);
+    }
+    db()->commit();
+ }catch(Throwable $e){
+    if(db()->inTransaction())db()->rollBack();
+    error_log('Bang1 runner review failed: '.$e->getMessage());
+    json_out(['success'=>false,'message'=>'ไม่สามารถบันทึกผลการตรวจสอบได้'],500);
+ }
+ log_action($status==='ผ่านการตรวจสอบ'&&$reviewMode==='face'?'RUNNER_FACE_REVIEW_APPROVED':'RUNNER_STATUS_UPDATE',$u,'Runner',(string)$id,$status);
+ json_out(['success'=>true,'reviewMode'=>$reviewMode]);
 }
 if($action==='events'){
  $ev=rows('SELECT id EventID,name EventName,category Category,level Level,gender Gender,remark Remark,heat Heat,heat_plan HeatPlan,team_count TeamCount,total_teams TotalTeams,stage Stage,ranking_json Ranking FROM events ORDER BY source_order,id');
@@ -291,13 +328,39 @@ if($action==='upload'){
  $resp=json_decode((string)$result,true);
  if($status!==200||!is_array($resp)||empty($resp['success'])||empty($resp['url']))json_out(['success'=>false,'message'=>'อัปโหลดไป Google Drive ไม่สำเร็จ'],502);
  $url=safe_url($resp['url']);if(!$url||!str_contains(parse_url($url,PHP_URL_HOST)??'','google.com'))json_out(['success'=>false,'message'=>'Google Drive ส่ง URL ไม่ถูกต้อง'],502);
- $col=$type==='photo'?'photo_url':'proof_url';
- if($type==='photo'&&$r['status']==='ผ่านการตรวจสอบ'){
-   db()->prepare('UPDATE runners SET '.$col.'=?,status=? WHERE id=?')->execute([$url,'รอตรวจภาพอีกครั้ง',$id]);
+ if($type==='photo'){
+    try{
+      db()->beginTransaction();
+      $latest=single('SELECT id,photo_url,verified_photo_url,status FROM runners WHERE id=? FOR UPDATE',[$id]);
+      if(!$latest){db()->rollBack();json_out(['success'=>false,'message'=>'ไม่พบนักวิ่ง'],404);}
+      $verified=trim((string)($latest['verified_photo_url']??''));
+      $oldPhoto=trim((string)($latest['photo_url']??''));
+      // Safety fallback for historic accounts already approved before the
+      // migration backfill: snapshot the old approved photo before replacement.
+      if($verified==='' && $latest['status']==='ผ่านการตรวจสอบ' && $oldPhoto!==''){
+          $verified=$oldPhoto;
+          db()->prepare('UPDATE runners SET verified_photo_url=? WHERE id=?')
+              ->execute([$verified,$id]);
+      }
+      $oldStatus=(string)$latest['status'];
+      $newStatus=$oldStatus;
+      if($url!==$oldPhoto){
+          if($verified!=='')$newStatus='รอตรวจภาพอีกครั้ง';
+          elseif($oldStatus==='ไม่ผ่านการตรวจสอบ')$newStatus='รอตรวจสอบ';
+      }
+      db()->prepare('UPDATE runners SET photo_url=?,status=?,fail_reason=? WHERE id=?')
+          ->execute([$url,$newStatus,$newStatus==='ไม่ผ่านการตรวจสอบ'?(string)($r['fail_reason']??''):'',$id]);
+      db()->commit();
+    }catch(Throwable $e){
+      if(db()->inTransaction())db()->rollBack();
+      error_log('Bang1 photo replacement failed: '.$e->getMessage());
+      json_out(['success'=>false,'message'=>'บันทึกรูปใหม่ไม่สำเร็จ กรุณาลองอีกครั้ง'],500);
+    }
  }else{
-   db()->prepare('UPDATE runners SET '.$col.'=? WHERE id=?')->execute([$url,$id]);
+    db()->prepare('UPDATE runners SET proof_url=? WHERE id=?')->execute([$url,$id]);
  }
- log_action($type==='photo'?'RUNNER_UPLOAD_PHOTO':'RUNNER_UPLOAD_IDPROOF',$u,'Runner',(string)$id);
+ log_action($type==='photo'?'RUNNER_UPLOAD_PHOTO':'RUNNER_UPLOAD_IDPROOF',$u,'Runner',(string)$id,
+   $type==='photo'?'Photo uploaded; trusted reference preserved':'ID document uploaded');
  json_out(['success'=>true,'url'=>$url]);
 }
 json_out(['success'=>false,'message'=>'Unknown action'],404);

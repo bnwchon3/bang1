@@ -32,6 +32,17 @@ try {
    db()->exec('ALTER TABLE coaches MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT');
  $column=db()->query("SHOW COLUMNS FROM coaches LIKE 'auth_version'")->fetch();
  if(!$column)db()->exec('ALTER TABLE coaches ADD COLUMN auth_version INT NOT NULL DEFAULT 1');
+ // Only an actually approved image may become the comparison reference.
+ // Backfill existing approved runners ONCE; unapproved legacy photos
+ // are not trusted and must still be checked against their ID document.
+ $column=db()->query("SHOW COLUMNS FROM runners LIKE 'verified_photo_url'")->fetch();
+ if(!$column)db()->exec('ALTER TABLE runners ADD COLUMN verified_photo_url TEXT NULL');
+ $column=db()->query("SHOW COLUMNS FROM runners LIKE 'verified_photo_at'")->fetch();
+ if(!$column)db()->exec('ALTER TABLE runners ADD COLUMN verified_photo_at DATETIME NULL');
+ db()->exec("UPDATE runners SET verified_photo_url=photo_url
+   WHERE status='ผ่านการตรวจสอบ'
+     AND (verified_photo_url IS NULL OR verified_photo_url='')
+     AND photo_url IS NOT NULL AND photo_url<>''");
  json_out(['success'=>true,'tables'=>count($statements),'message'=>'MariaDB schema ready']);
 } catch(Throwable $e) {
  error_log('Bang1 migration: '.$e->getMessage());

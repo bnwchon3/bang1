@@ -1,0 +1,56 @@
+/* Athlete identity review — first document verification vs approved-photo replacement. */
+.check-modal-proof [hidden],.check-modal-photo[hidden],#checkPhotoComparison[hidden],#checkIdDocumentPanel[hidden]{
+  display:none!important;
+}
+.bang1-review-badge{
+  display:inline-flex;align-items:center;vertical-align:middle;
+  padding:3px 8px;margin:3px 0 0 6px;
+  border-radius:999px;border:1px solid #22c55e;
+  color:#bbf7d0;background:#064e3b;
+  font-size:.7rem;font-weight:750;white-space:nowrap;
+}
+.bang1-review-badge.is-document{
+  border-color:#3b82f6;color:#bfdbfe;background:#1e3a8a;
+}
+.bang1-photo-comparison{display:flex;flex-direction:column;gap:12px;min-width:0}
+.bang1-photo-comparison-heading{
+  color:#a7f3d0;font-size:1.04rem;font-weight:850;
+  padding-bottom:8px;border-bottom:1px solid #166534;
+}
+.bang1-photo-comparison-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:clamp(7px,1vw,16px);min-width:0;
+}
+.bang1-photo-compare-card{
+  display:flex;flex-direction:column;min-width:0;
+  gap:8px;margin:0;padding:10px;
+  border:2px solid #38bdf8;border-radius:16px;
+  background:linear-gradient(180deg,#0d263d,#102e44);
+}
+.bang1-photo-compare-card.is-new{
+  background:linear-gradient(180deg,#093b32,#092e28);
+  border-color:#22c55e;
+}
+.bang1-photo-compare-card figcaption{
+  text-align:center;color:#dbeafe;font-weight:750;
+  font-size:clamp(.73rem,1.1vw,.94rem);line-height:1.45;
+}
+.bang1-photo-compare-card img{
+  display:block;width:100%;height:clamp(190px,24vw,350px);
+  object-fit:cover;object-position:center 20%;
+  border-radius:12px;background:#18394b;border:1px solid #7896a4;
+}
+.bang1-photo-compare-guidance{
+  margin:0;padding:12px;color:#c7f9e0;
+  border:1px solid #15803d;border-radius:12px;
+  background:#064e3b80;font-size:.85rem;line-height:1.55;
+}
+#checkShowProofBtn{align-self:flex-start;min-height:39px}
+#checkModalModeHint{line-height:1.5}
+@media(max-width:700px){
+  .bang1-photo-comparison-grid{gap:6px}
+  .bang1-photo-compare-card{padding:5px;border-radius:9px}
+  .bang1-photo-compare-card img{height:clamp(160px,40vw,260px)}
+  .bang1-photo-compare-card figcaption{font-size:.75rem}
+  .bang1-photo-comparison-heading{font-size:.93rem}
+}

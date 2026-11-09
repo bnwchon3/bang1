@@ -1537,6 +1537,7 @@ body{
 <link rel="stylesheet" href="mobile-shell.css?v=20261109-account-icon-v6">
 <link rel="stylesheet" href="live-manager.css?v=20261109-sport2">
 <link rel="stylesheet" href="account-portal.css?v=20261109-v1">
+<link rel="stylesheet" href="runner-photo-review.css?v=20261109-comparison1">
 </head>
 
 <body>
@@ -2905,7 +2906,7 @@ function printRegSummary() {
     <div class="check-modal-header">
       <div class="check-modal-header-main">
         <h2 class="check-modal-title">ตรวจสอบไฟล์แนบแบบบัตรประชาชนและสถานะนักวิ่ง</h2>
-        <div class="check-modal-sub">
+        <div class="check-modal-sub" id="checkModalModeHint">
           เปรียบเทียบรูปกับข้อมูลบัตรประชาชน แล้วเลือกสถานะที่เหมาะสมด้านล่าง
         </div>
       </div>
@@ -2974,18 +2975,34 @@ function printRegSummary() {
     <div class="check-modal-body">
       <!-- ฝั่งบัตรประชาชน (ใหญ่เป็นพิเศษ) -->
       <div class="check-modal-proof">
-        <div class="check-modal-proof-title">ไฟล์บัตรประชาชน</div>
-
-        <div id="checkIdFileFrameWrapper">
-          <iframe id="checkIdFileFrame" src="" frameborder="0"
-                  allowfullscreen></iframe>
+        <!-- Only for photo replacements AFTER a previously verified photo exists -->
+        <div id="checkPhotoComparison" class="bang1-photo-comparison" hidden>
+          <div class="bang1-photo-comparison-heading">เปรียบเทียบใบหน้า · รูปเดิมกับรูปใหม่</div>
+          <div class="bang1-photo-comparison-grid">
+            <figure class="bang1-photo-compare-card">
+              <figcaption>รูปเดิมที่ผ่านการตรวจแล้ว</figcaption>
+              <img id="checkApprovedPhoto" src="" alt="รูปเดิมที่ผู้ตรวจสอบเคยอนุมัติ">
+            </figure>
+            <figure class="bang1-photo-compare-card is-new">
+              <figcaption>รูปใหม่ที่รอตรวจ</figcaption>
+              <img id="checkNewPhoto" src="" alt="รูปนักวิ่งที่เพิ่งอัปโหลด">
+            </figure>
+          </div>
+          <p class="bang1-photo-compare-guidance">ตรวจว่าเป็นใบหน้าบุคคลเดียวกัน แม้เปลี่ยนชุด ทรงผม หรือฉากหลัง หากไม่มั่นใจให้เปิดเอกสารหลักฐานตรวจเพิ่ม</p>
+          <button type="button" class="btn btn-outline btn-xs" id="checkShowProofBtn">ตรวจเอกสารเพิ่มเติม</button>
         </div>
-
-        <div class="check-id-toolbar">
-          <span id="checkIdFileInfo">-</span>
-          <button class="btn btn-outline btn-xs" id="checkIdFileOpenBtn" disabled>
-            เปิดในแท็บใหม่
-          </button>
+        <div id="checkIdDocumentPanel">
+          <div class="check-modal-proof-title">ไฟล์บัตรประชาชน</div>
+          <div id="checkIdFileFrameWrapper">
+            <iframe id="checkIdFileFrame" src="" frameborder="0"
+                    allowfullscreen></iframe>
+          </div>
+          <div class="check-id-toolbar">
+            <span id="checkIdFileInfo">-</span>
+            <button class="btn btn-outline btn-xs" id="checkIdFileOpenBtn" disabled>
+              เปิดในแท็บใหม่
+            </button>
+          </div>
         </div>
       </div>
 
@@ -3313,10 +3330,11 @@ function printRegSummary() {
         const level   = (r.Level  || '').toString().trim();
         const hasPhoto = !!getRunnerPhotoRawClient(r);
         const hasId    = !!getRunnerIdProofUrl(r);
+        const isFaceUpdate = r.PhotoReviewMode === 'face' && !!r.PreviousApprovedPhoto;
         return status !== 'ผ่านการตรวจสอบ' &&
                !!level &&
                hasPhoto &&
-               hasId;
+               (hasId || isFaceUpdate);
       });
 
       buildCheckSchoolFilterOptions();
@@ -3393,12 +3411,15 @@ function printRegSummary() {
       const tr = document.createElement('tr');
       const full = `${r.FirstName||''} ${r.LastName||''}`.trim();
       const status = r.Status || 'รอตรวจสอบ';
+      const photoReviewBadge = r.PhotoReviewMode === 'face'
+        ? '<span class="bang1-review-badge">เทียบใบหน้า</span>'
+        : '<span class="bang1-review-badge is-document">เทียบเอกสาร</span>';
       tr.innerHTML =
         `<td style="text-align:center;">${r.RunnerID}</td>`+
         `<td>${full||'-'}</td>`+
         `<td>${r.SchoolName||'-'}</td>`+
         `<td style="text-align:center;">${r.Level||'-'}</td>`+
-        `<td style="text-align:center;">${status}</td>`;
+        `<td style="text-align:center;">${status} ${photoReviewBadge}</td>`;
       tr.addEventListener('click',()=>openCheckRunnerModal(r.RunnerID));
       tbody.appendChild(tr);
     });
@@ -3568,29 +3589,57 @@ function printRegSummary() {
     if(cEl)   cEl.textContent   = citizenRaw ? formatThaiCitizenId(citizenRaw) : '-';
     if(lEl)   lEl.textContent   = level || '-';
 
-    // ไฟล์บัตร
+    // Two review modes:
+    // First approval => photo vs ID proof (existing process).
+    // Re-upload after approved photo => old verified face vs new face.
+    const oldApprovedUrl = r.PreviousApprovedPhoto
+      ? buildRunnerImageUrl(r.PreviousApprovedPhoto) : '';
+    const isFaceReview = r.PhotoReviewMode === 'face' &&
+      !!oldApprovedUrl && !!photoUrl && oldApprovedUrl !== photoUrl;
+    const comparison = document.getElementById('checkPhotoComparison');
+    const idPanel = document.getElementById('checkIdDocumentPanel');
+    const modeHint = document.getElementById('checkModalModeHint');
+    const approvedEl = document.getElementById('checkApprovedPhoto');
+    const newEl = document.getElementById('checkNewPhoto');
+    const showProof = document.getElementById('checkShowProofBtn');
     const idUrlRaw = getRunnerIdProofUrl(r);
     const previewUrl = buildIdPreviewUrl(idUrlRaw || '');
-    const frame  = document.getElementById('checkIdFileFrame');
+    const frame = document.getElementById('checkIdFileFrame');
     const infoEl = document.getElementById('checkIdFileInfo');
-    const btnEl  = document.getElementById('checkIdFileOpenBtn');
-
-    if(frame) frame.src = previewUrl || 'about:blank';
-
+    const btnEl = document.getElementById('checkIdFileOpenBtn');
+    if(comparison)comparison.hidden=!isFaceReview;
+    if(idPanel)idPanel.hidden=isFaceReview;
+    if(modeHint){
+      modeHint.textContent = isFaceReview
+        ? 'ตรวจรูปใหม่โดยเทียบกับรูปที่ผ่านการยืนยันแล้ว ไม่ต้องเปิดเอกสารซ้ำหากยืนยันว่าเป็นบุคคลเดียวกัน'
+        : 'ตรวจรูปนักวิ่งครั้งแรกเทียบกับเอกสารหลักฐาน ก่อนอนุมัติยืนยันตัวตน';
+    }
+    if(photoEl)photoEl.closest('.check-modal-photo').hidden=isFaceReview;
+    if(approvedEl){
+      approvedEl.onerror=()=>{
+        if(String(checkCurrentRunnerId)!==String(r.RunnerID))return;
+        if(comparison)comparison.hidden=true;
+        if(idPanel)idPanel.hidden=false;
+        if(modeHint)modeHint.textContent='รูปเดิมที่เคยอนุมัติเปิดไม่ได้ กรุณาตรวจเอกสารหลักฐานแทน';
+        if(frame)frame.src=previewUrl||'about:blank';
+      };
+      approvedEl.src=isFaceReview?oldApprovedUrl:'';
+    }
+    if(newEl)newEl.src=isFaceReview?photoUrl:'';
+    if(frame)frame.src=isFaceReview?'about:blank':(previewUrl||'about:blank');
+    if(showProof)showProof.onclick=()=>{
+      if(idPanel)idPanel.hidden=false;
+      if(frame)frame.src=previewUrl||'about:blank';
+      idPanel?.scrollIntoView({block:'nearest',behavior:'smooth'});
+    };
     if(infoEl){
-      infoEl.textContent =
-        previewUrl ?
-          'แสดงตัวอย่างไฟล์บัตรประชาชน' :
-          'ไม่พบไฟล์บัตรประชาชน';
+      infoEl.textContent=previewUrl?'แสดงตัวอย่างไฟล์บัตรประชาชน':'ไม่พบไฟล์บัตรประชาชน';
     }
     if(btnEl){
-      btnEl.disabled = !previewUrl;
-      btnEl.onclick = function(){
-        if(!previewUrl){
-          alert('ไม่พบไฟล์บัตรประชาชน');
-          return;
-        }
-        window.open(previewUrl,'_blank');
+      btnEl.disabled=!previewUrl;
+      btnEl.onclick=()=>{
+        if(!previewUrl){alert('ไม่พบไฟล์บัตรประชาชน');return;}
+        window.open(previewUrl,'_blank','noopener');
       };
     }
 

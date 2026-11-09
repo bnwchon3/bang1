@@ -16,6 +16,8 @@ jobs:
         run: find run -type f -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Live fixture grouping regression
         run: php .github/scripts/test_live_groups.php
+      - name: Verified athlete photo comparison regression
+        run: php .github/scripts/test_runner_photo_review.php
       - name: JavaScript syntax
         run: |
           find run -type f -name '*.js' -print0 | xargs -0 -n1 node --check
