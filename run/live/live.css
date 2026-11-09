@@ -258,6 +258,8 @@ body{background:#06162c}
 .school-name{
   flex-direction:column;
   gap:clamp(2px,.3vh,5px);
+  /* Identical header height across participating and empty school lanes. */
+  height:clamp(56px,8.4vh,92px);
 }
 .school-name-text{
   display:block;width:100%;
@@ -289,6 +291,6 @@ body{background:#06162c}
  .school-heat-badge{height:clamp(15px,2.25vh,22px);min-width:clamp(15px,2.25vh,22px);font-size:clamp(.62rem,1.15vw,.78rem)}
 }
 @media(max-width:600px){
- .school-column.is-entered .school-name{height:clamp(53px,8.4vh,76px)}
+ .school-name,.school-column.is-entered .school-name{height:clamp(53px,8.4vh,76px)}
  .school-heat-badge{height:15px;min-width:15px;font-size:.65rem}
 }
