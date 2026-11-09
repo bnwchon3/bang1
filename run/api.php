@@ -346,7 +346,8 @@ if($action==='upload'){
       $newStatus=$oldStatus;
       if($url!==$oldPhoto){
           if($verified!=='')$newStatus='รอตรวจภาพอีกครั้ง';
-          elseif($oldStatus==='ไม่ผ่านการตรวจสอบ')$newStatus='รอตรวจสอบ';
+          elseif(in_array($oldStatus,['ผ่านการตรวจสอบ','ไม่ผ่านการตรวจสอบ'],true))
+              $newStatus='รอตรวจสอบ'; // No trusted old image => full proof review.
       }
       db()->prepare('UPDATE runners SET photo_url=?,status=?,fail_reason=? WHERE id=?')
           ->execute([$url,$newStatus,$newStatus==='ไม่ผ่านการตรวจสอบ'?(string)($r['fail_reason']??''):'',$id]);
