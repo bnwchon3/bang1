@@ -4,9 +4,9 @@ declare(strict_types=1);
  * Banglamung 1 athletics - live registration report/check-in.
  * Called by api.php after bootstrap and rows()/single()/must_post() are defined.
  *
- * Public endpoint deliberately exposes school / event / registration numbers,
- * never athlete names or account details. Manager/Admin endpoints are session
- * and CSRF protected; scans are idempotent and event-scoped.
+ * Public dashboard presents checked-in athletes' names and registered photos.
+ * Manager/Admin controls are session and CSRF protected; check-in is per athlete.
+ * Private ID numbers and proof documents are never returned.
  */
 if (!isset($action)) { http_response_code(403); exit; }
 
@@ -47,36 +47,118 @@ function live_event_order_key(array $row): string {
         trim((string)($row['level']??'')),
     ]);
 }
-function live_dataset(bool $manager=false): array {
+
+/** Ten fixed presentation columns, in the reference screen's order. */
+function live_school_order():array {
+    return [
+        'วัดสุทธารีย์บุญญาราม',
+        'บ้านตะเคียนเตี้ย',
+        'บ้านสันติคาม',
+        'บ้านบางละมุง',
+        'วัดหนองเกตุใหญ่',
+        'อนุบาลบางละมุง',
+        'วัดเวฬุวนาราม',
+        'บ้านโรงหีบ',
+        'บ้านนาวัง',
+        'บ้านทุ่งกราด',
+    ];
+}
+function live_school_compact(string $value):string {
+    return preg_replace('/[\s\p{P}\p{Z}]+/u','',
+        preg_replace('/^โรงเรียน/u','',trim($value)))??trim($value);
+}
+function live_school_columns(array $schoolRows,array $registrations):array {
+    $known=[];
+    foreach($schoolRows as $school){
+        $name=trim((string)($school['name']??''));
+        if($name!=='')$known[live_school_compact($name)]=$name;
+    }
+    // The names from enrolled registrations are authoritative if a school
+    // was renamed or its nickname differs from the schools table.
+    foreach($registrations as $reg){
+        $name=trim((string)($reg['school_name']??''));
+        if($name!=='')$known[live_school_compact($name)]=$name;
+    }
+    $used=[];$columns=[];
+    foreach(live_school_order() as $short){
+        $needle=live_school_compact($short);
+        $found=null;
+        foreach($known as $normalized=>$full){
+            if(isset($used[$normalized]))continue;
+            if($needle===$normalized || str_contains($normalized,$needle) ||
+               str_contains($needle,$normalized)){
+                $found=['name'=>$full,'key'=>$normalized];break;
+            }
+        }
+        if($found===null){$found=['name'=>'โรงเรียน'.$short,'key'=>$needle];}
+        $used[$found['key']]=true;
+        $columns[]=$found;
+    }
+    return $columns;
+}
+/** Safe, display-only public photo URLs. Never include ID-card/proof attachments. */
+function live_photo_url(string $value):?string {
+    $value=trim($value);
+    if($value==='')return null;
+    return safe_url($value);
+}
+function live_athlete_rows(array $reg,array $runnerMap,array $checks):array {
+    $ids=array_map('trim',explode(',',(string)($reg['runner_ids']??'')));
+    $names=array_map('trim',explode(',',(string)($reg['runner_names']??'')));
+    $photos=array_map('trim',explode(',',(string)($reg['photos']??'')));
+    $length=max(count($ids),count($names));
+    $athletes=[];$used=[];
+    for($i=0;$i<$length;$i++){
+        $rawId=$ids[$i]??'';
+        $runnerId=ctype_digit($rawId)?(int)$rawId:0;
+        $runner=($runnerId>0)?($runnerMap[$runnerId]??null):null;
+        $fallbackName=$names[$i]??'';
+        $name=$runner?trim((string)$runner['first_name'].' '.(string)$runner['last_name']):$fallbackName;
+        if($name===''&&$runnerId<=0)continue;
+        if($name==='')$name='นักกรีฑาลำดับที่ '.($i+1);
+        $athleteKey=$runnerId>0?'runner:'.$runnerId:'slot:'.($i+1);
+        if(isset($used[$athleteKey]))continue;
+        $used[$athleteKey]=true;
+        $photo=live_photo_url((string)($runner['photo_url']??''));
+        if(!$photo)$photo=live_photo_url((string)($photos[$i]??''));
+        $when=$checks[(int)$reg['id']][$athleteKey]??null;
+        $athletes[]=[
+            'athleteKey'=>$athleteKey,'name'=>$name,'photo'=>$photo,
+            'checkedAt'=>$when,
+            'runnerId'=>$runnerId>0?$runnerId:null
+        ];
+    }
+    return $athletes;
+}
+function live_dataset(bool $manager=false):array {
     $order=[];
-    foreach(rows('SELECT id,name,category,level,gender,source_order,remark,stage FROM events ORDER BY COALESCE(source_order,999999),id') as $e) {
+    foreach(rows('SELECT id,name,category,level,gender,source_order,remark,stage FROM events ORDER BY COALESCE(source_order,999999),id') as $e){
         $k=live_event_order_key($e);
-        if(!isset($order[$k]) || (
-            (string)($e['stage']??'')!=='ชิงชนะเลิศ' &&
-            (string)($e['remark']??'')!=='ชิงชนะเลิศ' &&
-            $order[$k]['isFinal']
-        )) {
+        $final=(string)($e['stage']??'')==='ชิงชนะเลิศ' ||
+            (string)($e['remark']??'')==='ชิงชนะเลิศ';
+        if(!isset($order[$k])||(!$final&&$order[$k]['isFinal'])){
             $order[$k]=[
                 'order'=>(int)($e['source_order']??999999),
                 'eventId'=>(int)$e['id'],
-                'gender'=>trim((string)($e['gender']??'')),
-                'isFinal'=>(string)($e['stage']??'')==='ชิงชนะเลิศ'||
-                    (string)($e['remark']??'')==='ชิงชนะเลิศ',
+                'gender'=>(string)($e['gender']??''),
+                'isFinal'=>$final
             ];
         }
     }
-    $checked=[];
-    foreach(rows('SELECT registration_id,checked_at,checked_by FROM race_checkins') as $r)
-        $checked[(int)$r['registration_id']]=$r;
-    $fixtures=[];
-    $teamsByKey=[];
-    // Map old active keys to the corrected group without changing database
-    // check-ins or causing a visible "no active event" gap during deployment.
-    $legacyToCurrent=[];
-    foreach(rows('SELECT id,event_id,event_name,category,level,school_name,runner_names,gender,heat,lane,registration_key FROM registrations ORDER BY id') as $r){
+    $registrations=rows('SELECT id,event_id,event_name,category,level,school_name,runner_ids,runner_names,photos,gender,heat,lane FROM registrations ORDER BY id');
+    $runnerMap=[];
+    foreach(rows('SELECT id,school_name,first_name,last_name,photo_url FROM runners') as $r)
+        $runnerMap[(int)$r['id']]=$r;
+    $checks=[];
+    foreach(rows('SELECT registration_id,athlete_key,checked_at FROM race_athlete_checkins') as $c){
+        $checks[(int)$c['registration_id']][(string)$c['athlete_key']]=(string)$c['checked_at'];
+    }
+    $schoolColumns=live_school_columns(rows('SELECT name FROM schools ORDER BY id'),$registrations);
+    $fixtures=[];$teamsByKey=[];$legacyToCurrent=[];
+    foreach($registrations as $r){
         $key=live_group_key($r);
         $legacyToCurrent[live_legacy_group_key($r)]=$key;
-        if(!isset($fixtures[$key])) {
+        if(!isset($fixtures[$key])){
             $ord=$order[live_event_order_key($r)]??null;
             $fixtures[$key]=[
                 'key'=>$key,
@@ -87,22 +169,26 @@ function live_dataset(bool $manager=false): array {
                 'gender'=>(string)($ord['gender']??live_gender((string)$r['gender'])),
                 'heat'=>(int)$r['heat'],
                 'order'=>(int)($ord['order']??999999),
-                'total'=>0,
-                'checked'=>0
+                'total'=>0,'checked'=>0,'teams'=>0,'teamsReady'=>0
             ];
             $teamsByKey[$key]=[];
         }
-        $id=(int)$r['id'];$check=$checked[$id]??null;
-        $fixtures[$key]['total']++;
-        if($check)$fixtures[$key]['checked']++;
+        $athletes=live_athlete_rows($r,$runnerMap,$checks);
+        $present=array_values(array_filter($athletes,static fn($a)=>$a['checkedAt']!==null));
+        $fixtures[$key]['total']+=count($athletes);
+        $fixtures[$key]['checked']+=count($present);
+        $fixtures[$key]['teams']++;
+        if(count($athletes)>0&&count($present)===count($athletes))$fixtures[$key]['teamsReady']++;
         $team=[
-            'regId'=>$id,
+            'regId'=>(int)$r['id'],
             'school'=>(string)$r['school_name'],
             'lane'=>$r['lane']===null?null:(int)$r['lane'],
             'heat'=>(int)$r['heat'],
-            'checkedAt'=>$check?(string)$check['checked_at']:null,
+            'totalAthletes'=>count($athletes),
+            'checkedAthletes'=>count($present)
         ];
-        if($manager)$team['runners']=(string)$r['runner_names'];
+        if($manager)$team['athletes']=$athletes;
+        else $team['athletes']=$present;
         $teamsByKey[$key][]=$team;
     }
     $fixtures=array_values($fixtures);
@@ -117,29 +203,51 @@ function live_dataset(bool $manager=false): array {
     $state=single('SELECT fixture_key,updated_at,updated_by FROM race_live_state WHERE id=1');
     $storedKey=(string)($state['fixture_key']??'');
     $activeKey=$legacyToCurrent[$storedKey]??$storedKey;
-    $active=null;
-    $currentIndex=-1;
+    $active=null;$currentIndex=-1;
     foreach($fixtures as $index=>$f)if($f['key']===$activeKey){
         $active=$f;$currentIndex=$index;break;
     }
     $teams=$active?$teamsByKey[$activeKey]:[];
-    usort($teams,static function(array $a,array $b):int {
-        // A stable order preserves heat/lane while refreshes update statuses.
-        return ($a['lane']??9999)<=>($b['lane']??9999)
-            ?:strcmp($a['school'],$b['school'])
-            ?:($a['regId']<=>$b['regId']);
-    });
-    $recent=array_values(array_filter($teams,static fn($t)=>$t['checkedAt']!==null));
-    usort($recent,static fn($a,$b)=>strcmp($b['checkedAt'],$a['checkedAt'])?:($b['regId']<=>$a['regId']));
+    usort($teams,static fn($a,$b)=>
+        ($a['lane']??9999)<=>($b['lane']??9999)
+        ?:strcmp($a['school'],$b['school'])
+        ?:($a['regId']<=>$b['regId']));
+    $columns=[];
+    foreach($schoolColumns as $school){
+        $columns[]=['name'=>$school['name'],'key'=>$school['key'],'athletes'=>[]];
+    }
+    $recent=[];
+    foreach($teams as $team){
+        $normalized=live_school_compact($team['school']);
+        $columnIndex=null;
+        foreach($columns as $i=>$col){
+            if($col['key']===$normalized||
+               str_contains($col['key'],$normalized)||
+               str_contains($normalized,$col['key'])){$columnIndex=$i;break;}
+        }
+        if($columnIndex===null)continue;
+        foreach($team['athletes'] as $athlete){
+            if($athlete['checkedAt']===null)continue;
+            $publicAthlete=[
+                'name'=>$athlete['name'],'photo'=>$athlete['photo'],
+                'regId'=>$team['regId'],'school'=>$team['school'],
+                'checkedAt'=>$athlete['checkedAt']
+            ];
+            $columns[$columnIndex]['athletes'][]=$publicAthlete;
+            $recent[]=$publicAthlete;
+        }
+    }
+    usort($recent,static fn($a,$b)=>strcmp($b['checkedAt'],$a['checkedAt']));
     return [
         'success'=>true,
         'serverTime'=>date('c'),
         'active'=>$active,
         'activeUpdatedAt'=>$state['updated_at']??null,
         'fixtures'=>$fixtures,
+        'schools'=>$columns,
         'teams'=>$teams,
-        'recent'=>array_slice($recent,0,12),
-        'next'=>$currentIndex>=0?array_slice($fixtures,$currentIndex+1,5):array_slice($fixtures,0,5),
+        'recent'=>array_slice($recent,0,10),
+        'next'=>$currentIndex>=0?array_slice($fixtures,$currentIndex+1,3):array_slice($fixtures,0,3),
         'isManager'=>$manager
     ];
 }
@@ -148,7 +256,7 @@ if($action==='live_state'){
     if(($_SERVER['REQUEST_METHOD']??'')!=='GET')json_out(['success'=>false,'message'=>'GET required'],405);
     json_out(live_dataset(false));
 }
-if(!in_array($action,['live_manager_data','live_select','live_scan','live_undo'],true))return;
+if(!in_array($action,['live_manager_data','live_select','live_runner_set'],true))return;
 if(!isset($u)||!is_array($u))json_out(['success'=>false,'message'=>'กรุณาเข้าสู่ระบบ'],401);
 require_reviewer($u);
 
@@ -175,76 +283,56 @@ if($action==='live_select'){
     json_out(['success'=>true,'message'=>$key===''?'ปิดการแสดงรายการ Active แล้ว':'เปลี่ยนรายการ Active บนจอ Live สำเร็จ']);
 }
 
-if($action==='live_scan'){
-    $raw=trim((string)($input['code']??''));
-    if($raw===''||strlen($raw)>1000)json_out(['success'=>false,'message'=>'QR Code หรือรหัสใบสมัครไม่ถูกต้อง'],422);
-    $registration=null;
-    // Newly printed QR / hand-entered registration number.
-    if(preg_match('/^(?:BNWREG:)?([0-9]{1,10})$/iD',$raw,$m)){
-        $registration=single('SELECT * FROM registrations WHERE id=? LIMIT 1',[(int)$m[1]]);
-    }else{
-        // New-style URL QR, accepting only this school's actual host and route.
-        if(preg_match('~^https?://~i',$raw)){
-            $url=parse_url($raw);
-            $host=strtolower((string)($url['host']??''));
-            $path=rtrim((string)($url['path']??''),'/');
-            if(!in_array($host,['bannawang.ac.th','www.bannawang.ac.th'],true) ||
-                $path!=='/bang1/run/live')
-                json_out(['success'=>false,'message'=>'QR Code ไม่ใช่ใบสมัครกรีฑาของระบบนี้'],422);
-            parse_str((string)($url['query']??''),$params);
-            $reg=(string)($params['reg']??'');
-            if(!preg_match('/^[0-9]{1,10}$/D',$reg))
-                json_out(['success'=>false,'message'=>'QR Code ไม่มีรหัสใบสมัครที่รองรับ'],422);
-            $registration=single('SELECT * FROM registrations WHERE id=? LIMIT 1',[(int)$reg]);
-        }else{
-            // Existing physical application QR: event_id|category|level|school.
-            $matches=rows('SELECT * FROM registrations WHERE registration_key=? LIMIT 2',[$raw]);
-            if(count($matches)>1)json_out(['success'=>false,'message'=>'QR นี้ตรงกับมากกว่าหนึ่งใบสมัคร กรุณาระบุรหัสการลงทะเบียน'],409);
-            $registration=$matches[0]??null;
-        }
+if($action==='live_runner_set'){
+    $regId=(int)($input['regId']??0);
+    $athleteKey=(string)($input['athleteKey']??'');
+    $checked=$input['checked']??null;
+    if($regId<=0||!preg_match('/^(runner:[1-9][0-9]{0,16}|slot:[1-9][0-9]{0,3})$/D',$athleteKey)
+        ||!is_bool($checked)){
+        json_out(['success'=>false,'message'=>'ข้อมูลนักกรีฑาหรือสถานะไม่ถูกต้อง'],422);
     }
-    if(!$registration)json_out(['success'=>false,'message'=>'ไม่พบใบสมัครที่ตรงกับ QR Code กรุณาตรวจสอบรหัส'],404);
-    $key=live_group_key($registration);
-    // Resolve the former (gender-split) Active key as well, so scans against
-    // the current Active event continue working during the transition.
-    $active=(string)(live_dataset(false)['active']['key']??'');
-    if($active==='')
-        json_out(['success'=>false,'message'=>'กรุณาเลือกรายการแข่งขัน Active ก่อนสแกนรายงานตัว'],409);
-    if(!hash_equals($active,$key))
-        json_out(['success'=>false,'message'=>'ใบสมัครนี้เป็นคนละรายการหรือฮีทกับรายการ Active กรุณาเลือกรายการแข่งขันให้ถูกต้อง'],409);
-
-    $id=(int)$registration['id'];
-    $insert=db()->prepare('INSERT IGNORE INTO race_checkins(registration_id,checked_by,checked_at) VALUES(?,?,NOW())');
-    $insert->execute([$id,(int)$u['coachId']]);
-    $wasNew=$insert->rowCount()>0;
-    $check=single('SELECT checked_at FROM race_checkins WHERE registration_id=?',[$id]);
-    if($wasNew)log_action('LIVE_CHECKIN',$u,'Registration',(string)$id,
-       'Check-in for '.$registration['event_name'].'; school '.$registration['school_name']);
-    $result=[
-        'success'=>true,
-        'regId'=>$id,
-        'school'=>(string)$registration['school_name'],
-        'eventName'=>(string)$registration['event_name'],
-        'checkedAt'=>(string)($check['checked_at']??''),
-        'isNew'=>$wasNew,
-        'message'=>$wasNew?'เช็กอินรายงานตัวสำเร็จ':'รายการนี้รายงานตัวแล้วก่อนหน้านี้'
-    ];
-    // idempotent acknowledgement; actual new/duplicate detection is handled by the
-    // registration uniqueness constraint, never by client-supplied flags.
-    json_out($result);
-}
-
-if($action==='live_undo'){
-    $id=(int)($input['regId']??0);
-    if($id<1)json_out(['success'=>false,'message'=>'รหัสใบสมัครไม่ถูกต้อง'],422);
-    $reg=single('SELECT * FROM registrations WHERE id=?',[$id]);
+    $reg=single('SELECT * FROM registrations WHERE id=? LIMIT 1',[$regId]);
     if(!$reg)json_out(['success'=>false,'message'=>'ไม่พบใบสมัคร'],404);
     $active=(string)(live_dataset(false)['active']['key']??'');
-    if($active===''||!hash_equals($active,live_group_key($reg)))
-        json_out(['success'=>false,'message'=>'สามารถยกเลิกเช็กอินได้เฉพาะรายการ Active'],403);
-    $delete=db()->prepare('DELETE FROM race_checkins WHERE registration_id=?');
-    $delete->execute([$id]);
-    if(!$delete->rowCount())json_out(['success'=>false,'message'=>'ยังไม่มีรายการรายงานตัวให้ยกเลิก'],409);
-    log_action('LIVE_CHECKIN_UNDO',$u,'Registration',(string)$id,'Manager cancelled mistaken check-in');
-    json_out(['success'=>true,'message'=>'ยกเลิกการรายงานตัวแล้ว']);
+    if($active===''||!hash_equals($active,live_group_key($reg))){
+        json_out(['success'=>false,'message'=>'ต้องเลือกรายการ Active ที่ตรงกับนักกรีฑาก่อน'],409);
+    }
+    // The submitted key is merely a selector; only athletes actually present
+    // on this registered roster may be checked in. Never accept name/school
+    // or photo information from a browser request.
+    $runnerMap=[];
+    $runnerIds=array_values(array_filter(array_map('intval',explode(',',(string)$reg['runner_ids']))));
+    if($runnerIds){
+        $marks=implode(',',array_fill(0,count($runnerIds),'?'));
+        foreach(rows('SELECT id,first_name,last_name,photo_url FROM runners WHERE id IN ('.$marks.')',$runnerIds) as $runner)
+            $runnerMap[(int)$runner['id']]=$runner;
+    }
+    $candidates=live_athlete_rows($reg,$runnerMap,[]);
+    $valid=false;$athleteName='';
+    foreach($candidates as $athlete){
+        if(hash_equals($athlete['athleteKey'],$athleteKey)){
+            $valid=true;$athleteName=$athlete['name'];break;
+        }
+    }
+    if(!$valid)json_out(['success'=>false,'message'=>'นักกรีฑาคนนี้ไม่อยู่ในใบสมัครรายการ Active'],422);
+    if($checked){
+        $stmt=db()->prepare('INSERT IGNORE INTO race_athlete_checkins (registration_id,athlete_key,checked_by,checked_at) VALUES(?,?,?,NOW())');
+        $stmt->execute([$regId,$athleteKey,(int)$u['coachId']]);
+        $changed=$stmt->rowCount()>0;
+    }else{
+        $stmt=db()->prepare('DELETE FROM race_athlete_checkins WHERE registration_id=? AND athlete_key=?');
+        $stmt->execute([$regId,$athleteKey]);
+        $changed=$stmt->rowCount()>0;
+    }
+    if($changed){
+        log_action($checked?'LIVE_ATHLETE_CHECKIN':'LIVE_ATHLETE_UNCHECK',$u,
+            'Registration',(string)$regId,'Athlete '.$athleteKey.' '.($checked?'in':'out'));
+    }
+    json_out([
+        'success'=>true,
+        'changed'=>$changed,
+        'checked'=>$checked,
+        'message'=>$checked?($changed?'ยืนยันรายงานตัว '.$athleteName.' แล้ว':'นักกรีฑาคนนี้รายงานตัวแล้ว'):
+            ($changed?'ยกเลิกการรายงานตัว '.$athleteName.' แล้ว':'นักกรีฑาคนนี้ยังไม่ได้รายงานตัว')
+    ]);
 }
