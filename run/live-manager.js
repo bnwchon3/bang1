@@ -407,8 +407,8 @@
     ['bang1CheckinRoster','bang1NextRoster'].forEach(id=>{
       el(id).addEventListener('change',onAthleteChange);
     });
-    const menu=document.querySelector('.menu button[data-page="checkin"]');
-    if(menu)menu.addEventListener('click',()=>setTimeout(()=>refresh(),0));
+    const checkinNavButton=document.querySelector('.menu button[data-page="checkin"]');
+    if(checkinNavButton)checkinNavButton.addEventListener('click',()=>setTimeout(()=>refresh(),0));
     const observer=new MutationObserver(()=>{if(activePage())refresh()});
     observer.observe(page,{attributes:true,attributeFilter:['class']});
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh()});
