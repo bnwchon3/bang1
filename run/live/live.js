@@ -30,6 +30,21 @@
       '<div class="athlete-name">'+esc(person.name)+'</div>'+
       '</article>';
   }
+  function schoolFlag(url,variant='heading'){
+    if(!url)return '';
+    return '<span class="school-flag school-flag-'+esc(variant)+'" role="img" aria-label="ธงตราสัญลักษณ์โรงเรียน">'+
+      '<span class="school-flag-fabric">'+
+      '<img class="school-flag-logo" src="'+esc(url)+'" alt="" loading="eager" decoding="async">'+
+      '</span></span>';
+  }
+  // One error handler for refreshed Live and Sport card nodes.
+  // A missing file falls back to the school NAME, never a broken image icon.
+  document.addEventListener('error',event=>{
+    const image=event.target;
+    if(image?.matches?.('.school-flag-logo')){
+      image.closest('.school-flag')?.remove();
+    }
+  },true);
   function schoolCell(school,sport=false){
     const athletes=Array.isArray(school.athletes)?school.athletes:[];
     const entered=Boolean(school.registered);
@@ -45,8 +60,10 @@
           '" aria-label="ฮีทที่ '+h+'" title="ฮีทที่ '+h+'">'+h+'</span>').join('')+
         '</span>':'';
     return '<section class="school-column'+(entered?' is-entered':'')+'">'+
-      '<header class="school-name"><span class="school-name-text">'+
-      esc(String(school.name||'').replace(/^โรงเรียน/u,''))+'</span>'+badges+'</header>'+
+      '<header class="school-name"><span class="school-name-main">'+
+      schoolFlag(school.logo,'heading')+
+      '<span class="school-name-text">'+
+      esc(String(school.name||'').replace(/^โรงเรียน/u,''))+'</span></span>'+badges+'</header>'+
       '<div class="school-athletes '+layout+'" style="--athlete-rows:'+rows+'">'+
       (count?athletes.map(a=>athleteCard(a,sport)).join(''):
         '<span class="no-athletes">'+(entered?(sport?'รอภาพนักกรีฑา':'รอรายงานตัว'):'')+'</span>')+
@@ -195,7 +212,9 @@
       '<div class="sport-mobile-photo">'+mobilePhoto+
         (portraits.length>1?'<span class="sport-mobile-photo-step">1 / '+portraits.length+'</span>':'')+
       '</div>'+
-      '<div class="sport-rival-copy"><strong>'+esc(sportSchoolName(school.name))+'</strong>'+
+      '<div class="sport-rival-copy"><div class="sport-rival-heading">'+
+      schoolFlag(school.logo,'rival')+
+      '<strong>'+esc(sportSchoolName(school.name))+'</strong></div>'+
       '<small>'+esc(subtitle)+'</small>'+
       '<span class="sport-mobile-athlete">'+esc(portraits[0]?.name||people[0]?.name||'ยังไม่มีรายชื่อนักกีฬา')+'</span>'+
       (badge?'<span class="sport-rival-tag">'+esc(badge)+'</span>':'')+
@@ -310,7 +329,10 @@
     const fallback=pool.length?pool[index%pool.length]:null;
     // If the old champion does not take part, show its school as archival
     // context with no student portrait. Never pass a different child off as a champion.
-    const hero=champion?(championTeam||{name:champion.school,athletes:[],heats:[],registered:false}):fallback;
+    const hero=champion?(championTeam||{
+      name:champion.school,athletes:[],heats:[],registered:false,
+      logo:input.find(s=>normalizeSchool(s.name)===normalizeSchool(champion.school))?.logo||null
+    }):fallback;
     // The featured current school is already shown in the hero panel.
     const others=registered.filter(s=>s!==hero);
     const people=Array.isArray(hero?.athletes)?hero.athletes.slice(0,4):[];
@@ -323,6 +345,7 @@
     el('sportHeroCaptionLabel').textContent=champion
       ?'โรงเรียนแชมป์เก่า · '+champion.season
       :'ตัวแทนนักกรีฑาในรายการปัจจุบัน';
+    el('sportHeroFlag').innerHTML=schoolFlag(hero?.logo,'hero');
     el('sportHeroSchool').textContent=hero?sportSchoolName(hero.name):'รอข้อมูลโรงเรียน';
     el('sportHeroName').textContent=champion&&!championTeam
       ?'แชมป์เก่าไม่ได้ส่งนักกรีฑาในรายการนี้':
@@ -536,7 +559,8 @@
       '<div class="fifa-card-header">'+
         '<span class="race-breaking-medal" aria-hidden="true">'+(medals[rank]||'🏅')+'</span>'+
         '<span class="fifa-card-place">'+rankText+'</span>'+
-        '<span class="fifa-card-diamond" aria-hidden="true">✦</span>'+
+        (place.logo?schoolFlag(place.logo,'medal'):
+          '<span class="fifa-card-diamond" aria-hidden="true">✦</span>')+
       '</div>'+
       breakingPlayerImages(athletes,relay)+
       '<div class="fifa-card-info">'+

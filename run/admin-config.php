@@ -11,6 +11,7 @@ if (!isset($u, $action) || !is_array($u) || !function_exists('require_admin')) {
 }
 if (!str_starts_with((string)$action, 'admin_')) return;
 require_admin($u);
+require __DIR__.'/admin-school-logo-upload.php';
 if(in_array($action,['admin_account_applications','admin_account_review'],true)) require __DIR__.'/account-portal.php';
 require __DIR__.'/admin-security.php';
 require __DIR__.'/admin-reset.php';
@@ -57,9 +58,14 @@ if ($action === 'admin_settings_save') {
 }
 
 if ($action === 'admin_schools') {
-    json_out(['success'=>true,'data'=>rows(
-        'SELECT id, name, nickname, active FROM schools ORDER BY id'
-    )]);
+    require_once __DIR__.'/school-branding.php';
+    $items=rows('SELECT id,name,nickname,active,logo_file,logo_updated_at FROM schools ORDER BY id');
+    foreach($items as &$item){
+        $item['logoUrl']=school_logo_url((string)($item['logo_file']??''));
+        unset($item['logo_file']); // filename is an internal implementation detail
+    }
+    unset($item);
+    json_out(['success'=>true,'data'=>$items]);
 }
 if ($action === 'admin_school_save') {
     must_post();

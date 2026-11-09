@@ -35,6 +35,12 @@ try {
    db()->exec('ALTER TABLE coaches MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT');
  $column=db()->query("SHOW COLUMNS FROM coaches LIKE 'auth_version'")->fetch();
  if(!$column)db()->exec('ALTER TABLE coaches ADD COLUMN auth_version INT NOT NULL DEFAULT 1');
+ // Images are stored on the host and survive season resets; only generated
+ // filenames (never user-supplied URLs) are stored in the schools table.
+ $column=db()->query("SHOW COLUMNS FROM schools LIKE 'logo_file'")->fetch();
+ if(!$column)db()->exec('ALTER TABLE schools ADD COLUMN logo_file VARCHAR(160) NULL');
+ $column=db()->query("SHOW COLUMNS FROM schools LIKE 'logo_updated_at'")->fetch();
+ if(!$column)db()->exec('ALTER TABLE schools ADD COLUMN logo_updated_at DATETIME NULL');
  // Only an actually approved image may become the comparison reference.
  // Backfill existing approved runners ONCE; unapproved legacy photos
  // are not trusted and must still be checked against their ID document.

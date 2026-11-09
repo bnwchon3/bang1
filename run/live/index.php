@@ -12,6 +12,7 @@ header('Cache-Control: no-store, private');
   <meta name="theme-color" content="#06162c">
   <title>จอรายงานตัว LIVE | กรีฑากลุ่มโรงเรียนบางละมุง 1</title>
   <link rel="stylesheet" href="./live.css?v=20261109-olympic-podium18">
+  <link rel="stylesheet" href="../school-branding.css?v=20261109-flags19">
 </head>
 <body>
   <main class="live-screen">
@@ -85,7 +86,10 @@ header('Cache-Control: no-store, private');
           <div id="sportHeroPhotos" class="sport-hero-photos"><div class="sport-image-placeholder">🏃</div></div>
           <div class="sport-hero-caption">
             <span class="sport-small-label" id="sportHeroCaptionLabel">ตัวแทนนักกรีฑาปัจจุบัน</span>
-            <h2 id="sportHeroSchool">กำลังโหลดข้อมูลโรงเรียน</h2>
+            <div class="sport-hero-school-heading">
+              <span id="sportHeroFlag" class="sport-hero-flag-slot"></span>
+              <h2 id="sportHeroSchool">กำลังโหลดข้อมูลโรงเรียน</h2>
+            </div>
             <p id="sportHeroName">—</p>
           </div>
           <span class="sport-hero-number" aria-hidden="true">01</span>
@@ -157,6 +161,6 @@ header('Cache-Control: no-store, private');
       </footer>
     </section>
   </main>
-  <script defer src="./live.js?v=20261109-olympic-podium18"></script>
+  <script defer src="./live.js?v=20261109-flags19"></script>
 </body>
 </html>

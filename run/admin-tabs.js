@@ -56,7 +56,8 @@
    // Keep every original Admin element, including its verification modal and script, intact.
    while(checkPanel.nextSibling)checkPanel.appendChild(checkPanel.nextSibling);
    var settings=createPanel('settings','ตั้งค่าเปิด–ปิดระบบ',['รหัสรายการ','ชื่อรายการ','เวลาเปิดลงทะเบียน','เวลาปิดลงทะเบียน','สถานะ','บันทึก']);
-   var schools=createPanel('schools','โรงเรียน',['SchoolID','SchoolName','schoolnickname','Active','บันทึก']);
+   var schools=createPanel('schools','โรงเรียน',['SchoolID','ตราสัญลักษณ์บนธง','SchoolName','schoolnickname','Active','บันทึก'],
+     '<p class="school-branding-tip">🏳️ แนบตราโรงเรียน PNG โปร่งใส, JPG หรือ WebP (ไม่เกิน 3 MB) ระบบจะแสดงบนธงปลิวใน Live, Sport และการ์ดรับรางวัลโดยอัตโนมัติ</p>');
    var coaches=createPanel('coaches','ผู้ฝึกซ้อม',['CoachID','Name','Email','SchoolName','Role','รหัสผ่าน','จัดการ'],
      '<form id="admin-coach-form" autocomplete="off">'+
        '<input name="id" type="hidden">'+
@@ -268,33 +269,108 @@
      finally{b.disabled=false}
    });
 
+   function schoolFlagMarkup(logoUrl){
+     return '<span class="school-flag school-flag-admin" aria-label="ตัวอย่างธงโรงเรียน">'+
+       '<span class="school-flag-fabric">'+
+       (logoUrl?'<img class="school-flag-logo" src="'+escapeText(logoUrl)+
+          '" alt="ตราสัญลักษณ์โรงเรียน" loading="lazy">':
+          '<span class="school-flag-empty">🏫</span>')+
+       '</span></span>';
+   }
+   function schoolLogoCell(school){
+     const id=Number(school.id||0);
+     const existing=Boolean(id);
+     return '<div class="school-logo-editor">'+
+       schoolFlagMarkup(school.logoUrl||'')+
+       '<div class="school-logo-controls">'+
+         '<label class="btn btn-outline btn-xs school-logo-choose">'+
+           '🖼️ '+(school.logoUrl?'เปลี่ยนตรา':'เลือกภาพ')+
+           '<input type="file" data-school-logo-file accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"'+
+             (existing?'':' disabled')+'></label>'+
+         '<button class="btn btn-primary btn-xs" type="button" data-upload-school-logo '+
+           'disabled>อัปโหลด</button>'+
+         (existing?'':'<small>เพิ่มโรงเรียนก่อนแนบรูป</small>')+
+       '</div></div>';
+   }
    async function loadSchools(){
      var rows=el('[data-admin-rows="schools"]');
-     rows.innerHTML='<tr><td colspan="5">กำลังโหลด...</td></tr>';
+     rows.innerHTML='<tr><td colspan="6">กำลังโหลด...</td></tr>';
      var r=await api('admin_schools');
      var options=['Active','Inactive'];
      rows.innerHTML=(r.data||[]).map(function(x){
        return '<tr data-school-id="'+escapeText(x.id)+'"><td>'+escapeText(x.id)+'</td>'+
+         '<td>'+schoolLogoCell(x)+'</td>'+
          '<td><input class="input" data-school-name value="'+escapeText(x.name)+'"></td>'+
          '<td><input class="input" data-school-nickname value="'+escapeText(x.nickname)+'"></td>'+
-         '<td><select class="input" data-school-active>'+options.map(function(s){return '<option'+(x.active===s?' selected':'')+'>'+s+'</option>'}).join('')+'</select></td>'+
+         '<td><select class="input" data-school-active>'+options.map(function(value){
+           return '<option'+(x.active===value?' selected':'')+'>'+value+'</option>'}).join('')+'</select></td>'+
          '<td><button type="button" class="btn btn-primary btn-xs" data-save-school>บันทึก</button></td></tr>';
      }).join('')+'<tr data-school-id="0"><td>ใหม่</td>'+
+       '<td>'+schoolLogoCell({id:0})+'</td>'+
        '<td><input class="input" data-school-name placeholder="SchoolName"></td>'+
        '<td><input class="input" data-school-nickname placeholder="schoolnickname"></td>'+
        '<td><select class="input" data-school-active><option>Active</option><option>Inactive</option></select></td>'+
        '<td><button type="button" class="btn btn-primary btn-xs" data-save-school>เพิ่ม</button></td></tr>';
      inform(schools,'');
    }
+   schools.addEventListener('change',function(e){
+     const input=e.target.closest('[data-school-logo-file]');
+     if(!input)return;
+     const tr=input.closest('tr');
+     const file=input.files&&input.files[0];
+     const upload=el('[data-upload-school-logo]',tr);
+     upload.disabled=!file;
+     if(!file)return;
+     if(!/^image\/(png|jpeg|webp)$/.test(file.type)||file.size>3*1024*1024||file.size<=0){
+       upload.disabled=true;
+       input.value='';
+       inform(schools,'รูปภาพต้องเป็น PNG, JPG หรือ WebP และไม่เกิน 3 MB',true);return;
+     }
+     const fabric=el('.school-flag-fabric',tr);
+     const image=document.createElement('img');
+     image.className='school-flag-logo';
+     image.alt='ตัวอย่างตราโรงเรียนที่เลือก';
+     const temporary=URL.createObjectURL(file);
+     image.src=temporary;
+     image.addEventListener('load',()=>URL.revokeObjectURL(temporary),{once:true});
+     image.addEventListener('error',()=>URL.revokeObjectURL(temporary),{once:true});
+     fabric.replaceChildren(image);
+     inform(schools,'เลือกภาพแล้ว กด “อัปโหลด” เพื่อบันทึกตราโรงเรียน');
+   });
    schools.addEventListener('click',async function(e){
-     var b=e.target.closest('[data-save-school]');if(!b)return;
-     var tr=b.closest('tr');
-     var payload={id:tr.dataset.schoolId,name:el('[data-school-name]',tr).value,
+     const upload=e.target.closest('[data-upload-school-logo]');
+     if(upload){
+       const tr=upload.closest('tr');
+       const input=el('[data-school-logo-file]',tr);
+       const file=input.files&&input.files[0];
+       const schoolId=Number(tr.dataset.schoolId);
+       if(!schoolId||!file){inform(schools,'กรุณาเลือกไฟล์และบันทึกโรงเรียนก่อนอัปโหลด',true);return}
+       const form=new FormData();
+       form.append('schoolId',String(schoolId));
+       form.append('logo',file,file.name);
+       upload.disabled=true;
+       try{
+         const result=await api('admin_school_logo_upload',form);
+         await loadSchools();
+         inform(schools,result.message||'อัปโหลดสัญลักษณ์โรงเรียนสำเร็จ');
+       }catch(error){
+         inform(schools,error.message||'อัปโหลดโลโก้ไม่สำเร็จ',true);
+         upload.disabled=false;
+       }
+       return;
+     }
+     const save=e.target.closest('[data-save-school]');
+     if(!save)return;
+     const tr=save.closest('tr');
+     const payload={id:tr.dataset.schoolId,name:el('[data-school-name]',tr).value,
        nickname:el('[data-school-nickname]',tr).value,active:el('[data-school-active]',tr).value};
-     b.disabled=true;
-     try{var r=await api('admin_school_save',payload);await loadSchools();inform(schools,r.message||'บันทึกสำเร็จ')}
-     catch(err){inform(schools,err.message,true)}
-     finally{b.disabled=false}
+     save.disabled=true;
+     try{
+       const result=await api('admin_school_save',payload);
+       await loadSchools();
+       inform(schools,result.message||'บันทึกสำเร็จ');
+     }catch(error){inform(schools,error.message,true)}
+     finally{save.disabled=false}
    });
    var coachList=[];
    function populateCoachSchoolFilter(){

@@ -13,6 +13,7 @@ if (!isset($action)) { http_response_code(403); exit; }
 // competition schedule as the event list and Staff result entry.
 require_once __DIR__.'/event-management.php';
 require_once __DIR__.'/champion-history.php';
+require_once __DIR__.'/school-branding.php';
 
 function live_gender(string $gender): string {
     $first=trim(explode(',',str_replace('，',',',$gender))[0]);
@@ -210,8 +211,10 @@ function live_school_columns(array $schoolRows,array $registrations):array {
         $columns[$index]=['name'=>$name,'key'=>$normalized,'matched'=>true];
         $used[$normalized]=true;
     }
+    $logoLookup=school_logo_lookup($schoolRows);
     return array_map(static fn($column)=>[
-        'name'=>$column['name'],'key'=>$column['key']],$columns);
+        'name'=>$column['name'],'key'=>$column['key'],
+        'logo'=>school_logo_for($logoLookup,$column['name'])],$columns);
 }
 
 /** Safe, display-only public photo URLs. Never include ID-card/proof attachments. */
@@ -440,8 +443,11 @@ function live_latest_results():array {
             $checks[(int)$check['registration_id']][(string)$check['athlete_key']]=
                 (string)$check['checked_at'];
     }
+    $logoLookup=school_logo_lookup(
+        rows('SELECT name,nickname,logo_file FROM schools'));
     foreach($results as &$result){
         foreach($result['places'] as &$place){
+            $place['logo']=school_logo_for($logoLookup,(string)$place['school']);
             $place['athletes']=live_result_place_athletes(
                 $result,$place,$registrations,$runnerMap,$checks);
         }
@@ -477,7 +483,8 @@ function live_dataset(bool $manager=false,?string $sportFixtureKey=null):array {
     foreach(rows('SELECT registration_id,athlete_key,checked_at FROM race_athlete_checkins') as $c){
         $checks[(int)$c['registration_id']][(string)$c['athlete_key']]=(string)$c['checked_at'];
     }
-    $schoolColumns=live_school_columns(rows('SELECT name FROM schools ORDER BY id'),$registrations);
+    $schoolColumns=live_school_columns(
+        rows('SELECT name,nickname,logo_file FROM schools ORDER BY id'),$registrations);
     $fixtures=[];$teamsByKey=[];$legacyToCurrent=[];
     foreach($registrations as $r){
         $ord=$order[live_event_order_key($r)]??null;
@@ -579,7 +586,7 @@ function live_dataset(bool $manager=false,?string $sportFixtureKey=null):array {
     $columns=[];
     foreach($schoolColumns as $school){
         $columns[]=[
-            'name'=>$school['name'],'key'=>$school['key'],
+            'name'=>$school['name'],'key'=>$school['key'],'logo'=>$school['logo']??null,
             'registered'=>false,'heats'=>[],'teamCount'=>0,'totalAthletes'=>0,'checkedAthletes'=>0,
             'athletes'=>[]
         ];
