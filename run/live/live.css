@@ -192,3 +192,63 @@ body{background:#06162c}
   .athlete-name{font-size:clamp(.32rem,1.45vw,.54rem)!important}
 }
 @media(prefers-reduced-motion:reduce){.next-fill{transition:none}}
+
+/* Latest official race results: readable, gently scrolling ticker.
+   Replaces the former category/level/check-in status strip. */
+.results-ticker{
+  min-width:0;min-height:0;height:clamp(33px,4.5vh,50px);
+  display:flex;align-items:stretch;overflow:hidden;
+  background:linear-gradient(95deg,#071e37,#0a3453 65%,#061e35);
+  border-bottom:2px solid #21d4ca;color:#e7faff;
+}
+.ticker-label{
+  z-index:1;display:flex;align-items:center;justify-content:center;
+  gap:7px;flex:none;white-space:nowrap;
+  padding:0 clamp(9px,1.3vw,23px);
+  border-right:1px solid #28a9be;
+  background:linear-gradient(120deg,#0b5767,#064a5d);
+  color:#baffd2;font-size:clamp(.7rem,1.03vw,1.12rem);
+  font-weight:900;box-shadow:6px 0 15px rgba(0,0,0,.15);
+}
+.ticker-live-dot{
+  flex:none;width:7px;height:7px;background:#54f6af;border-radius:50%;
+  box-shadow:0 0 10px #54f6af;
+}
+.ticker-window{
+  flex:1;min-width:0;position:relative;overflow:hidden;
+  display:flex;align-items:center;
+  mask-image:linear-gradient(90deg,transparent,#000 2.3%,#000 97%,transparent);
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 2.3%,#000 97%,transparent);
+}
+.ticker-track{
+  display:flex;align-items:center;flex:none;width:max-content;
+  height:100%;white-space:nowrap;will-change:transform;
+  animation:bang1-results-marquee var(--ticker-duration,95s) linear infinite;
+}
+.ticker-sequence{
+  min-width:100%;flex:none;display:inline-flex;align-items:center;gap:0;
+  height:100%;padding-right:clamp(45px,5vw,100px);
+}
+.ticker-result{
+  display:inline-flex;align-items:center;flex:none;
+  gap:clamp(9px,1vw,17px);padding-right:clamp(32px,3.5vw,75px);
+  font-size:clamp(.74rem,1.15vw,1.28rem);font-weight:700;
+  line-height:1.12;
+}
+.ticker-event{color:#c0f4ff;font-weight:850}
+.ticker-round{color:#ffe58d}
+.ticker-place{color:#e7fcff}
+.ticker-place.is-first{color:#b9ff68;font-weight:950}
+.ticker-separator{color:#20dcb6;opacity:.8;font-size:1.2em}
+.ticker-placeholder{color:#d5e6f3;font-size:clamp(.75rem,1.05vw,1.12rem)}
+@keyframes bang1-results-marquee{
+  from{transform:translateX(0)}
+  to{transform:translateX(-50%)}
+}
+@media(max-width:680px){
+  .ticker-label{font-size:.62rem;padding:0 6px}
+  .ticker-result{font-size:.72rem}
+}
+@media(prefers-reduced-motion:reduce){
+  .ticker-track{animation:none;will-change:auto}
+}
