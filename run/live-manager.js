@@ -4,7 +4,7 @@
   const el=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let snapshot=null,busy=false,loading=false,filter='',lastActionAt=0,lastRosterHash='',lastNextRosterHash='',lastOptionHash='',pendingFixtureKey=null,switchInFlight=false;
-  let fixtureItems=[],fixtureMenuOpen=false,fixtureQuery='',fixtureRound='all';
+  let fixtureItems=[],fixtureMenuOpen=false,fixtureQuery='',fixtureRound='all',lastMenuHash='';
   function isManager(){
     const user=typeof currentUser==='undefined'?null:currentUser;
     return !!user&&['Manager','Admin','TopAdmin'].includes(user.role);
@@ -133,6 +133,10 @@
     el('bang1FixtureSearch').value='';
     menu.hidden=false;
     trigger.setAttribute('aria-expanded','true');
+    lastMenuHash=JSON.stringify([
+      el('bang1ActiveFixture')?.value,
+      fixtureItems.map(f=>[f.key,f.checked,f.total,f.round])
+    ]);
     renderFixtureOptions();
     positionFixtureMenu();
     const selected=menu.querySelector('.bang1-fixture-option.is-selected');
@@ -264,7 +268,15 @@
       }
     if(!switchInFlight)select.value=data.active?.key||'';
     updateFixtureTrigger();
-    if(fixtureMenuOpen)renderFixtureOptions();
+    const menuHash=JSON.stringify([
+      select.value,fixtures.map(f=>[f.key,f.checked,f.total,f.round])
+    ]);
+    // Four-second background refresh must not erase keyboard focus or scroll
+    // position inside an open competition picker.
+    if(fixtureMenuOpen&&menuHash!==lastMenuHash){
+      lastMenuHash=menuHash;
+      renderFixtureOptions();
+    }
     const active=data.active;
     el('bang1LiveActiveName').textContent=active?fixtureName(active):'ยังไม่ได้เปิดรายการ Active';
     el('bang1LiveActiveCount').textContent=active?
