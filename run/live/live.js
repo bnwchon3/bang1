@@ -1,68 +1,100 @@
-/* Simple public race call: ten fixed school columns, only checked athletes. */
+/* Public Athletics LIVE • full-screen, ten lanes, no scroll, current + next. */
 (function(){
   'use strict';
   const el=id=>document.getElementById(id);
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let requestBusy=false,lastSignature='',loaded=false;
-  const initialSchools=[
-    'วัดสุทธารีย์บุญญาราม','บ้านตะเคียนเตี้ย','บ้านสันติคาม',
-    'บ้านบางละมุง','วัดหนองเกตุใหญ่','อนุบาลบางละมุง',
-    'วัดเวฬุวนาราม','บ้านโรงหีบ','บ้านนาวัง','บ้านทุ่งกราด'
+  const esc=value=>String(value??'').replace(/[&<>"']/g,
+    char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  let requestBusy=false,loaded=false,lastSignature='';
+  const fallbackSchools=[
+    'วัดสุทธารีย์บุญญาราม','บ้านตะเคียนเตี้ย','บ้านสันติคาม','บ้านบางละมุง',
+    'วัดหนองเกตุใหญ่','อนุบาลบางละมุง','วัดเวฬุวนาราม','บ้านโรงหีบ',
+    'บ้านนาวัง','บ้านทุ่งกราด'
   ];
   function timeStamp(){
     return new Intl.DateTimeFormat('th-TH',{
       timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false
     }).format(new Date());
   }
-  function photo(athlete){
-    if(!athlete.photo)return '<div class="portrait-placeholder" aria-hidden="true">🏃</div>';
-    return '<img loading="lazy" alt="" src="'+esc(athlete.photo)+'" referrerpolicy="no-referrer">';
+  function athleteCard(person){
+    const image=person.photo
+      ?'<img src="'+esc(person.photo)+'" loading="eager" decoding="async" alt="" referrerpolicy="no-referrer">'
+      :'<span class="portrait-placeholder" aria-hidden="true">🏃</span>';
+    return '<article class="athlete" title="'+esc(person.name)+'">'+
+      '<div class="athlete-portrait">'+image+'</div>'+
+      '<div class="athlete-name">'+esc(person.name)+'</div>'+
+      '</article>';
   }
   function schoolCell(school){
     const athletes=Array.isArray(school.athletes)?school.athletes:[];
-    return '<section class="school-column">'+
+    const entered=Boolean(school.registered);
+    const count=athletes.length;
+    const layout=count<=1?'count-1':count===2?'count-2':
+      count<=4?'count-4':'count-6';
+    return '<section class="school-column'+(entered?' is-entered':'')+'">'+
       '<header class="school-name">'+esc(String(school.name||'').replace(/^โรงเรียน/u,''))+'</header>'+
-      '<div class="school-athletes">'+(athletes.length?
-      athletes.map(a=>'<article class="athlete">'+photo(a)+
-        '<div class="athlete-name">'+esc(a.name)+'</div>'+
-        '<div class="athlete-id">#'+Number(a.regId)+'</div></article>').join(''):
-      '<div class="no-athletes"></div>')+'</div></section>';
+      '<div class="school-athletes '+layout+'">'+
+      (count ? athletes.map(athleteCard).join('') :
+        '<span class="no-athletes">'+(entered?'รอรายงานตัว':'')+'</span>')+
+      '</div></section>';
   }
-  function draw(payload){
-    const f=payload.active;
-    const schools=Array.isArray(payload.schools)&&payload.schools.length?
-      payload.schools:initialSchools.map(s=>({name:'โรงเรียน'+s,athletes:[]}));
-    const signature=JSON.stringify([f,schools]);
+  function renderNext(next){
+    const title=el('nextFixture'),meta=el('nextMeta'),count=el('nextCount'),fill=el('nextFill');
+    if(!next){
+      title.textContent='ยังไม่มีรายการถัดไป';
+      meta.textContent='กรุณารอ Manager เลือกรายการแข่งขัน';
+      count.textContent='—';
+      fill.style.width='0%';
+      return;
+    }
+    title.textContent='รายการที่ '+(Number(next.eventId)||'—')+'  '+next.eventName;
+    meta.textContent=[next.category,next.level,next.gender,next.heat?'ฮีทที่ '+next.heat:''].filter(Boolean).join(' · ');
+    count.textContent=Number(next.checked)+' / '+Number(next.total)+' คน';
+    const percent=Number(next.total)>0
+      ?Math.min(100,Math.max(0,Math.round(Number(next.checked)*100/Number(next.total))))
+      :0;
+    fill.style.width=percent+'%';
+  }
+  function render(payload){
+    const active=payload.active;
+    const schools=Array.isArray(payload.schools)&&payload.schools.length===10
+      ?payload.schools
+      :fallbackSchools.map(name=>({name:'โรงเรียน'+name,registered:false,athletes:[]}));
+    const next=active&&Array.isArray(payload.next)?payload.next[0]||null:null;
+    const signature=JSON.stringify([active,schools,next]);
     if(signature!==lastSignature){
       lastSignature=signature;
-      el('eventNumber').textContent=f?
-        String(Number(f.order)||((payload.fixtures||[]).findIndex(x=>x.key===f.key)+1)||'—'):'—';
-      el('fixtureTitle').textContent=f?f.eventName:'รอ Manager เลือกรายการแข่งขัน';
-      // With 1-8 schools, the event goes straight to the final under the
-      // competition's established scheduling rules.
-      el('roundLabel').textContent=f?(Number(f.teams)<=8?'รอบชิง':'รอบคัดเลือก'):'ยังไม่เริ่ม';
-      el('fixtureMeta').textContent=f?
-        [f.category,f.level,f.gender,f.heat?'ฮีทที่ '+f.heat:''].filter(Boolean).join(' · '):
-        'กลุ่มโรงเรียนบางละมุง 1 · เช็กชื่อรายงานตัว';
-      el('checkedCount').textContent=f?
-        'รายงานตัวแล้ว '+Number(f.checked)+' / '+Number(f.total)+' คน':'รอเปิดรายการ';
+      el('eventNumber').textContent=active?
+        String(Number(active.eventId)||Number(active.order)||'—'):'—';
+      el('fixtureTitle').textContent=active?active.eventName:'รอ Manager เลือกรายการแข่งขัน';
+      el('roundLabel').textContent=active?
+        (Number(active.teams)<=8?'รอบชิง':'รอบคัดเลือก'):'ยังไม่เริ่ม';
+      el('fixtureMeta').textContent=active
+        ?[active.category,active.level,active.gender,active.heat?'ฮีทที่ '+active.heat:''].filter(Boolean).join(' · ')
+        :'กลุ่มโรงเรียนบางละมุง 1 · จุดรายงานตัว';
+      el('checkedCount').textContent=active
+        ?'เช็กชื่อแล้ว '+Number(active.checked)+' / '+Number(active.total)+' คน'
+        :'รอเปิดรายการ';
       const grid=el('schoolGrid');
-      grid.innerHTML=schools.slice(0,10).map(schoolCell).join('');
-      for(const img of grid.querySelectorAll('img')){
+      grid.innerHTML=schools.map(schoolCell).join('');
+      // On unavailable or access-restricted source photos, keep each
+      // athlete card visible rather than leaving a broken-image icon.
+      for(const img of grid.querySelectorAll('.athlete-portrait img')){
         img.addEventListener('error',function(){
-          const fallback=document.createElement('div');
+          const fallback=document.createElement('span');
           fallback.className='portrait-placeholder';
+          fallback.setAttribute('aria-hidden','true');
           fallback.textContent='🏃';
           this.replaceWith(fallback);
         },{once:true});
       }
+      renderNext(next);
     }
     loaded=true;
     el('connection').className='connected';
-    el('connection').textContent='● LIVE';
+    el('connection').textContent='● LIVE • เชื่อมต่อแล้ว';
     el('lastRefresh').textContent='อัปเดต '+timeStamp();
   }
-  async function refresh(){
+  async function poll(){
     if(requestBusy||document.visibilityState==='hidden')return;
     requestBusy=true;
     try{
@@ -70,22 +102,27 @@
         cache:'no-store',credentials:'same-origin'
       });
       if(!response.ok)throw Error('HTTP '+response.status);
-      const result=await response.json();
-      if(result.success!==true)throw Error(result.message||'ไม่สามารถโหลดข้อมูล');
-      draw(result);
+      const payload=await response.json();
+      if(payload.success!==true)throw Error(payload.message||'การเชื่อมต่อขัดข้อง');
+      render(payload);
     }catch(error){
       el('connection').className='';
-      el('connection').textContent='● การเชื่อมต่อขัดข้อง';
-      el('lastRefresh').textContent=loaded?'แสดงข้อมูลที่อัปเดตล่าสุด':'โหลดข้อมูลไม่สำเร็จ';
-    }finally{requestBusy=false;}
+      el('connection').textContent='● ออฟไลน์';
+      el('lastRefresh').textContent=loaded
+        ?'ข้อมูลล่าสุดที่โหลดสำเร็จ':'ไม่สามารถโหลดข้อมูลได้';
+    }finally{
+      requestBusy=false;
+    }
   }
-  el('fullScreen').addEventListener('click',async function(){
+  el('fullScreen').addEventListener('click',async()=>{
     try{
       if(document.fullscreenElement)await document.exitFullscreen();
       else await document.documentElement.requestFullscreen();
     }catch(error){}
   });
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh()});
-  refresh();
-  setInterval(refresh,3000);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible')void poll();
+  });
+  void poll();
+  setInterval(poll,3000);
 })();
