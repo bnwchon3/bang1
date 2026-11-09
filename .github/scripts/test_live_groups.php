@@ -185,3 +185,32 @@ $tenRelayTeams=array_fill(0,10,$relayRegistration);
 check(array_sum(array_map('live_attendance_capacity',$tenRelayTeams))===40,
     'Ten relay entries require 40 check-ins');
 echo "PASS capacity-based live totals for ten solo teams, four-person relays, and historic extras\n";
+
+
+// Sport showcases photos of actual registered runners, without requiring
+// reporting/check-in. Solo teams display one, relay teams display four.
+$registeredSport=[
+ ['athleteKey'=>'runner:11','name'=>'ตัวเลือก ก','photo'=>'https://example.org/a.jpg','checkedAt'=>null],
+ ['athleteKey'=>'runner:12','name'=>'ตัวเลือก ข','photo'=>'https://example.org/b.jpg','checkedAt'=>'2026-11-09 13:00:00'],
+ ['athleteKey'=>'runner:13','name'=>'ตัวเลือก ค','photo'=>'https://example.org/c.jpg','checkedAt'=>null],
+ ['athleteKey'=>'runner:14','name'=>'ตัวเลือก ง','photo'=>'https://example.org/d.jpg','checkedAt'=>null],
+ ['athleteKey'=>'runner:15','name'=>'ตัวเลือก จ','photo'=>'https://example.org/e.jpg','checkedAt'=>null]
+];
+$soloSport=live_sport_candidates($registeredSport,1);
+check(count($soloSport)===1,'Sport solo must display exactly one real registered athlete');
+check($soloSport[0]['athleteKey']==='runner:12',
+    'Sport solo must prioritize the actual checked-in athlete over a reserve');
+$relaySport=live_sport_candidates($registeredSport,4);
+check(count($relaySport)===4,'Sport relay must fit four athlete portraits in one school');
+check($relaySport[0]['athleteKey']==='runner:12',
+    'Sport relay must put the confirmed participant first');
+check($relaySport[0]['photo']==='https://example.org/b.jpg',
+    'Sport must reuse an authentic stored athlete photo URL');
+$unconfirmed=array_map(static fn($a)=>array_merge($a,['checkedAt'=>null]),$registeredSport);
+check(live_sport_candidates($unconfirmed,1)[0]['athleteKey']==='runner:11',
+    'Sport shows a registered candidate when none is checked in yet');
+check(count(live_sport_candidates([] ,4))===0,
+    'Empty team must not generate fictitious athlete portraits');
+check(count($registeredSport)===5 && $registeredSport[0]['checkedAt']===null,
+    'Sport display selection must not mutate registration or check-in data');
+echo "PASS Sport showcase registered roster: 1 solo, 4 relay, authentic photos and no check-in mutation\n";
