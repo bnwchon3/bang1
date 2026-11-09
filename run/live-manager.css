@@ -64,3 +64,7 @@
 #page-checkin .bang1-next-checkin-card .bang1-roster-school>header{
   background:#0c4a59;
 }
+
+/* Existing over-limit check-ins remain editable instead of being discarded. */
+#page-checkin .bang1-oversubscribed{padding:9px 12px;background:#6d3715;color:#ffdbad;border-bottom:1px solid #c5874c;font-weight:750;font-size:.85rem;line-height:1.45}
+#page-checkin .bang1-athlete-row:has(input:disabled){cursor:not-allowed;opacity:.68}
