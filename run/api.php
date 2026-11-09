@@ -5,6 +5,7 @@ session_open();
 $action=(string)($_GET['action']??'');
 $input=body();
 require_once __DIR__.'/runner-photo-review.php';
+require_once __DIR__.'/drive-bridge-error.php';
 function rows(string $sql,array $params=[]):array{$s=db()->prepare($sql);$s->execute($params);return $s->fetchAll();}
 function single(string $sql,array $params=[]):?array{$x=rows($sql,$params);return $x[0]??null;}
 function must_post():void{if($_SERVER['REQUEST_METHOD']!=='POST')json_out(['success'=>false,'message'=>'POST required'],405);csrf_check();}
@@ -323,10 +324,29 @@ if($action==='upload'){
  if(!$bridge||!$token||!preg_match('~^https://script\\.google\\.com/macros/s/[^/]+/exec$~',$bridge))json_out(['success'=>false,'message'=>'ยังไม่ตั้งค่า Google Drive Bridge'],503);
  $payload=json_encode(['token'=>$token,'runnerId'=>$id,'type'=>$type,'fileName'=>basename($file['name']),'mimeType'=>$mime,'base64Data'=>base64_encode(file_get_contents($file['tmp_name']))],JSON_UNESCAPED_UNICODE);
  $curl=curl_init($bridge);
- curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$payload,CURLOPT_HTTPHEADER=>['Content-Type: text/plain;charset=utf-8'],CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_TIMEOUT=>60,CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTPS]);
- $result=curl_exec($curl);$status=curl_getinfo($curl,CURLINFO_HTTP_CODE);curl_close($curl);
- $resp=json_decode((string)$result,true);
- if($status!==200||!is_array($resp)||empty($resp['success'])||empty($resp['url']))json_out(['success'=>false,'message'=>'อัปโหลดไป Google Drive ไม่สำเร็จ'],502);
+ curl_setopt_array($curl,[
+    CURLOPT_POST=>true,
+    CURLOPT_POSTFIELDS=>$payload,
+    CURLOPT_HTTPHEADER=>['Content-Type: text/plain;charset=utf-8'],
+    CURLOPT_RETURNTRANSFER=>true,
+    CURLOPT_FOLLOWLOCATION=>true,
+    CURLOPT_CONNECTTIMEOUT=>15,
+    CURLOPT_TIMEOUT=>60,
+    CURLOPT_MAXREDIRS=>6,
+    CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,
+    CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTPS,
+    CURLOPT_USERAGENT=>'Bang1AthleticsUpload/1.0',
+ ]);
+ $result=curl_exec($curl);
+ $status=(int)curl_getinfo($curl,CURLINFO_HTTP_CODE);
+ $curlErrno=(int)curl_errno($curl);
+ curl_close($curl);
+ $resp=$result!==false?json_decode((string)$result,true):null;
+ if($result===false||$status!==200||!is_array($resp)||empty($resp['success'])||empty($resp['url'])){
+    $detail=bang1_drive_upload_failure($status,$curlErrno,$resp);
+    error_log('Bang1 Drive upload failure code='.$detail['code'].' http='.$status.' curl_errno='.$curlErrno);
+    json_out(['success'=>false,'code'=>$detail['code'],'message'=>$detail['message']],502);
+ }
  $url=safe_url($resp['url']);if(!$url||!str_contains(parse_url($url,PHP_URL_HOST)??'','google.com'))json_out(['success'=>false,'message'=>'Google Drive ส่ง URL ไม่ถูกต้อง'],502);
  if($type==='photo'){
     try{
