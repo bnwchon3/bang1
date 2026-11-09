@@ -11,7 +11,7 @@ header('Cache-Control: no-store, private');
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#06162c">
   <title>จอรายงานตัว LIVE | กรีฑากลุ่มโรงเรียนบางละมุง 1</title>
-  <link rel="stylesheet" href="./live.css?v=20261109-sport-rotation8">
+  <link rel="stylesheet" href="./live.css?v=20261109-game-intro10">
 </head>
 <body>
   <main class="live-screen">
@@ -53,7 +53,73 @@ header('Cache-Control: no-store, private');
       <span id="lastRefresh">—</span>
       <button type="button" id="fullScreen" title="เปิดเต็มจอ">⛶ เต็มจอ</button>
     </footer>
+    <section id="sportShowcase" class="sport-showcase" hidden aria-label="กราฟิกแนะนำรายการแข่งขันกรีฑา">
+      <div class="sport-atmosphere" aria-hidden="true">
+        <span class="sport-light sport-light-one"></span>
+        <span class="sport-light sport-light-two"></span>
+        <span class="sport-track-lines"></span>
+      </div>
+      <header class="sport-topbar">
+        <div class="sport-brand">
+          <span class="sport-brand-emblem" aria-hidden="true">⚡</span>
+          <span><strong>BANGLAMUNG 1 ATHLETICS</strong><small>กรีฑากลุ่มโรงเรียนบางละมุง 1</small></span>
+        </div>
+        <div class="sport-topword">THE GAME <span>IS ON.</span></div>
+        <div class="sport-onair"><span class="sport-onair-dot"></span> SPORT LIVE <span id="sportSlideCounter" class="sport-counter">— / —</span></div>
+      </header>
+      <section class="sport-headline" aria-label="รายการแข่งขันปัจจุบัน">
+        <div class="sport-headline-copy">
+          <div class="sport-kicker"><span>NOW SHOWING</span><span class="sport-kicker-separator">/</span><span id="sportEventNumber">รายการที่ —</span></div>
+          <h1 id="sportEventName">กำลังเตรียมรายการแข่งขัน</h1>
+          <div class="sport-meta-row">
+            <span id="sportRound" class="sport-round-pill">SPORT SHOWCASE</span>
+            <span id="sportEventMeta">ภาพนักกรีฑาจากโรงเรียนที่เข้าร่วม</span>
+          </div>
+        </div>
+        <div class="sport-headline-decoration" aria-hidden="true"><span>TRACK</span><strong>01</strong></div>
+      </section>
+      <section class="sport-stage" aria-label="ภาพนักกรีฑาและโปรแกรมการแข่งขัน">
+        <article class="sport-hero">
+          <div class="sport-hero-top"><span class="sport-small-label">FEATURED SCHOOL</span><span id="sportHeroHeat" class="sport-hero-heat">ATHLETE</span></div>
+          <div id="sportHeroPhotos" class="sport-hero-photos"><div class="sport-image-placeholder">🏃</div></div>
+          <div class="sport-hero-caption">
+            <span class="sport-small-label">ตัวแทนนักกรีฑา</span>
+            <h2 id="sportHeroSchool">กำลังโหลดข้อมูลโรงเรียน</h2>
+            <p id="sportHeroName">—</p>
+          </div>
+          <span class="sport-hero-number" aria-hidden="true">01</span>
+        </article>
+        <section class="sport-roster" aria-label="โรงเรียนที่เข้าร่วมรายการแข่งขัน">
+          <div class="sport-roster-heading"><span><b class="sport-cyan-dot"></b> ATHLETE LINEUP</span><span id="sportTeamCount">10 SCHOOLS</span></div>
+          <div id="sportRivalGrid" class="sport-rival-grid"><div class="sport-loading">กำลังโหลดภาพนักกรีฑาจริง...</div></div>
+        </section>
+        <aside class="sport-schedule" aria-label="โปรแกรมการแข่งขัน">
+          <div class="sport-schedule-title"><span class="sport-schedule-icon">🏁</span><div><small>RACE LINEUP</small><h2>รายการแข่งขันวันนี้</h2></div></div>
+          <div id="sportScheduleList" class="sport-schedule-list"><div class="sport-schedule-empty">รอรายการแข่งขัน</div></div>
+          <div class="sport-schedule-summary">
+            <span>รายการทั้งหมด</span>
+            <strong id="sportEventTotal">—</strong>
+            <small>เรียงตามตารางแข่งขัน</small>
+          </div>
+        </aside>
+      </section>
+      <footer class="sport-lower-third">
+        <div class="sport-next-copy"><span class="sport-next-chevron">⏭</span><div><small>UP NEXT • รายการแข่งขันถัดไป</small><strong id="sportNextEvent">กำลังโหลดรายการถัดไป</strong></div></div>
+        <div class="sport-progress-box"><div class="sport-progress-label"><span>AUTO SHOWCASE</span><strong id="sportProgressTime">15s</strong></div><div class="sport-progress-track"><div id="sportProgressFill"></div></div></div>
+        <button id="sportFullScreen" type="button" class="sport-fullscreen" aria-label="เปิดหรือปิดเต็มจอ" title="เปิดเต็มจอ">⛶</button>
+      </footer>
+      <div id="sportIntro" class="sport-intro" aria-hidden="true">
+        <div class="sport-intro-slash sport-intro-slash-one"></div>
+        <div class="sport-intro-slash sport-intro-slash-two"></div>
+        <div class="sport-intro-inner">
+          <span class="sport-intro-eyebrow">🏁 BANGLAMUNG ATHLETICS • SPORT INTRO</span>
+          <span id="sportIntroNumber" class="sport-intro-number">EVENT —</span>
+          <strong id="sportIntroTitle" class="sport-intro-title">READY TO RUN</strong>
+          <span class="sport-intro-caption">ON YOUR MARKS. GET SET. GO!</span>
+        </div>
+      </div>
+    </section>
   </main>
-  <script defer src="./live.js?v=20261109-sport-rotation9"></script>
+  <script defer src="./live.js?v=20261109-game-intro10"></script>
 </body>
 </html>
