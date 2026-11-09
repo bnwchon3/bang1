@@ -54,6 +54,6 @@ header('Cache-Control: no-store, private');
       <button type="button" id="fullScreen" title="เปิดเต็มจอ">⛶ เต็มจอ</button>
     </footer>
   </main>
-  <script defer src="./live.js?v=20261109-sport-rotation8"></script>
+  <script defer src="./live.js?v=20261109-sport-rotation9"></script>
 </body>
 </html>
