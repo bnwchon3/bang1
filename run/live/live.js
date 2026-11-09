@@ -4,7 +4,7 @@
   const el=id=>document.getElementById(id);
   const esc=value=>String(value??'').replace(/[&<>"']/g,
     char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  let requestBusy=false,loaded=false,lastSignature='';
+  let requestBusy=false,loaded=false,lastSignature='',lastResultSignature='';
   const fallbackSchools=[
     'วัดสุทธารีย์บุญญาราม','บ้านตะเคียนเตี้ย','บ้านสันติคาม','บ้านบางละมุง',
     'วัดหนองเกตุใหญ่','อนุบาลบางละมุง','วัดเวฬุวนาราม','บ้านโรงหีบ',
@@ -37,6 +37,46 @@
         '<span class="no-athletes">'+(entered?'รอรายงานตัว':'')+'</span>')+
       '</div></section>';
   }
+  function renderRecentResults(results){
+    const valid=Array.isArray(results)?results.slice(0,8).filter(result=>
+      result && typeof result.eventName==='string' &&
+      Array.isArray(result.places) && result.places.length>0):[];
+    const signature=JSON.stringify(valid);
+    if(signature===lastResultSignature)return;
+    lastResultSignature=signature;
+    const track=el('latestResultTicker');
+    if(!track)return;
+    const medals={1:'🥇',2:'🥈',3:'🥉'};
+    const messages=valid.length?valid.map(result=>{
+      const heat=Number(result.heat)>0?' · ฮีท '+Number(result.heat):'';
+      const title=esc(result.eventName);
+      const round=esc(result.round||'');
+      const places=result.places.slice(0,3).map(entry=>{
+        const rank=Number(entry.place);
+        const school=esc(entry.school||'');
+        if(!school)return '';
+        return '<span class="ticker-place'+(rank===1?' is-first':'')+'">'+
+          (medals[rank]||'อันดับ '+rank)+' '+school+'</span>';
+      }).filter(Boolean).join('');
+      return '<span class="ticker-result"><span class="ticker-event">'+title+'</span>'+
+        '<span class="ticker-round">'+round+heat+'</span>'+places+
+        '<span class="ticker-separator" aria-hidden="true">✦</span></span>';
+    }).join(''):'<span class="ticker-result"><span class="ticker-placeholder">'+
+      'ยังไม่มีผลการแข่งขันที่บันทึกอย่างเป็นทางการ · รอเจ้าหน้าที่ประกาศผล'+
+      '</span><span class="ticker-separator" aria-hidden="true">✦</span></span>';
+    const sequence='<div class="ticker-sequence">'+messages+'</div>';
+    track.innerHTML=sequence+
+      '<div class="ticker-sequence" aria-hidden="true">'+messages+'</div>';
+    // Longer result feeds move farther; adjust duration to retain a slow,
+    // readable horizontal travel without resizing the parent scoreboard.
+    const approximateChars=valid.length?
+      valid.reduce((sum,r)=>sum+String(r.eventName).length+
+        String(r.round||'').length+
+        r.places.slice(0,3).reduce((n,p)=>n+String(p.school||'').length+12,0)+25,0)
+      :75;
+    const seconds=Math.max(65,Math.min(210,42+approximateChars*.20));
+    track.style.setProperty('--ticker-duration',seconds+'s');
+  }
   function renderNext(next){
     const title=el('nextFixture'),meta=el('nextMeta'),count=el('nextCount'),fill=el('nextFill');
     if(!next){
@@ -68,12 +108,6 @@
       el('fixtureTitle').textContent=active?active.eventName:'รอ Manager เลือกรายการแข่งขัน';
       el('roundLabel').textContent=active?
         (Number(active.teams)<=8?'รอบชิง':'รอบคัดเลือก'):'ยังไม่เริ่ม';
-      el('fixtureMeta').textContent=active
-        ?[active.category,active.level,active.gender,active.heat?'ฮีทที่ '+active.heat:''].filter(Boolean).join(' · ')
-        :'กลุ่มโรงเรียนบางละมุง 1 · จุดรายงานตัว';
-      el('checkedCount').textContent=active
-        ?'เช็กชื่อแล้ว '+Number(active.checked)+' / '+Number(active.total)+' คน'
-        :'รอเปิดรายการ';
       const grid=el('schoolGrid');
       grid.innerHTML=schools.map(schoolCell).join('');
       // On unavailable or access-restricted source photos, keep each
@@ -89,6 +123,7 @@
       }
       renderNext(next);
     }
+    renderRecentResults(payload.latestResults);
     loaded=true;
     el('connection').className='connected';
     el('connection').textContent='● LIVE • เชื่อมต่อแล้ว';
