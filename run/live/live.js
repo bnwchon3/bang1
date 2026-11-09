@@ -106,8 +106,10 @@
       el('eventNumber').textContent=active?
         String(Number(active.eventId)||Number(active.order)||'—'):'—';
       el('fixtureTitle').textContent=active?active.eventName:'รอ Manager เลือกรายการแข่งขัน';
+      // The round comes from the official competition schedule for the
+      // whole event, NOT the number of schools checked into this heat.
       el('roundLabel').textContent=active?
-        (Number(active.teams)<=8?'รอบชิง':'รอบคัดเลือก'):'ยังไม่เริ่ม';
+        (active.round||'รอยืนยันรอบ'):'ยังไม่เริ่ม';
       const grid=el('schoolGrid');
       grid.innerHTML=schools.map(schoolCell).join('');
       // On unavailable or access-restricted source photos, keep each
