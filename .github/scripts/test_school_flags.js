@@ -50,7 +50,9 @@ const waiting=state.schoolCell(registered);
 assert(waiting.includes('school-empty-state is-waiting'),'Registered school without check-in has a waiting state');
 assert(waiting.includes('รอรายงานตัว'),'Waiting message is shown');
 assert(waiting.includes('waiting-runner'),'Waiting school visibly displays a runner pictogram');
-assert(waiting.includes('school-flag-empty-body'),'School logo is large in the EMPTY content area');
+assert(!waiting.includes('school-empty-crest'),'Waiting state must show ONLY runner pictogram and label');
+assert(!waiting.includes('school-flag-empty-body')&&!waiting.includes('school-empty-emblem-fallback'),
+ 'Waiting state must not show a school emblem or building above its runner icon');
 assert(!waiting.slice(waiting.indexOf('<header'),waiting.indexOf('</header>')).includes('school-flag'),
   'Header must never have a school crest');
 const noEntry=state.schoolCell({...registered,registered:false,heats:[]});
@@ -66,8 +68,12 @@ assert(!checked.includes('school-flag'),'Flag disappears as soon as a check-in a
 assert(!checked.includes('รอรายงานตัว')&&!checked.includes('ไม่ได้ส่งแข่ง'),
   'With a runner, only student portrait is shown');
 const noLogo=state.schoolCell({...registered,logo:null});
-assert(noLogo.includes('school-empty-emblem-fallback'),'Missing logo shows a neutral fallback icon');
+assert(!noLogo.includes('school-empty-emblem-fallback'),
+ 'Waiting state without a school logo still shows just the runner');
 assert(noLogo.includes('รอรายงานตัว'),'Missing logo still shows the real status text');
+const noLogoNoEntry=state.schoolCell({...registered,logo:null,registered:false,heats:[]});
+assert(noLogoNoEntry.includes('school-empty-emblem-fallback'),
+ 'A school that did not enter still shows the neutral building fallback');
 assert(css.includes('.school-flag-empty-body'),'Full-width school crest style exists');
 assert(css.includes('.school-empty-caption'),'Readable status is below the logo');
 // Extra rows used to erase all real Check-in status via fallbackSchools.
