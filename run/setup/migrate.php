@@ -41,6 +41,9 @@ try {
  if(!$column)db()->exec('ALTER TABLE schools ADD COLUMN logo_file VARCHAR(160) NULL');
  $column=db()->query("SHOW COLUMNS FROM schools LIKE 'logo_updated_at'")->fetch();
  if(!$column)db()->exec('ALTER TABLE schools ADD COLUMN logo_updated_at DATETIME NULL');
+ // Configurable left-to-right LIVE school positions, independent of race lanes.
+ $column=db()->query("SHOW COLUMNS FROM schools LIKE 'live_position'")->fetch();
+ if(!$column)db()->exec('ALTER TABLE schools ADD COLUMN live_position SMALLINT UNSIGNED NULL');
  // Only an actually approved image may become the comparison reference.
  // Backfill existing approved runners ONCE; unapproved legacy photos
  // are not trusted and must still be checked against their ID document.
