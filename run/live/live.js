@@ -32,7 +32,7 @@
   }
   function schoolFlag(url,variant='heading'){
     if(!url)return '';
-    return '<span class="school-flag school-flag-'+esc(variant)+'" role="img" aria-label="ธงตราสัญลักษณ์โรงเรียน">'+
+    return '<span class="school-flag school-flag-'+esc(variant)+'" role="img" aria-label="ตราสัญลักษณ์โรงเรียน">'+
       '<span class="school-flag-fabric">'+
       '<img class="school-flag-logo" src="'+esc(url)+'" alt="" loading="eager" decoding="async">'+
       '</span></span>';
@@ -81,6 +81,11 @@
         '</div></section>';
     }
     const label=entered?(sport?'รอภาพนักกรีฑา':'รอรายงานตัว'):'ไม่ได้ส่งแข่ง';
+    const runnerIcon=entered?
+      '<svg class="waiting-runner" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="นักวิ่ง">'+
+        '<circle cx="24" cy="7" r="3.4" fill="currentColor" stroke="none"/>'+
+        '<path d="M14 15l8-4 5 6-5 5-6-4-5 5M22 22l-2 7-9 6M22 22l9 5 4 9M12 12l-6 6"/>'+
+      '</svg>':'';
     const crest=school.logo?
       schoolFlag(school.logo,'empty-body'):
       '<div class="school-empty-emblem-fallback" aria-hidden="true">🏫</div>';
@@ -88,7 +93,7 @@
       (entered?' is-waiting':' is-not-entered')+'">'+header+
       '<div class="school-empty-state '+(entered?'is-waiting':'is-no-entry')+'">'+
         '<div class="school-empty-crest">'+crest+'</div>'+
-        '<div class="school-empty-caption">'+esc(label)+'</div>'+
+        '<div class="school-empty-caption">'+runnerIcon+'<span>'+esc(label)+'</span></div>'+
       '</div></section>';
   }
   function paintSchools(schools,sport=false){
