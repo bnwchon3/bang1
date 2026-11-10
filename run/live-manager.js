@@ -7,7 +7,8 @@
   let fixtureItems=[],fixtureMenuOpen=false,fixtureQuery='',fixtureRound='all',lastMenuHash='';
   function isManager(){
     const user=typeof currentUser==='undefined'?null:currentUser;
-    return !!user&&['Manager','Admin','TopAdmin'].includes(user.role);
+    return !!user&&(user.role==='Admin'||user.role==='TopAdmin'||
+      (user.role==='Manager'&&user.canLiveCheckin===true));
   }
   function activePage(){return !!el('page-checkin')?.classList.contains('active');}
   function request(action,data){
