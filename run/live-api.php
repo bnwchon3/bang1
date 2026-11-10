@@ -706,6 +706,7 @@ if($action==='live_sport_fixture'){
 if(!in_array($action,['live_manager_data','live_select','live_runner_set','live_display_set'],true))return;
 if(!isset($u)||!is_array($u))json_out(['success'=>false,'message'=>'กรุณาเข้าสู่ระบบ'],401);
 require_reviewer($u);
+require_live_checkin_access($u); // Enforce on data, event changes, mode changes and attendance writes.
 
 if($action==='live_manager_data'){
     if(($_SERVER['REQUEST_METHOD']??'')!=='GET')json_out(['success'=>false,'message'=>'GET required'],405);
