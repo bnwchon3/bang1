@@ -216,3 +216,25 @@
 @media (prefers-reduced-motion:reduce){
   .app .sidebar {transition:none}
 }
+
+/* Link back to the Ban Na Wang School website; visible on every application page. */
+.bnw-website-link{
+  position:absolute;top:16px;right:20px;z-index:34;
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:38px;padding:8px 14px;border-radius:999px;
+  border:1px solid rgba(56,189,248,.55);
+  background:linear-gradient(100deg,rgba(14,116,144,.95),rgba(29,78,216,.95));
+  box-shadow:0 4px 15px rgba(14,165,233,.2);
+  color:#fff;text-decoration:none;font-size:14px;font-weight:700;
+  line-height:1.2;white-space:nowrap;
+  transition:background .15s,box-shadow .15s,transform .15s;
+}
+.bnw-website-link:hover{color:#fff;filter:brightness(1.12);transform:translateY(-1px);box-shadow:0 5px 20px rgba(14,165,233,.32)}
+.bnw-website-link:focus-visible{outline:3px solid #facc15;outline-offset:3px}
+@media(max-width:1199px){
+  .bang1-mobile-header .bnw-website-link{
+    position:static;flex:0 0 auto;z-index:auto;
+    min-height:38px;margin-left:auto;padding:7px 10px;
+    font-size:12px;box-shadow:none;
+  }
+}
