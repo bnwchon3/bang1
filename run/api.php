@@ -55,6 +55,8 @@ if($action==='login'){
  $_SESSION['csrf']=bin2hex(random_bytes(24));
  $_SESSION['login_started_at']=time();
  $_SESSION['user']['authVersion']=(int)($u['auth_version']??1);
+ $_SESSION['user']['canLiveCheckin']=in_array($u['role'],['Admin','TopAdmin'],true)
+     ||($u['role']==='Manager'&&(int)($u['can_live_checkin']??0)===1);
  log_action('LOGIN_SUCCESS',$_SESSION['user'],'User',$email);
  json_out(['success'=>true,'user'=>$_SESSION['user'],'csrf'=>$_SESSION['csrf']]);
 }

@@ -23,6 +23,14 @@
     {icon:'✅',title:'ติ๊กชื่อนักกรีฑา',detail:'เลือกชื่อผู้ที่มารายงานตัว รูปจะขึ้นจอตามโรงเรียน',page:'checkin'}
    ]
   },
+  ManagerRestricted:{
+   pages:['login','admin'],
+   name:'Manager',
+   permission:'ตรวจสอบนักวิ่งได้ แต่ยังไม่ได้รับสิทธิ์เช็กชื่อรายงานตัวจาก Admin',
+   steps:[
+    {icon:'🔍',title:'ตรวจสอบนักวิ่ง',detail:'เปิดเมนูตรวจสอบนักวิ่งเพื่อปฏิบัติงานตามสิทธิ์ Manager',page:'admin'}
+   ]
+  },
   Staff:{
    pages:['login','results','score-summary'],
    name:'Staff',
@@ -46,7 +54,12 @@
  };
  function user(){return typeof currentUser!=='undefined'?currentUser:null;}
  function normRole(role){return role==='TopAdmin'?'Admin':role;}
- function policyFor(u){return u?policies[normRole(u.role)]||null:null;}
+ function policyFor(u){
+   if(!u)return null;
+   if(normRole(u.role)==='Manager'&&u.canLiveCheckin!==true)
+     return policies.ManagerRestricted;
+   return policies[normRole(u.role)]||null;
+ }
  function can(page,u){return !!(page==='login'||page==='score-summary'||(policyFor(u)&&policyFor(u).pages.includes(page)));}
  function escapeHTML(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));}
  function ensureDashboard(){
