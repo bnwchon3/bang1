@@ -3,7 +3,7 @@
 (function(){
   'use strict';
   const media=window.matchMedia('(max-width:1199px)');
-  let mobileButton=null,backdrop=null,sidebar=null,main=null,lastHeight=0;
+  let mobileButton=null,backdrop=null,sidebar=null,main=null,mobileHeader=null,websiteLink=null,lastHeight=0;
   let menu=null,logoutButton=null,userInfo=null,userRow=null;
   let frame=0,focusTimer=0;
   function isMobile(){return media.matches}
@@ -102,10 +102,20 @@
       logoutButton.removeAttribute('title');
     }
   }
+  function syncWebsiteLink(){
+    if(!main||!mobileHeader||!websiteLink)return;
+    // Keep the website link in the sticky mobile header, and at the top right on desktop.
+    if(isMobile()){
+      if(websiteLink.parentElement!==mobileHeader)mobileHeader.appendChild(websiteLink);
+    }else if(websiteLink.parentElement!==main){
+      main.insertBefore(websiteLink,mobileHeader.nextSibling);
+    }
+  }
   function applyMedia(){
     updateVisibleHeight();
     if(!sidebar)return;
     syncLogoutHeader();
+    syncWebsiteLink();
     if(!isMobile()){
       closeMenu();
       sidebar.inert=false;
@@ -139,6 +149,7 @@
     }
     const bar=document.createElement('div');
     bar.className='bang1-mobile-header';
+    mobileHeader=bar;
     mobileButton=document.createElement('button');
     mobileButton.type='button';
     mobileButton.id='bang1MobileMenuToggle';
@@ -151,6 +162,14 @@
     title.textContent='ระบบจัดการกรีฑา';
     bar.append(mobileButton,title);
     main.prepend(bar);
+    websiteLink=document.createElement('a');
+    websiteLink.id='bang1BnwWebsiteLink';
+    websiteLink.className='bnw-website-link';
+    websiteLink.href='https://www.bannawang.ac.th/';
+    websiteLink.textContent='🌐 BNW Website';
+    websiteLink.title='กลับสู่เว็บไซต์โรงเรียนบ้านนาวัง';
+    websiteLink.setAttribute('aria-label','BNW Website — กลับสู่เว็บไซต์โรงเรียนบ้านนาวัง');
+    syncWebsiteLink();
     backdrop=document.createElement('button');
     backdrop.type='button';
     backdrop.id='bang1MobileMenuBackdrop';
