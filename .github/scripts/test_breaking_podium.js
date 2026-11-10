@@ -59,5 +59,5 @@ assert(/\.fifa-race-card \.fifa-player-portraits\.is-relay\s*\{[^}]*grid-templat
  'Relay grid should offer four full-height portrait spaces');
 assert(js.includes('[2,1,3].flatMap'),'Render order must place GOLD in the middle');
 assert(js.includes('BREAKING_DURATION_MS=15000'),'Keep scoreboard 15 seconds');
-assert(html.includes('olympic-podium18'),'Live entry must force refresh of new JS/CSS');
+assert(html.includes('crest-order21'),'Live entry must force refresh of new JS/CSS');
 console.log('PASS Olympic 2-1-3 podium, photo-safe relay 2x2, real image/placeholder and 15s duration');
