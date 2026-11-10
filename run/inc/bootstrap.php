@@ -60,7 +60,7 @@ function require_user(): array {
     if (!isset($_SESSION['user'])) json_out(['success'=>false,'message'=>'กรุณาเข้าสู่ระบบ'],401);
     // Synchronize permissions with the account on every request so promotions/revocations take effect immediately.
     $id=(int)($_SESSION['user']['coachId']??0);
-    $q=db()->prepare('SELECT id,name,email,school_name,role,auth_version FROM coaches WHERE id=? LIMIT 1');
+    $q=db()->prepare('SELECT id,name,email,school_name,role,auth_version,can_live_checkin FROM coaches WHERE id=? LIMIT 1');
     $q->execute([$id]);
     $coach=$q->fetch();
     if(!$coach || !in_array($coach['role'],['Admin','TopAdmin','Manager','Teacher','Staff'],true)) {
@@ -79,11 +79,19 @@ function require_user(): array {
     $mapped=$s->fetchColumn();
     if($mapped) $school=$mapped;
     $_SESSION['user']=['coachId'=>(int)$coach['id'],'name'=>$coach['name'],'email'=>$coach['email'],
-      'role'=>$coach['role'],'schoolName'=>$school,'authVersion'=>(int)$coach['auth_version']];
+      'role'=>$coach['role'],'schoolName'=>$school,'authVersion'=>(int)$coach['auth_version'],
+      'canLiveCheckin'=>in_array($coach['role'],['Admin','TopAdmin'],true)
+          ||($coach['role']==='Manager'&&(int)$coach['can_live_checkin']===1)];
     return $_SESSION['user'];
 }
 function is_admin(array $u): bool { return in_array(($u['role']??''),['Admin','TopAdmin'],true); }
 function is_reviewer(array $u): bool { return is_admin($u)||($u['role']??'')==='Manager'; }
+/** Default-deny: only Admin or an explicitly granted Manager can operate LIVE check-in. */
+function require_live_checkin_access(array $u):void {
+    if(is_admin($u))return;
+    if(($u['role']??'')!=='Manager'||($u['canLiveCheckin']??false)!==true)
+        json_out(['success'=>false,'message'=>'บัญชี Manager นี้ยังไม่ได้รับสิทธิ์เช็กชื่อรายงานตัวจาก Admin'],403);
+}
 function require_reviewer(array $u): void { if(!is_reviewer($u)) json_out(['success'=>false,'message'=>'เฉพาะผู้ดูแลระบบหรือผู้ตรวจสอบ'],403); }
 function require_editor(array $u): void {
     if(!is_admin($u)&&($u['role']??'')!=='Teacher') json_out(['success'=>false,'message'=>'ไม่มีสิทธิ์ทำรายการนี้'],403);
