@@ -68,8 +68,12 @@ assert(!checked.includes('school-flag'),'Flag disappears as soon as a check-in a
 assert(!checked.includes('รอรายงานตัว')&&!checked.includes('ไม่ได้ส่งแข่ง'),
   'With a runner, only student portrait is shown');
 const noLogo=state.schoolCell({...registered,logo:null});
-assert(noLogo.includes('school-empty-emblem-fallback'),'Missing logo shows a neutral fallback icon');
+assert(!noLogo.includes('school-empty-emblem-fallback'),
+ 'Waiting state without a school logo still shows just the runner');
 assert(noLogo.includes('รอรายงานตัว'),'Missing logo still shows the real status text');
+const noLogoNoEntry=state.schoolCell({...registered,logo:null,registered:false,heats:[]});
+assert(noLogoNoEntry.includes('school-empty-emblem-fallback'),
+ 'A school that did not enter still shows the neutral building fallback');
 assert(css.includes('.school-flag-empty-body'),'Full-width school crest style exists');
 assert(css.includes('.school-empty-caption'),'Readable status is below the logo');
 // Extra rows used to erase all real Check-in status via fallbackSchools.
