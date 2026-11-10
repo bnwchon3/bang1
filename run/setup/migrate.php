@@ -35,6 +35,10 @@ try {
    db()->exec('ALTER TABLE coaches MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT');
  $column=db()->query("SHOW COLUMNS FROM coaches LIKE 'auth_version'")->fetch();
  if(!$column)db()->exec('ALTER TABLE coaches ADD COLUMN auth_version INT NOT NULL DEFAULT 1');
+ // Access to LIVE athlete check-in is explicitly granted per Manager by Admin.
+ // Existing and future Manager accounts are DENIED by default.
+ $column=db()->query("SHOW COLUMNS FROM coaches LIKE 'can_live_checkin'")->fetch();
+ if(!$column)db()->exec('ALTER TABLE coaches ADD COLUMN can_live_checkin TINYINT(1) NOT NULL DEFAULT 0');
  // Images are stored on the host and survive season resets; only generated
  // filenames (never user-supplied URLs) are stored in the schools table.
  $column=db()->query("SHOW COLUMNS FROM schools LIKE 'logo_file'")->fetch();
