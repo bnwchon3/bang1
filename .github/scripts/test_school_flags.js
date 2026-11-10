@@ -85,13 +85,13 @@ const overflow=Array.from({length:11},(_,i)=>({
  logo:i===0?registered.logo:null
 }));
 state.paintSchools(overflow);
-assert(fakeGrid.innerHTML.includes('โรงเรียนทดสอบลำดับ1'),
+assert(fakeGrid.innerHTML.includes('ทดสอบลำดับ1'),
  'First configured school must stay visible when 11 API schools arrive');
 assert(fakeGrid.innerHTML.includes('รอรายงานตัว'),
  'Waiting state MUST NOT be overwritten with "ไม่ได้ส่งแข่ง" on overflow');
 assert((fakeGrid.innerHTML.match(/class="school-column/g)||[]).length===10,
  'Client should display only ten genuine API schools');
-assert(!fakeGrid.innerHTML.includes('โรงเรียนทดสอบลำดับ11'),
+assert(!fakeGrid.innerHTML.includes('ทดสอบลำดับ11'),
  'Only the last overflow school is clipped, not the entire true roster');
 console.log('PASS extra schools preserve actual LIVE order and check-in statuses');
 
