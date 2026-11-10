@@ -18,9 +18,13 @@ assert(manager.includes('new FormData()'),'Admin sends a binary file');
 assert(api.includes("'logo'=>school_logo_for"),'Live JSON adds logos to schools/results');
 assert(css.includes('object-fit:contain'),'Do not crop or distort school crests');
 assert(css.includes('prefers-reduced-motion'),'Honor reduced-motion accessibility');
-assert(css.includes('@keyframes school-flag-wave'),'Flag wave animation exists');
+assert(!css.includes('animation:school-flag-wave'),'School emblems must not wave or skew');
+assert(css.includes('.waiting-runner'),'Waiting runner has a styled vector icon');
+assert(js.includes('class="waiting-runner"'),'Runner icon renders for awaiting check-in');
+assert(manager.includes('admin_school_order_save'),'Admin can persist projector school positions');
+assert(api.includes('live_configured_school_order'),'Public LIVE reads configured school positions');
 assert(css.includes('.race-breaking .school-flag-medal'),'Medal cards use well-positioned flags');
-console.log('PASS school logo uploads UI / large Check-in status flags, Sport and winners');
+console.log('PASS flat school crests, running check-in status, LIVE order and all broadcast cards');
 
 
 // The three Check-in states must use the LIVE checked-in list, not just
@@ -45,6 +49,7 @@ const registered={
 const waiting=state.schoolCell(registered);
 assert(waiting.includes('school-empty-state is-waiting'),'Registered school without check-in has a waiting state');
 assert(waiting.includes('รอรายงานตัว'),'Waiting message is shown');
+assert(waiting.includes('waiting-runner'),'Waiting school visibly displays a runner pictogram');
 assert(waiting.includes('school-flag-empty-body'),'School logo is large in the EMPTY content area');
 assert(!waiting.slice(waiting.indexOf('<header'),waiting.indexOf('</header>')).includes('school-flag'),
   'Header must never have a school crest');
@@ -63,6 +68,6 @@ assert(!checked.includes('รอรายงานตัว')&&!checked.includes
 const noLogo=state.schoolCell({...registered,logo:null});
 assert(noLogo.includes('school-empty-emblem-fallback'),'Missing logo shows a neutral fallback icon');
 assert(noLogo.includes('รอรายงานตัว'),'Missing logo still shows the real status text');
-assert(css.includes('.school-flag-empty-body'),'Full-width waving flag style exists');
+assert(css.includes('.school-flag-empty-body'),'Full-width school crest style exists');
 assert(css.includes('.school-empty-caption'),'Readable status is below the logo');
 console.log('PASS check-in school states: waiting, no entry, confirmed attendance and no-logo fallback');
