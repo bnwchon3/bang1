@@ -92,7 +92,9 @@
     return '<section class="school-column'+(entered?' is-entered':'')+
       (entered?' is-waiting':' is-not-entered')+'">'+header+
       '<div class="school-empty-state '+(entered?'is-waiting':'is-no-entry')+'">'+
-        '<div class="school-empty-crest">'+crest+'</div>'+
+        // A registered team waiting for check-in shows ONLY the running
+        // pictogram and label. Keep its school crest for "ไม่ได้ส่งแข่ง".
+        (entered?'':'<div class="school-empty-crest">'+crest+'</div>')+
         '<div class="school-empty-caption">'+runnerIcon+'<span>'+esc(label)+'</span></div>'+
       '</div></section>';
   }
