@@ -56,8 +56,13 @@
    // Keep every original Admin element, including its verification modal and script, intact.
    while(checkPanel.nextSibling)checkPanel.appendChild(checkPanel.nextSibling);
    var settings=createPanel('settings','ตั้งค่าเปิด–ปิดระบบ',['รหัสรายการ','ชื่อรายการ','เวลาเปิดลงทะเบียน','เวลาปิดลงทะเบียน','สถานะ','บันทึก']);
-   var schools=createPanel('schools','โรงเรียน',['SchoolID','ตราสัญลักษณ์บนธง','SchoolName','schoolnickname','Active','บันทึก'],
-     '<p class="school-branding-tip">🏳️ แนบตราโรงเรียน PNG โปร่งใส, JPG หรือ WebP (ไม่เกิน 3 MB) ระบบจะแสดงบนธงปลิวใน Live, Sport และการ์ดรับรางวัลโดยอัตโนมัติ</p>');
+   var schools=createPanel('schools','โรงเรียน',['ช่อง LIVE','SchoolID','ตราสัญลักษณ์โรงเรียน','SchoolName','schoolnickname','Active','บันทึก'],
+     '<p class="school-branding-tip">🏃 ใช้ปุ่มขึ้น–ลงหรือลากที่จุดจับ เพื่อกำหนดลำดับช่องซ้ายไปขวา แล้วกด “บันทึกลำดับจอ LIVE” · ตราสัญลักษณ์ PNG/JPG/WebP จะไม่บิดเป็นผืนธง</p>');
+   const schoolToolbar=document.createElement('div');
+   schoolToolbar.className='school-order-toolbar';
+   schoolToolbar.innerHTML='<div><strong>จัดตำแหน่งช่องโรงเรียน</strong><small>กำหนดลำดับบนจอ LIVE · ไม่เปลี่ยนเลขลู่วิ่งหรือผลการแข่งขัน</small></div>'+
+     '<button type="button" class="btn btn-primary" data-save-school-order>บันทึกลำดับจอ LIVE</button>';
+   schools.querySelector('.card').insertBefore(schoolToolbar,schools.querySelector('.table-wrap'));
    var coaches=createPanel('coaches','ผู้ฝึกซ้อม',['CoachID','Name','Email','SchoolName','Role','รหัสผ่าน','จัดการ'],
      '<form id="admin-coach-form" autocomplete="off">'+
        '<input name="id" type="hidden">'+
@@ -270,12 +275,31 @@
    });
 
    function schoolFlagMarkup(logoUrl){
-     return '<span class="school-flag school-flag-admin" aria-label="ตัวอย่างธงโรงเรียน">'+
+     return '<span class="school-flag school-flag-admin" aria-label="ตัวอย่างตราสัญลักษณ์โรงเรียน">'+
        '<span class="school-flag-fabric">'+
        (logoUrl?'<img class="school-flag-logo" src="'+escapeText(logoUrl)+
           '" alt="ตราสัญลักษณ์โรงเรียน" loading="lazy">':
           '<span class="school-flag-empty">🏫</span>')+
        '</span></span>';
+   }
+   function liveOrderCell(){
+     return '<td class="school-order-cell"><strong data-school-position>—</strong>'+
+       '<div class="school-order-actions">'+
+       '<button type="button" class="btn btn-outline btn-xs" data-move-school="up" title="เลื่อนช่องไปซ้าย" aria-label="เลื่อนช่องไปซ้าย">↑</button>'+
+       '<button type="button" class="btn btn-outline btn-xs" data-move-school="down" title="เลื่อนช่องไปขวา" aria-label="เลื่อนช่องไปขวา">↓</button>'+
+       '<span data-drag-school draggable="true" class="school-drag-handle" title="ลากสลับลำดับ" aria-label="ลากสลับลำดับ">⠿</span>'+
+       '</div></td>';
+   }
+   function updateSchoolPositions(){
+     const list=all('tr[data-school-id]',el('[data-admin-rows="schools"]'))
+       .filter(tr=>Number(tr.dataset.schoolId)>0);
+     list.forEach((tr,i)=>{
+       const label=el('[data-school-position]',tr);
+       if(label)label.textContent=String(i+1).padStart(2,'0');
+       const up=el('[data-move-school="up"]',tr),down=el('[data-move-school="down"]',tr);
+       if(up)up.disabled=i===0;
+       if(down)down.disabled=i===list.length-1;
+     });
    }
    function schoolLogoCell(school){
      const id=Number(school.id||0);
@@ -294,25 +318,57 @@
    }
    async function loadSchools(){
      var rows=el('[data-admin-rows="schools"]');
-     rows.innerHTML='<tr><td colspan="6">กำลังโหลด...</td></tr>';
+     rows.innerHTML='<tr><td colspan="7">กำลังโหลด...</td></tr>';
      var r=await api('admin_schools');
      var options=['Active','Inactive'];
      rows.innerHTML=(r.data||[]).map(function(x){
-       return '<tr data-school-id="'+escapeText(x.id)+'"><td>'+escapeText(x.id)+'</td>'+
+       return '<tr data-school-id="'+escapeText(x.id)+'">'+liveOrderCell()+'<td>'+escapeText(x.id)+'</td>'+
          '<td>'+schoolLogoCell(x)+'</td>'+
          '<td><input class="input" data-school-name value="'+escapeText(x.name)+'"></td>'+
          '<td><input class="input" data-school-nickname value="'+escapeText(x.nickname)+'"></td>'+
          '<td><select class="input" data-school-active>'+options.map(function(value){
            return '<option'+(x.active===value?' selected':'')+'>'+value+'</option>'}).join('')+'</select></td>'+
          '<td><button type="button" class="btn btn-primary btn-xs" data-save-school>บันทึก</button></td></tr>';
-     }).join('')+'<tr data-school-id="0"><td>ใหม่</td>'+
+     }).join('')+'<tr data-school-id="0"><td>—</td><td>ใหม่</td>'+
        '<td>'+schoolLogoCell({id:0})+'</td>'+
        '<td><input class="input" data-school-name placeholder="SchoolName"></td>'+
        '<td><input class="input" data-school-nickname placeholder="schoolnickname"></td>'+
        '<td><select class="input" data-school-active><option>Active</option><option>Inactive</option></select></td>'+
        '<td><button type="button" class="btn btn-primary btn-xs" data-save-school>เพิ่ม</button></td></tr>';
+     updateSchoolPositions();
      inform(schools,'');
    }
+   // Drag handles for desktop; arrows also work on touch devices.
+   let draggedSchoolRow=null;
+   schools.addEventListener('dragstart',function(e){
+     const handle=e.target.closest('[data-drag-school]');
+     if(!handle)return;
+     draggedSchoolRow=handle.closest('tr[data-school-id]');
+     if(!draggedSchoolRow||Number(draggedSchoolRow.dataset.schoolId)<1)return;
+     e.dataTransfer.effectAllowed='move';
+     e.dataTransfer.setData('text/plain',draggedSchoolRow.dataset.schoolId);
+     draggedSchoolRow.classList.add('is-dragging');
+   });
+   schools.addEventListener('dragover',function(e){
+     if(!draggedSchoolRow)return;
+     const target=e.target.closest('tr[data-school-id]');
+     if(!target||target===draggedSchoolRow||Number(target.dataset.schoolId)<1)return;
+     e.preventDefault();
+     const bounds=target.getBoundingClientRect();
+     const after=e.clientY>bounds.top+bounds.height/2;
+     target.parentElement.insertBefore(draggedSchoolRow,after?target.nextSibling:target);
+     updateSchoolPositions();
+   });
+   schools.addEventListener('drop',function(e){
+     if(!draggedSchoolRow)return;
+     e.preventDefault();
+     draggedSchoolRow.classList.remove('is-dragging');
+     draggedSchoolRow=null;updateSchoolPositions();
+   });
+   schools.addEventListener('dragend',function(){
+     if(draggedSchoolRow)draggedSchoolRow.classList.remove('is-dragging');
+     draggedSchoolRow=null;updateSchoolPositions();
+   });
    schools.addEventListener('change',function(e){
      const input=e.target.closest('[data-school-logo-file]');
      if(!input)return;
@@ -338,6 +394,33 @@
      inform(schools,'เลือกภาพแล้ว กด “อัปโหลด” เพื่อบันทึกตราโรงเรียน');
    });
    schools.addEventListener('click',async function(e){
+     const move=e.target.closest('[data-move-school]');
+     if(move){
+       const tr=move.closest('tr[data-school-id]');
+       const sibling=move.dataset.moveSchool==='up'?tr.previousElementSibling:tr.nextElementSibling;
+       if(sibling&&Number(sibling.dataset.schoolId)>0){
+         const parent=tr.parentElement;
+         if(move.dataset.moveSchool==='up')parent.insertBefore(tr,sibling);
+         else parent.insertBefore(sibling,tr);
+         updateSchoolPositions();
+         inform(schools,'จัดลำดับแล้ว กด “บันทึกลำดับจอ LIVE” เพื่อเผยแพร่');
+       }
+       return;
+     }
+     const saveOrder=e.target.closest('[data-save-school-order]');
+     if(saveOrder){
+       const schoolIds=all('tr[data-school-id]',el('[data-admin-rows="schools"]'))
+         .map(tr=>Number(tr.dataset.schoolId)).filter(id=>id>0);
+       if(!schoolIds.length){inform(schools,'ไม่พบรายการโรงเรียน',true);return;}
+       saveOrder.disabled=true;
+       try{
+         const result=await api('admin_school_order_save',{schoolIds});
+         await loadSchools();
+         inform(schools,result.message||'บันทึกลำดับจอ LIVE เรียบร้อย');
+       }catch(err){inform(schools,err.message||'บันทึกลำดับไม่สำเร็จ',true)}
+       finally{saveOrder.disabled=false}
+       return;
+     }
      const upload=e.target.closest('[data-upload-school-logo]');
      if(upload){
        const tr=upload.closest('tr');

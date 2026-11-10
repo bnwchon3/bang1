@@ -161,6 +161,32 @@ function live_school_order():array {
         'บ้านทุ่งกราด',
     ];
 }
+/** Admin-defined school order, retaining the original ten slots until saved. */
+function live_configured_school_order(array $schoolRows):array {
+    $defaults=live_school_order();$ranked=[];
+    foreach($schoolRows as $school){
+        $position=(int)($school['live_position']??0);
+        $name=trim((string)($school['name']??''));
+        if($position>0&&$name!=='')
+            $ranked[]=['name'=>$name,'position'=>$position,'id'=>(int)($school['id']??0)];
+    }
+    if(!$ranked)return $defaults;
+    usort($ranked,static fn($a,$b)=>
+        ($a['position']<=>$b['position'])?:($a['id']<=>$b['id']));
+    $names=array_column($ranked,'name');
+    foreach($defaults as $short){
+        $needle=live_school_compact($short);$exists=false;
+        foreach($names as $name)if(live_school_compact($name)===$needle){$exists=true;break;}
+        if(!$exists)$names[]=$short;
+    }
+    foreach($schoolRows as $school){
+        $name=trim((string)($school['name']??''));if($name==='')continue;
+        $needle=live_school_compact($name);$exists=false;
+        foreach($names as $other)if(live_school_compact($other)===$needle){$exists=true;break;}
+        if(!$exists)$names[]=$name;
+    }
+    return $names;
+}
 function live_school_compact(string $value):string {
     return preg_replace('/[\s\p{P}\p{Z}]+/u','',
         preg_replace('/^โรงเรียน/u','',trim($value)))??trim($value);
@@ -177,7 +203,7 @@ function live_school_columns(array $schoolRows,array $registrations):array {
         if($name!=='')$known[live_school_compact($name)]=$name;
     }
     $used=[];$columns=[];
-    foreach(live_school_order() as $short){
+    foreach(live_configured_school_order($schoolRows) as $short){
         $needle=live_school_compact($short);
         $found=null;
         foreach($known as $normalized=>$full){
@@ -484,7 +510,7 @@ function live_dataset(bool $manager=false,?string $sportFixtureKey=null):array {
         $checks[(int)$c['registration_id']][(string)$c['athlete_key']]=(string)$c['checked_at'];
     }
     $schoolColumns=live_school_columns(
-        rows('SELECT name,nickname,logo_file FROM schools ORDER BY id'),$registrations);
+        rows('SELECT id,name,nickname,logo_file,live_position FROM schools ORDER BY id'),$registrations);
     $fixtures=[];$teamsByKey=[];$legacyToCurrent=[];
     foreach($registrations as $r){
         $ord=$order[live_event_order_key($r)]??null;

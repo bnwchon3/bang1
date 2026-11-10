@@ -59,13 +59,62 @@ if ($action === 'admin_settings_save') {
 
 if ($action === 'admin_schools') {
     require_once __DIR__.'/school-branding.php';
-    $items=rows('SELECT id,name,nickname,active,logo_file,logo_updated_at FROM schools ORDER BY id');
+    $items=rows('SELECT id,name,nickname,active,logo_file,logo_updated_at,live_position FROM schools ORDER BY id');
+    $defaults=['วัดสุทธารีย์บุญญาราม','บ้านตะเคียนเตี้ย','บ้านสันติคาม',
+       'บ้านบางละมุง','วัดหนองเกตุใหญ่','อนุบาลบางละมุง',
+       'วัดเวฬุวนาราม','บ้านโรงหีบ','บ้านนาวัง','บ้านทุ่งกราด'];
+    $compact=static fn($name)=>preg_replace('/[\\s\\p{P}\\p{Z}]+/u','',
+        preg_replace('/^โรงเรียน/u','',trim((string)$name)))??trim((string)$name);
+    $defaultIndex=[];
+    foreach($defaults as $i=>$name)$defaultIndex[$compact($name)]=$i;
+    usort($items,static function($a,$b)use($compact,$defaultIndex){
+        $pa=(int)($a['live_position']??0);$pb=(int)($b['live_position']??0);
+        if($pa>0||$pb>0)
+            return (($pa>0?$pa:9999)<=>($pb>0?$pb:9999))
+                ?:((int)$a['id']<=>(int)$b['id']);
+        return (($defaultIndex[$compact($a['name'])]??9999)
+            <=>($defaultIndex[$compact($b['name'])]??9999))
+            ?:((int)$a['id']<=>(int)$b['id']);
+    });
     foreach($items as &$item){
         $item['logoUrl']=school_logo_url((string)($item['logo_file']??''));
         unset($item['logo_file']); // filename is an internal implementation detail
     }
     unset($item);
     json_out(['success'=>true,'data'=>$items]);
+}
+if ($action === 'admin_school_order_save') {
+    must_post();
+    $submitted=$input['schoolIds']??null;
+    if(!is_array($submitted)||count($submitted)<1||count($submitted)>200)
+        json_out(['success'=>false,'message'=>'ลำดับโรงเรียนไม่ถูกต้อง'],422);
+    $seen=[];$actual=[];
+    foreach($submitted as $value){
+        $id=filter_var($value,FILTER_VALIDATE_INT);
+        if($id===false||$id<1||isset($seen[$id]))
+            json_out(['success'=>false,'message'=>'รหัสโรงเรียนซ้ำหรือไม่ถูกต้อง'],422);
+        $seen[$id]=true;$actual[]=$id;
+    }
+    try {
+        db()->beginTransaction();
+        $existing=rows('SELECT id FROM schools ORDER BY id FOR UPDATE');
+        $expected=array_map('intval',array_column($existing,'id'));
+        sort($expected,SORT_NUMERIC);$sorted=$actual;sort($sorted,SORT_NUMERIC);
+        if($expected!==$sorted){
+            db()->rollBack();
+            json_out(['success'=>false,'message'=>'รายชื่อโรงเรียนมีการเปลี่ยนแปลง กรุณาโหลดหน้าใหม่'],409);
+        }
+        $statement=db()->prepare('UPDATE schools SET live_position=? WHERE id=?');
+        foreach($actual as $position=>$id)$statement->execute([$position+1,$id]);
+        db()->commit();
+    } catch(Throwable $e) {
+        if(db()->inTransaction())db()->rollBack();
+        error_log('Bang1 LIVE school order: '.$e->getMessage());
+        json_out(['success'=>false,'message'=>'บันทึกลำดับโรงเรียนไม่สำเร็จ'],500);
+    }
+    log_action('ADMIN_LIVE_SCHOOL_ORDER_UPDATE',$u,'School','all',
+        'ลำดับช่อง LIVE: '.implode(',',$actual));
+    json_out(['success'=>true,'message'=>'บันทึกลำดับช่องโรงเรียนบนจอ LIVE เรียบร้อย']);
 }
 if ($action === 'admin_school_save') {
     must_post();

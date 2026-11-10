@@ -35,6 +35,16 @@ $columns=live_school_columns($schoolRows,[['school_name'=>'โรงเรีย
 check(count($columns)===10,'Live board must display exactly 10 school columns');
 check($columns[8]['name']==='โรงเรียนบ้านนาวัง','Registered school must match its column');
 check($columns[9]['name']==='โรงเรียนบ้านทุ่งกราด','School name must occupy the reference order');
+$customRows=[
+    ['id'=>7,'name'=>'โรงเรียนบ้านนาวัง','live_position'=>2],
+    ['id'=>9,'name'=>'โรงเรียนบ้านทุ่งกราด','live_position'=>1]
+];
+$customColumns=live_school_columns($customRows,[]);
+check($customColumns[0]['name']==='โรงเรียนบ้านทุ่งกราด',
+    'Configured school position one must be the leftmost LIVE column');
+check($customColumns[1]['name']==='โรงเรียนบ้านนาวัง',
+    'Saved projector school order must override legacy hardcoded order');
+check(count($customColumns)===10,'Saved order retains the ten-school grid');
 $registration=[
     'id'=>303,'runner_ids'=>'101,102',
     'runner_names'=>'นักกรีฑา ก,นักกรีฑา ข','photos'=>'',
