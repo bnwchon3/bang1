@@ -70,4 +70,29 @@ assert(noLogo.includes('school-empty-emblem-fallback'),'Missing logo shows a neu
 assert(noLogo.includes('รอรายงานตัว'),'Missing logo still shows the real status text');
 assert(css.includes('.school-flag-empty-body'),'Full-width school crest style exists');
 assert(css.includes('.school-empty-caption'),'Readable status is below the logo');
+// Extra rows used to erase all real Check-in status via fallbackSchools.
+const paintStart=js.indexOf('  function paintSchools(',schoolEnd);
+const paintEnd=js.indexOf('  function renderRecentResults(',paintStart);
+assert(paintStart>=0&&paintEnd>paintStart,'Live school grid renderer must be testable');
+const fakeGrid={innerHTML:'',querySelectorAll:()=>[]};
+state.el=()=>fakeGrid;
+vm.runInContext(js.slice(paintStart,paintEnd),state);
+const overflow=Array.from({length:11},(_,i)=>({
+ name:'โรงเรียนทดสอบลำดับ'+(i+1),
+ registered:i===0,
+ heats:i===0?[1]:[],
+ athletes:[],
+ logo:i===0?registered.logo:null
+}));
+state.paintSchools(overflow);
+assert(fakeGrid.innerHTML.includes('โรงเรียนทดสอบลำดับ1'),
+ 'First configured school must stay visible when 11 API schools arrive');
+assert(fakeGrid.innerHTML.includes('รอรายงานตัว'),
+ 'Waiting state MUST NOT be overwritten with "ไม่ได้ส่งแข่ง" on overflow');
+assert((fakeGrid.innerHTML.match(/class="school-column/g)||[]).length===10,
+ 'Client should display only ten genuine API schools');
+assert(!fakeGrid.innerHTML.includes('โรงเรียนทดสอบลำดับ11'),
+ 'Only the last overflow school is clipped, not the entire true roster');
+console.log('PASS extra schools preserve actual LIVE order and check-in statuses');
+
 console.log('PASS check-in school states: waiting, no entry, confirmed attendance and no-logo fallback');
