@@ -45,6 +45,33 @@ check($customColumns[0]['name']==='โรงเรียนบ้านทุ่
 check($customColumns[1]['name']==='โรงเรียนบ้านนาวัง',
     'Saved projector school order must override legacy hardcoded order');
 check(count($customColumns)===10,'Saved order retains the ten-school grid');
+// Regression: many school rows plus configured order MUST NOT overflow the
+// ten-column projector and trigger an all-"ไม่ได้ส่งแข่ง" browser fallback.
+$overflowRows=[
+    ['id'=>101,'name'=>'โรงเรียนบ้านนาวัง','live_position'=>2],
+    ['id'=>102,'name'=>'โรงเรียนบ้านทุ่งกราด','live_position'=>1],
+    ['id'=>103,'name'=>'โรงเรียนใหม่ทดสอบ','live_position'=>3]
+];
+foreach(range(4,14) as $n){
+    $overflowRows[]=[
+        'id'=>100+$n,
+        'name'=>'โรงเรียนอื่น '.$n,
+        'live_position'=>$n
+    ];
+}
+$overflowColumns=live_school_columns($overflowRows,[
+    ['school_name'=>'โรงเรียนบ้านนาวัง'],
+    ['school_name'=>'โรงเรียนบ้านทุ่งกราด']
+]);
+check(count(live_configured_school_order($overflowRows))===10,
+    'Configured order must be capped at precisely ten names');
+check(count($overflowColumns)===10,
+    'Extra saved schools must never make the LIVE board more than ten columns');
+check($overflowColumns[0]['name']==='โรงเรียนบ้านทุ่งกราด' &&
+      $overflowColumns[1]['name']==='โรงเรียนบ้านนาวัง',
+    'Saved first and second positions must survive excess school rows');
+check($overflowColumns[2]['name']==='โรงเรียนใหม่ทดสอบ',
+    'Other configured schools must follow the selected display order');
 $registration=[
     'id'=>303,'runner_ids'=>'101,102',
     'runner_names'=>'นักกรีฑา ก,นักกรีฑา ข','photos'=>'',

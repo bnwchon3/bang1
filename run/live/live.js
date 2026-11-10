@@ -97,9 +97,15 @@
       '</div></section>';
   }
   function paintSchools(schools,sport=false){
-    const valid=Array.isArray(schools)&&schools.length===10?schools:
-      fallbackSchools.map(name=>({name:'โรงเรียน'+name,registered:false,heats:[],athletes:[]}));
+    // Never fabricate "ไม่ได้ส่งแข่ง" for the whole race when an API list
+    // temporarily contains 11+ schools. Preserve genuine school registrations.
+    const valid=Array.isArray(schools)
+      ?schools.filter(s=>s&&typeof s.name==='string').slice(0,10):[];
     const grid=el('schoolGrid');
+    if(!valid.length){
+      grid.innerHTML='<div class="loading">ข้อมูลสถานะโรงเรียนยังไม่พร้อม กรุณาตรวจสอบการเชื่อมต่อ</div>';
+      return;
+    }
     grid.innerHTML=valid.map(s=>schoolCell(s,sport)).join('');
     for(const img of grid.querySelectorAll('.athlete-portrait img')){
       img.addEventListener('error',function(){

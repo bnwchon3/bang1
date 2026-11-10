@@ -185,7 +185,9 @@ function live_configured_school_order(array $schoolRows):array {
         foreach($names as $other)if(live_school_compact($other)===$needle){$exists=true;break;}
         if(!$exists)$names[]=$name;
     }
-    return $names;
+    // Exactly ten projector slots are available. An overflow previously
+    // caused the JS client to throw away ALL genuine team status and order.
+    return array_slice($names,0,10);
 }
 function live_school_compact(string $value):string {
     return preg_replace('/[\s\p{P}\p{Z}]+/u','',
