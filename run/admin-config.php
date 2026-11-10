@@ -166,8 +166,35 @@ if ($action === 'admin_school_save') {
 if ($action === 'admin_coaches') {
     // Never return password hashes or the old IDPASS values to browsers.
     json_out(['success'=>true,'data'=>rows(
-        'SELECT id, name, email, school_name, role FROM coaches ORDER BY id'
+        'SELECT id, name, email, school_name, role, can_live_checkin FROM coaches ORDER BY id'
     )]);
+}
+// Admin alone decides which individual Manager may operate the LIVE check-in screen.
+if ($action === 'admin_coach_live_checkin_access') {
+    must_post();
+    $id=filter_var($input['id']??null,FILTER_VALIDATE_INT);
+    $allowed=$input['allowed']??null;
+    if(!$id||$id<1||!is_bool($allowed))
+        json_out(['success'=>false,'message'=>'ข้อมูลสิทธิ์ไม่ถูกต้อง'],422);
+    try{
+        db()->beginTransaction();
+        $account=single('SELECT id,name,role,can_live_checkin FROM coaches WHERE id=? FOR UPDATE',[$id]);
+        if(!$account||$account['role']!=='Manager'){
+            db()->rollBack();
+            json_out(['success'=>false,'message'=>'กำหนดสิทธิ์เช็กชื่อได้เฉพาะบัญชี Manager'],422);
+        }
+        db()->prepare('UPDATE coaches SET can_live_checkin=? WHERE id=?')
+            ->execute([$allowed?1:0,$id]);
+        db()->commit();
+    }catch(Throwable $e){
+        if(db()->inTransaction())db()->rollBack();
+        error_log('Bang1 Manager LIVE check-in permission: '.$e->getMessage());
+        json_out(['success'=>false,'message'=>'บันทึกสิทธิ์เช็กชื่อรายงานตัวไม่สำเร็จ'],500);
+    }
+    log_action($allowed?'ADMIN_LIVE_CHECKIN_GRANT':'ADMIN_LIVE_CHECKIN_REVOKE',
+        $u,'Coach',(string)$id,'Manager '.$account['name'].' LIVE check-in permission '.($allowed?'granted':'revoked'));
+    json_out(['success'=>true,'allowed'=>$allowed,
+        'message'=>$allowed?'อนุญาตให้ Manager เช็กชื่อรายงานตัวแล้ว':'ถอนสิทธิ์เช็กชื่อรายงานตัวเรียบร้อยแล้ว']);
 }
 if ($action === 'admin_coach_save') {
     must_post();
@@ -214,6 +241,10 @@ if ($action === 'admin_coach_save') {
         error_log('Bang1 admin coach: '.$e->getMessage());
         json_out(['success'=>false,'message'=>'บันทึกบัญชีผู้ฝึกซ้อมไม่สำเร็จ'],500);
     }
+    // Leaving the Manager role always clears the old LIVE permission.
+    // Promotion back to Manager requires a fresh explicit Admin grant.
+    if($old && $old['role']==='Manager' && $role!=='Manager')
+        db()->prepare('UPDATE coaches SET can_live_checkin=0 WHERE id=?')->execute([$id]);
     log_action($old?'ADMIN_COACH_UPDATE':'ADMIN_COACH_CREATE',$u,'Coach',(string)$id,
         'ปรับปรุงบัญชี '.$email.' (ไม่บันทึกรหัสผ่าน)');
     json_out(['success'=>true,'id'=>$id,'message'=>'บันทึกผู้ฝึกซ้อมเรียบร้อย']);
