@@ -63,7 +63,7 @@
    schoolToolbar.innerHTML='<div><strong>จัดตำแหน่งช่องโรงเรียน</strong><small>กำหนดลำดับบนจอ LIVE · ไม่เปลี่ยนเลขลู่วิ่งหรือผลการแข่งขัน</small></div>'+
      '<button type="button" class="btn btn-primary" data-save-school-order>บันทึกลำดับจอ LIVE</button>';
    schools.querySelector('.card').insertBefore(schoolToolbar,schools.querySelector('.table-wrap'));
-   var coaches=createPanel('coaches','ผู้ฝึกซ้อม',['CoachID','Name','Email','SchoolName','Role','รหัสผ่าน','จัดการ'],
+   var coaches=createPanel('coaches','ผู้ฝึกซ้อม',['CoachID','Name','Email','SchoolName','Role','สิทธิ์เช็กชื่อ','รหัสผ่าน','จัดการ'],
      '<form id="admin-coach-form" autocomplete="off">'+
        '<input name="id" type="hidden">'+
        '<div class="form-grid">'+
@@ -475,16 +475,21 @@
        const own=user&&String(x.id)===String(user.coachId);
        return '<tr><td>'+escapeText(x.id)+'</td><td>'+escapeText(x.name)+'</td>'+
          '<td>'+escapeText(x.email)+'</td><td>'+escapeText(x.school_name)+'</td><td>'+escapeText(x.role)+'</td>'+
+         '<td>'+(x.role==='Manager'
+           ?'<button type="button" data-coach-checkin="'+escapeText(x.id)+'" class="btn btn-xs '+
+             (Number(x.can_live_checkin)===1?'btn-primary':'btn-outline')+'" title="Admin กำหนดสิทธิ์รายบุคคล">'+
+             (Number(x.can_live_checkin)===1?'✓ อนุญาตแล้ว · ถอนสิทธิ์':'🔒 ยังไม่อนุญาต · ให้สิทธิ์')+'</button>'
+           :(['Admin','TopAdmin'].includes(x.role)?'✓ Admin':'—'))+'</td>'+
          '<td><button type="button" data-reset-coach="'+escapeText(x.id)+'" class="btn btn-outline btn-xs">ตั้งรหัสผ่านใหม่</button></td>'+
          '<td><button type="button" data-edit-coach="'+escapeText(x.id)+'" class="btn btn-outline btn-xs">แก้ไข</button> '+
          '<button type="button" data-delete-coach="'+escapeText(x.id)+'" class="btn btn-outline btn-xs"'+
          (own?' disabled title="ไม่สามารถลบบัญชีตนเอง"':'')+'>ลบ</button></td></tr>';
-     }).join('')||'<tr><td colspan="7">ไม่พบผู้ฝึกซ้อมในโรงเรียนที่เลือก</td></tr>';
+     }).join('')||'<tr><td colspan="8">ไม่พบผู้ฝึกซ้อมในโรงเรียนที่เลือก</td></tr>';
    }
    el('#admin-coach-school-filter',coaches).addEventListener('change',renderCoachRows);
    async function loadCoaches(){
      var rows=el('[data-admin-rows="coaches"]');
-     rows.innerHTML='<tr><td colspan="7">กำลังโหลด...</td></tr>';
+     rows.innerHTML='<tr><td colspan="8">กำลังโหลด...</td></tr>';
      var rs=await Promise.all([api('admin_coaches'),api('admin_schools')]);
      coachList=rs[0].data||[];
      var form=el('#admin-coach-form');
@@ -497,6 +502,24 @@
      renderCoachRows();
    }
    coaches.addEventListener('click',async function(e){
+     const permission=e.target.closest('[data-coach-checkin]');
+     if(permission){
+       const manager=coachList.find(x=>String(x.id)===permission.dataset.coachCheckin);
+       if(!manager||manager.role!=='Manager')return;
+       const allow=Number(manager.can_live_checkin)!==1;
+       const question=allow
+         ?'อนุญาตให้ '+manager.name+' เข้าเมนูเช็กชื่อรายงานตัวและควบคุมจอ Live หรือไม่?'
+         :'ถอนสิทธิ์เช็กชื่อรายงานตัวของ '+manager.name+' หรือไม่? ระบบจะปฏิเสธการทำรายการทันที';
+       if(!confirm(question))return;
+       permission.disabled=true;
+       try{
+         const result=await api('admin_coach_live_checkin_access',{id:Number(manager.id),allowed:allow});
+         await loadCoaches();
+         inform(coaches,result.message||'บันทึกสิทธิ์เรียบร้อยแล้ว');
+       }catch(error){inform(coaches,error.message||'บันทึกสิทธิ์ไม่สำเร็จ',true)}
+       finally{permission.disabled=false}
+       return;
+     }
      var edit=e.target.closest('[data-edit-coach]');
      if(edit){
        var x=coachList.find(x=>String(x.id)===edit.dataset.editCoach);
