@@ -50,7 +50,9 @@ const waiting=state.schoolCell(registered);
 assert(waiting.includes('school-empty-state is-waiting'),'Registered school without check-in has a waiting state');
 assert(waiting.includes('รอรายงานตัว'),'Waiting message is shown');
 assert(waiting.includes('waiting-runner'),'Waiting school visibly displays a runner pictogram');
-assert(waiting.includes('school-flag-empty-body'),'School logo is large in the EMPTY content area');
+assert(!waiting.includes('school-empty-crest'),'Waiting state must show ONLY runner pictogram and label');
+assert(!waiting.includes('school-flag-empty-body')&&!waiting.includes('school-empty-emblem-fallback'),
+ 'Waiting state must not show a school emblem or building above its runner icon');
 assert(!waiting.slice(waiting.indexOf('<header'),waiting.indexOf('</header>')).includes('school-flag'),
   'Header must never have a school crest');
 const noEntry=state.schoolCell({...registered,registered:false,heats:[]});
