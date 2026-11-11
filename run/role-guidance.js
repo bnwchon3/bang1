@@ -126,7 +126,7 @@
    if(memberDirectory)memberDirectory.hidden=!!u;
    if(!dashboard)return;
    dashboard.hidden=!p;
-   if(!p){dashboard.replaceChildren();return}
+   if(!p){dashboard.replaceChildren();const banner=document.getElementById('bang1DonateGalaxy');const form=document.querySelector('#page-login > .card:not(#bang1-login-guidance)');if(banner&&form)form.insertAdjacentElement('afterend',banner);return}
    dashboard.innerHTML=
     '<div class="role-guidance-header"><div><div class="role-guidance-overline">เข้าสู่ระบบเรียบร้อย</div>'+
     '<h2>สิทธิ์การใช้งาน: '+escapeHTML(p.name)+'</h2></div>'+
@@ -139,6 +139,11 @@
       '<span class="role-guidance-icon" aria-hidden="true">'+s.icon+'</span></div>'+
       '<strong>'+escapeHTML(s.title)+'</strong><small>'+escapeHTML(s.detail)+'</small></button>').join('')+
     '</div>';
+   // Keep the invitation between login details and the directory when signed out,
+   // and below the permissions box when a user is signed in.
+   const donateBanner=document.getElementById('bang1DonateGalaxy');
+   const permissionBox=dashboard.querySelector('.role-guidance-subtitle');
+   if(donateBanner&&permissionBox)permissionBox.insertAdjacentElement('afterend',donateBanner);
    dashboard.querySelectorAll('[data-role-go]').forEach(b=>b.addEventListener('click',()=>{
      if(typeof navigate==='function')navigate(b.dataset.roleGo);
    }));
