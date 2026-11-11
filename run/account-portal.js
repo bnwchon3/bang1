@@ -43,7 +43,8 @@
      '</tr></thead><tbody id="bang1AccountsRows"><tr><td colspan="4">กำลังโหลดรายชื่อ...</td></tr></tbody></table></div>'+
      '<p id="bang1AccountStatus" class="bang1-account-status" role="status" aria-live="polite"></p>';
    var loginForm=login.querySelector('.card');
-   if(loginForm)loginForm.insertAdjacentElement('afterend',portal);
+   if(login.querySelector('#bang1DonateGalaxy'))login.querySelector('#bang1DonateGalaxy').insertAdjacentElement('afterend',portal);
+   else if(loginForm)loginForm.insertAdjacentElement('afterend',portal);
    else login.appendChild(portal);
    var dialog=document.createElement('dialog');
    dialog.id='bang1AccountDialog';
