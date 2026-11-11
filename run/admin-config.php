@@ -12,7 +12,7 @@ if (!isset($u, $action) || !is_array($u) || !function_exists('require_admin')) {
 if (!str_starts_with((string)$action, 'admin_')) return;
 require_admin($u);
 require __DIR__.'/admin-school-logo-upload.php';
-if(in_array($action,['admin_account_applications','admin_account_review'],true)) require __DIR__.'/account-portal.php';
+if(in_array($action,['admin_account_applications','admin_account_review','admin_account_resend_notice'],true)) require __DIR__.'/account-portal.php';
 require __DIR__.'/admin-security.php';
 require __DIR__.'/admin-reset.php';
 require __DIR__.'/admin-backup.php';
