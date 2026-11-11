@@ -183,20 +183,23 @@
    panel.innerHTML='<div class="card"><div class="card-header"><div class="card-title">พิจารณาคำขอสมัครบัญชี</div></div>'+
      '<p>ผู้สมัครจะไม่ได้รับสิทธิใช้งานจนกว่า Admin จะอนุมัติ บัญชีที่อนุมัติใหม่จะได้รับสิทธิ์ Teacher</p>'+
      '<button type="button" class="btn btn-outline btn-xs" id="bang1ApplicationsRefresh">รีเฟรชรายการ</button>'+
-     '<div class="bang1-account-table-scroll"><table class="bang1-account-table"><thead><tr><th>ชื่อ - นามสกุล</th><th>โรงเรียน</th><th>อีเมล</th><th>วันที่สมัคร</th><th>สถานะ / พิจารณา</th></tr></thead>'+
-     '<tbody id="bang1ApplicationsRows"><tr><td colspan="5">เลือกแท็บเพื่อโหลดข้อมูล</td></tr></tbody></table></div>'+
+     '<div class="bang1-account-table-scroll"><table class="bang1-account-table"><thead><tr><th>ชื่อ - นามสกุล</th><th>โรงเรียน</th><th>อีเมล</th><th>วันที่สมัคร</th><th>สถานะบัญชี</th><th>อีเมลแจ้งอนุมัติ</th><th>จัดการ</th></tr></thead>'+
+     '<tbody id="bang1ApplicationsRows"><tr><td colspan="7">เลือกแท็บเพื่อโหลดข้อมูล</td></tr></tbody></table></div>'+
      '<p class="bang1-account-status" id="bang1ApplicationsStatus" role="status" aria-live="polite"></p></div>';
    page.appendChild(panel);
    tab.addEventListener('click',function(){loadApplications()});
    byId('bang1ApplicationsRefresh').onclick=loadApplications;
    byId('bang1ApplicationsRows').addEventListener('click',async function(e){
-     var btn=e.target.closest('button[data-review]');if(!btn)return;
-     var id=Number(btn.dataset.id),decision=btn.dataset.review;
-     var label=decision==='approve'?'อนุมัติ':'ไม่อนุมัติ';
-     if(!window.confirm('ยืนยัน'+label+'คำขอสมัครรายนี้?'))return;
+     var btn=e.target.closest('button[data-review],button[data-resend]');if(!btn)return;
+     var id=Number(btn.dataset.id),resend=btn.hasAttribute('data-resend');
+     var decision=btn.dataset.review;
+     var label=resend?'ส่งอีเมลแจ้งอนุมัติอีกครั้ง':decision==='approve'?'อนุมัติ':'ไม่อนุมัติ';
+     if(!window.confirm('ยืนยัน'+label+'สำหรับบัญชีนี้?'))return;
      btn.disabled=true;
      try{
-       var r=await window.bang1Bridge.adminRequest('admin_account_review',{id:id,decision:decision});
+       var r=resend
+         ?await window.bang1Bridge.adminRequest('admin_account_resend_notice',{id:id})
+         :await window.bang1Bridge.adminRequest('admin_account_review',{id:id,decision:decision});
        byId('bang1ApplicationsStatus').textContent=r.message;
        await loadApplications(true);
      }catch(err){byId('bang1ApplicationsStatus').textContent=err.message}
@@ -206,7 +209,7 @@
  async function loadApplications(preserve){
    var rows=byId('bang1ApplicationsRows');
    if(!rows)return;
-   rows.innerHTML='<tr><td colspan="5">กำลังโหลดคำขอ...</td></tr>';
+   rows.innerHTML='<tr><td colspan="7">กำลังโหลดคำขอ...</td></tr>';
    if(!preserve)byId('bang1ApplicationsStatus').textContent='';
    try{
      var r=await window.bang1Bridge.adminRequest('admin_account_applications');
@@ -214,14 +217,23 @@
      rows.innerHTML=records.length?records.map(function(x){
        var pending=x.status==='pending';
        var label=pending?'รออนุมัติ':x.status==='approved'?'อนุมัติแล้ว':'ไม่อนุมัติ';
+       var approved=x.status==='approved';
+       var mailStatus=x.notification_status||'unknown';
+       var mailLabel=!approved?'—':mailStatus==='sent'?'ส่งแล้ว (ระบบรับคำสั่ง)':mailStatus==='failed'?'ส่งไม่สำเร็จ':mailStatus==='sending'?'กำลังส่ง':'ไม่ทราบสถานะ (ข้อมูลเดิม)';
+       var lastAttempt=x.notification_last_attempt_at||'';
+       var attempts=Number(x.notification_attempts)||0;
+       var retryAllowed=approved&&(!lastAttempt||(Date.now()-new Date(lastAttempt.replace(' ','T')).getTime())>=120000);
+       var mailDetail=approved&&attempts?' <small>พยายามส่ง '+attempts+' ครั้ง'+(lastAttempt?' · ล่าสุด '+esc(lastAttempt):'')+'</small>':'';
        var actions=pending?'<div class="bang1-account-actions">'+
          '<button type="button" data-review="approve" data-id="'+Number(x.id)+'" class="bang1-account-approve">อนุมัติ</button>'+
-         '<button type="button" data-review="reject" data-id="'+Number(x.id)+'" class="bang1-account-reject">ไม่อนุมัติ</button></div>':'';
+         '<button type="button" data-review="reject" data-id="'+Number(x.id)+'" class="bang1-account-reject">ไม่อนุมัติ</button></div>':
+         approved?'<div class="bang1-account-actions"><button type="button" data-resend data-id="'+Number(x.id)+'" class="bang1-account-resend"'+(retryAllowed?'':' disabled title="กรุณารออย่างน้อย 2 นาที"')+'>✉️ ส่งอีเมลอีกครั้ง</button></div>':'';
        return '<tr><td>'+esc(x.first_name)+' '+esc(x.last_name)+'</td><td>'+esc(x.school_name)+'</td>'+
          '<td>'+esc(x.email)+'</td><td>'+esc(x.created_at)+'</td>'+
-         '<td><span class="'+(pending?'bang1-account-waiting':'bang1-account-done')+'">'+label+'</span>'+actions+'</td></tr>';
-     }).join(''):'<tr><td colspan="5">ยังไม่มีคำขอสมัครใหม่</td></tr>';
-   }catch(err){rows.innerHTML='<tr><td colspan="5">'+esc(err.message)+'</td></tr>'}
+         '<td><span class="'+(pending?'bang1-account-waiting':'bang1-account-done')+'">'+label+'</span></td>'+
+         '<td><span class="bang1-account-mail-state '+(mailStatus==='failed'?'is-failed':mailStatus==='sent'?'is-sent':'')+'">'+mailLabel+'</span>'+mailDetail+'</td><td>'+actions+'</td></tr>';
+     }).join(''):'<tr><td colspan="7">ยังไม่มีคำขอสมัครใหม่</td></tr>';
+   }catch(err){rows.innerHTML='<tr><td colspan="7">'+esc(err.message)+'</td></tr>'}
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',build);
  else build();
