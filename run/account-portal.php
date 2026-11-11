@@ -92,7 +92,7 @@ if($action==='account_signup'){
     if($old && $old['status']==='approved')
         json_out(['success'=>true,'message'=>'บัญชีนี้ได้รับการอนุมัติแล้ว กรุณาใช้ปุ่มรีเซ็ตรหัสผ่านเพื่อกำหนดรหัสผ่านของตนเอง']);
     if($old){
-        db()->prepare("UPDATE account_applications SET first_name=?,last_name=?,school_name=?,status='pending',reviewed_by=NULL,reviewed_at=NULL,created_at=NOW() WHERE id=?")
+        db()->prepare("UPDATE account_applications SET first_name=?,last_name=?,school_name=?,status='pending',reviewed_by=NULL,reviewed_at=NULL,notification_status='not_sent',notification_attempts=0,notification_last_attempt_at=NULL,notification_sent_at=NULL,created_at=NOW() WHERE id=?")
             ->execute([$first,$last,$school,(int)$old['id']]);
     }else{
         db()->prepare("INSERT INTO account_applications(first_name,last_name,school_name,email,status) VALUES(?,?,?,?,'pending')")
@@ -190,7 +190,7 @@ if($action==='account_reset_complete'){
 }
 if($action==='admin_account_applications'){
     require_admin($u);
-    $records=db()->query("SELECT id,first_name,last_name,school_name,email,status,created_at,reviewed_at FROM account_applications ORDER BY CASE WHEN status='pending' THEN 0 ELSE 1 END,created_at DESC LIMIT 300")->fetchAll();
+    $records=db()->query("SELECT id,first_name,last_name,school_name,email,status,created_at,reviewed_at,notification_status,notification_attempts,notification_last_attempt_at,notification_sent_at FROM account_applications ORDER BY CASE WHEN status='pending' THEN 0 ELSE 1 END,created_at DESC LIMIT 300")->fetchAll();
     json_out(['success'=>true,'data'=>$records]);
 }
 if($action==='admin_account_review'){
@@ -231,9 +231,51 @@ if($action==='admin_account_review'){
     log_action('ADMIN_ACCOUNT_'.strtoupper($decision),$u,'AccountApplication',(string)$id,'Email '.$application['email']);
     $message=$decision==='approve'?'อนุมัติแล้ว ผู้สมัครสามารถยืนยันอีเมลผ่านปุ่มรีเซ็ตรหัสผ่านเพื่อตั้งรหัสผ่านครั้งแรก':'ไม่อนุมัติคำขอเรียบร้อยแล้ว';
     if($decision==='approve'){
-        $sent=account_mail((string)$application['email'],'อนุมัติบัญชีระบบกรีฑาแล้ว',
-            "บัญชีของคุณได้รับอนุมัติแล้ว\n\nเปิด https://bannawang.ac.th/bang1/run/ เลือกชื่อบัญชี แล้วกดรีเซ็ตรหัสผ่าน เพื่อรับรหัสยืนยันและตั้งรหัสผ่านครั้งแรก\n\nระบบบริหารจัดการกรีฑา กลุ่มโรงเรียนบางละมุง 1");
-        if(!$sent)$message.=' (ระบบส่งอีเมลแจ้งเตือนไม่สำเร็จ กรุณาตรวจสอบระบบอีเมลของโฮสต์)';
+        db()->prepare("UPDATE account_applications SET notification_status='sending',notification_attempts=1,notification_last_attempt_at=NOW() WHERE id=?")->execute([$id]);
+        $notification=account_send_approval_notice($id,(string)$application['email']);
+        $message.=$notification?' (ระบบรับคำสั่งส่งอีเมลแจ้งแล้ว)':' (ส่งอีเมลไม่สำเร็จ สามารถกดส่งอีกครั้งได้)';
     }
     json_out(['success'=>true,'message'=>$message]);
+}
+
+/**
+ * Track mail() transport acceptance, not actual recipient inbox delivery.
+ * The caller must have verified admin access before invoking this function.
+ */
+function account_send_approval_notice(int $id,string $email):bool {
+    $body="บัญชีของคุณได้รับอนุมัติแล้ว\n\nเปิด https://bannawang.ac.th/bang1/run/ เลือกชื่อบัญชี แล้วกดรีเซ็ตรหัสผ่าน เพื่อรับรหัสยืนยันและตั้งรหัสผ่านครั้งแรก\n\nระบบบริหารจัดการกรีฑา กลุ่มโรงเรียนบางละมุง 1";
+    $sent=false;
+    try{
+        $sent=account_mail($email,'อนุมัติบัญชีระบบกรีฑาแล้ว',$body);
+    }catch(Throwable $e){
+        error_log('Bang1 approval notification transport error: '.$e->getMessage());
+    }
+    try{
+        db()->prepare("UPDATE account_applications SET notification_status=?,notification_sent_at=IF(?='sent',NOW(),notification_sent_at) WHERE id=?")
+          ->execute([$sent?'sent':'failed',$sent?'sent':'failed',$id]);
+    }catch(Throwable $e){
+        error_log('Bang1 approval notification tracking error: '.$e->getMessage());
+    }
+    return $sent;
+}
+if($action==='admin_account_resend_notice'){
+    require_admin($u);
+    must_post();
+    $id=(int)($input['id']??0);
+    if($id<=0)json_out(['success'=>false,'message'=>'รายการไม่ถูกต้อง'],422);
+    // Reserve retry atomically, so parallel clicks do not send multiple messages.
+    // A stalled attempt can be retried after two minutes.
+    $reserve=db()->prepare("UPDATE account_applications SET notification_status='sending',
+        notification_attempts=notification_attempts+1, notification_last_attempt_at=NOW()
+        WHERE id=? AND status='approved'
+          AND (notification_last_attempt_at IS NULL OR notification_last_attempt_at<=NOW()-INTERVAL 120 SECOND)");
+    $reserve->execute([$id]);
+    if($reserve->rowCount()!==1)
+        json_out(['success'=>false,'message'=>'ส่งซ้ำเร็วเกินไป หรือบัญชียังไม่ได้อนุมัติ กรุณารอ 2 นาทีแล้วลองใหม่'],429);
+    $get=db()->prepare("SELECT email FROM account_applications WHERE id=? AND status='approved' LIMIT 1");
+    $get->execute([$id]);$email=(string)$get->fetchColumn();
+    $sent=account_send_approval_notice($id,$email);
+    log_action('ADMIN_ACCOUNT_NOTICE_RESEND',$u,'AccountApplication',(string)$id,$sent?'Mail transport accepted':'Mail transport rejected');
+    json_out(['success'=>true,'mailStatus'=>$sent?'sent':'failed',
+        'message'=>$sent?'ระบบรับคำสั่งส่งอีเมลอีกครั้งแล้ว โปรดให้ผู้สมัครตรวจสอบกล่องจดหมายและสแปม':'ส่งอีเมลไม่สำเร็จ กรุณาตรวจสอบการตั้งค่าอีเมลของโฮสต์']);
 }
