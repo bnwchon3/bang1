@@ -1596,7 +1596,34 @@ body{
     </div>
     <div class="btn-row"><button class="btn btn-primary" onclick="handleLogin()">เข้าสู่ระบบ</button></div>
   </div>
+  <a id="bang1DonateGalaxy" class="bang1-donate-galaxy" href="https://bannawang.ac.th/donate/" target="_blank" rel="noopener noreferrer" aria-label="ร่วมสนับสนุนการศึกษาโรงเรียนบ้านนาวัง เปิดหน้าซื้อบัตรการกุศล">
+    <span class="bang1-donate-stars" aria-hidden="true">✦ ✧ ✨ ✦ ✧</span>
+    <span class="bang1-donate-mascots" aria-hidden="true"><span class="bang1-donate-astronaut">🧑‍🚀</span><span class="bang1-donate-alien">👽</span></span>
+    <span class="bang1-donate-copy"><span class="bang1-donate-lead">🎟️ เชิญชวนซื้อบัตรการกุศล ระดมทุนการศึกษา</span><strong>โรงเรียนบ้านนาวัง</strong><span class="bang1-donate-caption">ร่วมสร้างโอกาสทางการศึกษาให้เด็ก ๆ ของเรา</span></span>
+    <span class="bang1-donate-action"><span aria-hidden="true">🛸</span><span>คลิกซื้อบัตรการกุศล <small>bannawang.ac.th/donate</small></span><span aria-hidden="true">➜</span></span>
+  </a>
 </section>
+<style>
+/* Donation invitation is confined to the athletics login page. */
+#page-login .bang1-donate-galaxy{position:relative;isolation:isolate;display:flex;align-items:center;gap:clamp(8px,1.5vw,22px);box-sizing:border-box;width:100%;min-height:110px;margin:16px 0;padding:12px clamp(12px,2vw,28px);overflow:hidden;border:2px solid #a855f7;border-radius:16px;background:radial-gradient(ellipse at 15% 75%,#3055c7 0,transparent 40%),radial-gradient(ellipse at 75% 10%,#8e21ba 0,transparent 42%),linear-gradient(110deg,#090e3c,#281068 55%,#102c7a);box-shadow:0 0 20px #a855f755,inset 0 0 16px #4dc8ff33;color:white;text-decoration:none;transition:transform .2s,box-shadow .2s}
+#page-login .bang1-donate-galaxy:hover{transform:translateY(-2px);box-shadow:0 0 30px #e879f988,inset 0 0 18px #4dc8ff44}
+#page-login .bang1-donate-galaxy:focus-visible{outline:3px solid #fde047;outline-offset:3px}
+#page-login .bang1-donate-stars{position:absolute;inset:3px 0 auto;text-align:center;white-space:pre;letter-spacing:clamp(15px,4vw,75px);color:#fff6a3;pointer-events:none;animation:bang1-twinkle 2.5s ease-in-out infinite}
+#page-login .bang1-donate-mascots{z-index:1;display:flex;align-items:center;gap:2px;flex:none;font-size:clamp(32px,4vw,58px);filter:drop-shadow(0 3px 6px #020617b0)}
+#page-login .bang1-donate-astronaut{animation:bang1-float 3.5s ease-in-out infinite}
+#page-login .bang1-donate-alien{font-size:.78em;animation:bang1-float 3.5s ease-in-out -1.5s infinite}
+#page-login .bang1-donate-copy{z-index:1;min-width:0;flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;line-height:1.22;text-shadow:0 2px 8px #15073d}
+#page-login .bang1-donate-lead{font-size:clamp(13px,1.6vw,24px);font-weight:900;color:#ffb7ec}
+#page-login .bang1-donate-copy strong{font-size:clamp(21px,2.7vw,38px);font-weight:900;color:#ffe45e;text-shadow:2px 3px #6720a2,0 0 10px #f472b6}
+#page-login .bang1-donate-caption{font-size:clamp(10px,.95vw,14px);color:#ecfaff}
+#page-login .bang1-donate-action{z-index:1;display:flex;align-items:center;gap:8px;flex:none;max-width:31%;padding:10px 13px;border:2px solid white;border-radius:999px;background:linear-gradient(110deg,#fff79d,#ffbb32);box-shadow:0 0 18px #facc15b5;color:#26236e;font-size:clamp(12px,1.05vw,17px);font-weight:900;text-align:center;animation:bang1-cta-pulse 2.5s ease-in-out infinite}
+#page-login .bang1-donate-action small{display:block;font-size:.76em;overflow-wrap:anywhere}
+@keyframes bang1-twinkle{0%,100%{opacity:.42}50%{opacity:1}}
+@keyframes bang1-float{0%,100%{transform:translateY(2px)}50%{transform:translateY(-5px)}}
+@keyframes bang1-cta-pulse{0%,100%{box-shadow:0 0 8px #facc1599}50%{box-shadow:0 0 23px #facc15}}
+@media(max-width:680px){#page-login .bang1-donate-galaxy{min-height:110px;gap:7px;padding:10px 8px}#page-login .bang1-donate-mascots{font-size:30px;flex-direction:column;gap:0}#page-login .bang1-donate-copy strong{font-size:clamp(18px,5vw,26px)}#page-login .bang1-donate-lead{font-size:clamp(11px,3vw,15px)}#page-login .bang1-donate-caption{font-size:10px}#page-login .bang1-donate-action{max-width:29%;padding:8px 5px;gap:2px;border-radius:15px;font-size:11px}#page-login .bang1-donate-action>span:first-child{display:none}}
+@media(prefers-reduced-motion:reduce){#page-login .bang1-donate-galaxy,#page-login .bang1-donate-galaxy *{animation:none!important;transition:none!important}}
+</style>
 <style>.password-wrap{position:relative;width:100%}.password-wrap .password-real{position:absolute;opacity:0;pointer-events:none;height:0;width:0;border:0;padding:0;margin:0}.password-wrap .password-display{width:100%}</style>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
