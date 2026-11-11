@@ -49,3 +49,13 @@
  .bang1-account-dialog{padding:15px;max-height:calc(100svh - 26px)}
  .bang1-account-dialog form>.btn{width:100%}
 }
+
+/* Approval email delivery indicators (transport acceptance != inbox delivery). */
+#admin-sheet-applications .bang1-account-table{min-width:1050px}
+.bang1-account-mail-state{display:inline-block;font-weight:700;color:#fde68a}
+.bang1-account-mail-state.is-sent{color:#86efac}
+.bang1-account-mail-state.is-failed{color:#fca5a5}
+#admin-sheet-applications td small{display:block;color:#94a3b8;font-size:.73rem;margin-top:3px;white-space:normal}
+.bang1-account-resend{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:7px 10px;border:1px solid #38bdf8;border-radius:9px;background:#0c4a6e;color:#e0f2fe;font-size:.8rem;font-weight:700;cursor:pointer}
+.bang1-account-resend:hover:not(:disabled){background:#075985;color:white}
+.bang1-account-resend:disabled{opacity:.5;cursor:not-allowed}
