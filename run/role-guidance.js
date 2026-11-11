@@ -127,6 +127,9 @@
    if(!dashboard)return;
    dashboard.hidden=!p;
    if(!p){const banner=document.getElementById('bang1DonateGalaxy');const form=document.querySelector('#page-login > .card:not(#bang1-login-guidance)');if(banner&&form)form.insertAdjacentElement('afterend',banner);dashboard.replaceChildren();return}
+   // Preserve the banner across repeated permission refreshes.
+   const existingDonateBanner=document.getElementById('bang1DonateGalaxy');
+   if(existingDonateBanner&&dashboard.contains(existingDonateBanner))dashboard.insertAdjacentElement('beforebegin',existingDonateBanner);
    dashboard.innerHTML=
     '<div class="role-guidance-header"><div><div class="role-guidance-overline">เข้าสู่ระบบเรียบร้อย</div>'+
     '<h2>สิทธิ์การใช้งาน: '+escapeHTML(p.name)+'</h2></div>'+
