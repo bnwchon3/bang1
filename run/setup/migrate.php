@@ -35,6 +35,18 @@ try {
    db()->exec('ALTER TABLE coaches MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT');
  $column=db()->query("SHOW COLUMNS FROM coaches LIKE 'auth_version'")->fetch();
  if(!$column)db()->exec('ALTER TABLE coaches ADD COLUMN auth_version INT NOT NULL DEFAULT 1');
+ // Mail delivery is tracked separately from account approval. Legacy approvals have unknown mail status.
+ foreach([
+   "notification_status" => "VARCHAR(16) NOT NULL DEFAULT 'not_sent'",
+   "notification_attempts" => "INT UNSIGNED NOT NULL DEFAULT 0",
+   "notification_last_attempt_at" => "DATETIME NULL",
+   "notification_sent_at" => "DATETIME NULL"
+ ] as $field=>$definition){
+   $column=db()->query("SHOW COLUMNS FROM account_applications LIKE '". $field ."'")->fetch();
+   if(!$column)db()->exec("ALTER TABLE account_applications ADD COLUMN ".$field." ".$definition);
+ }
+ // Existing approved requests predate delivery tracking; do not claim those emails were sent.
+ db()->exec("UPDATE account_applications SET notification_status='unknown' WHERE status='approved' AND notification_attempts=0 AND notification_status='not_sent'");
  // Access to LIVE athlete check-in is explicitly granted per Manager by Admin.
  // Existing and future Manager accounts are DENIED by default.
  $column=db()->query("SHOW COLUMNS FROM coaches LIKE 'can_live_checkin'")->fetch();
