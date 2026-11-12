@@ -1,0 +1,19 @@
+{
+  "id": "/bang1/run/",
+  "name": "Bang1 Athletics — กรีฑาบางละมุง 1",
+  "short_name": "Bang1 Athletics",
+  "lang": "th",
+  "start_url": "/bang1/run/",
+  "scope": "/bang1/run/",
+  "display": "standalone",
+  "background_color": "#f7f9fd",
+  "theme_color": "#0a366b",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
