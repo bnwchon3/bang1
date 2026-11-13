@@ -116,7 +116,7 @@
    getActiveSchoolNames:()=>request('schools').then(r=>toList(r).filter(x=>x.active==null||x.active==='ใช้งาน'||x.active==='Active').map(x=>x.name)),
    getRunnersForSchool:(school,role)=>request('runners').then(r=>toRunners(toList(r)).filter(x=>!school||!(['Admin','TopAdmin'].includes(sessionUser?.role))||x.SchoolName===school)),
    getRunnersForRegistration:()=>request('runners').then(r=>toRunners(toList(r))),
-   saveRunner:(form)=>request('save_runner',form).then(r=>({...r,message:'บันทึกข้อมูลนักวิ่งเรียบร้อยแล้ว'})),
+   saveRunner:(form)=>request('save_runner',form).then(r=>({...r,message:form.RunnerID?'บันทึกการแก้ไขแล้ว นักวิ่งเข้าสู่สถานะรอตรวจสอบอีกครั้ง':'บันทึกข้อมูลนักวิ่งเรียบร้อยแล้ว'})),
    deleteRunner:(id)=>request('delete_runner',{id}).then(r=>({...r,message:r.message||'ลบนักวิ่งเรียบร้อยแล้ว'})),
    uploadRunnerFile:async(payload)=>{
      const bytes=Uint8Array.from(atob(payload.base64Data),c=>c.charCodeAt(0));
