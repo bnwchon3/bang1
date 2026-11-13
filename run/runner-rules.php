@@ -31,6 +31,50 @@ function bang1_runner_age_at_year(int $birthYear, int $competitionYearBE): ?int 
     return $birthYear>0 && $age>=1 && $age<=100 ? $age : null;
 }
 
+/**
+ * Registration eligibility is determined by current SCHOOL level plus the
+ * maximum-age competition bracket, not by the fixture's old education tag.
+ *
+ * - Age 6: kindergarten only, only the 6-year bracket.
+ * - Age 8–12 brackets: primary school pupils age 8–12, plus the express
+ *   exception allowing a 12-year-old secondary pupil in the 12-year bracket.
+ * - Age 14–16 brackets: secondary pupils, or primary pupils age 8–12
+ *   moving UP in age group. No kindergarten promotion.
+ * A null age bracket means an open/other event that needs separate rules.
+ * Returns null if eligible; otherwise a human-readable refusal reason.
+ */
+function bang1_runner_eligibility_reason(
+    string $schoolLevel, ?int $age, ?int $eventAgeLimit
+): ?string {
+    $schoolLevel=trim($schoolLevel);
+    if(!in_array($schoolLevel,['อนุบาล','ประถม','มัธยม'],true))
+        return 'กรุณาระบุระดับที่กำลังศึกษา (อนุบาล/ประถม/มัธยม) ในข้อมูลนักวิ่งก่อนสมัคร';
+    if($age===null||$age<1||$age>100)
+        return 'กรุณาตรวจสอบปีเกิดของนักวิ่ง';
+    if($eventAgeLimit===null)return null;
+    if($eventAgeLimit<1||$eventAgeLimit>99)
+        return 'กำหนดรุ่นอายุของรายการแข่งขันไม่ถูกต้อง';
+    if($age>$eventAgeLimit)
+        return 'อายุ '.$age.' ปี เกินรุ่น '.$eventAgeLimit.' ปี';
+
+    if($eventAgeLimit===6)
+        return $schoolLevel==='อนุบาล'
+            ? null : 'รุ่น 6 ปีสงวนสำหรับนักเรียนอนุบาล ไม่เปิดให้ประถมหรือมัธยมสมัคร';
+
+    if($eventAgeLimit>=8&&$eventAgeLimit<=12){
+        if($schoolLevel==='ประถม'&&$age>=8&&$age<=12)return null;
+        if($schoolLevel==='มัธยม'&&$age===12&&$eventAgeLimit===12)return null;
+        return 'รุ่น 8–12 ปีสำหรับประถมอายุ 8–12 ปี (ยกเว้นมัธยมอายุ 12 ปีสมัครรุ่น 12 ปีได้)';
+    }
+
+    if($eventAgeLimit>=14&&$eventAgeLimit<=16){
+        if($schoolLevel==='มัธยม')return null;
+        if($schoolLevel==='ประถม'&&$age>=8&&$age<=12)return null;
+        return 'รุ่น 14–16 ปีสำหรับมัธยม หรือประถมอายุ 8–12 ปีที่ข้ามรุ่นขึ้นมา';
+    }
+    return 'รุ่นอายุนี้ไม่อยู่ในกติกาการแข่งขัน (6, 8–12, 14–16 ปี)';
+}
+
 /** Counts every registered athlete, including relays, without trusting a form. */
 function bang1_runner_registration_member_count(string $csv): int {
     $ids = array_filter(array_map('trim', explode(',', $csv)),
