@@ -1719,7 +1719,7 @@ document.addEventListener('DOMContentLoaded',function(){
 </script>
       <section class="page" id="page-schedule">
   <h1>รายการจัดแข่งขัน</h1>
-  <div class="subtitle">แสดงข้อมูลจากชีต <b>รายการวิ่ง</b> (หลังจากสุ่มฮีทและลู่แล้ว)</div>
+  <div class="subtitle">แสดงรายการแข่งขันและรายชื่อโรงเรียนจากใบสมัครในระบบปัจจุบัน (นักวิ่งที่ยังไม่จัดฮีทก็แสดงได้)</div>
   <div class="card">
     <div class="card-header" id="bang1ScheduleHeader">
       <div class="card-title">ตารางรายการแข่งขัน (รายการจะสมบูรณ์หลังการรับสมัครเสร็จสิ้น)</div>
@@ -6608,9 +6608,7 @@ function buildProgramHtml(programItems) {
     // ----- ค่า F, K และจำนวนที่สมัครจาก column I (TeamCount) -----
     const roundF = (item.Remark || '').toString().trim();  // F
     const stageK = (item.Stage  || '').toString().trim();  // K
-    const teamCountStr = (item.TeamCount == null)
-      ? ''
-      : String(item.TeamCount).trim();                     // I
+    const teamCountStr = String(item.RegisteredTeams ?? 0); // นับใบสมัครปัจจุบัน
 
     // ----- หมายเหตุตามกติกา -----
     let displayRemark = '';
@@ -6669,7 +6667,7 @@ function buildProgramHtml(programItems) {
 
               return `${laneText} : ${escSchedule(s.SchoolName || '')}${runnerInfo}`;
             }).join('<br>')
-          : 'ไม่มีโรงเรียนที่สมัครในรายการนี้');
+          : 'ยังไม่มีใบสมัครในระบบสำหรับรายการหรือฮีทนี้');
 
     return `
       <div class="program-item">
@@ -6710,15 +6708,16 @@ function printScheduleProgram() {
     return;
   }
 
-  // กรอง: column I (TeamCount) = 0 → ไม่พิมพ์ในสูจิบัตรเช่นกัน
+  // Show active entrants even where original fixture rows had zero planned teams.
   const events = scheduleEventsData.filter(ev => {
-    const v = ev.TeamCount;           // I
-    if (v === null || v === undefined || v === '') return true; // ไม่มีค่า → ให้พิมพ์
-    return Number(v) !== 0;           // เอาเฉพาะที่ไม่ใช่ 0
+    if (Number(ev.RegisteredTeams || 0) > 0) return true;
+    const planned = ev.TeamCount;
+    return planned === null || planned === undefined ||
+      planned === '' || Number(planned) !== 0;
   });
 
   if (!events.length) {
-    alert('ไม่มีรายการที่ต้องพิมพ์ (column I = 0 ทั้งหมด)');
+    alert('ยังไม่มีรายการแข่งขันที่ต้องพิมพ์');
     return;
   }
 
@@ -6729,6 +6728,7 @@ function printScheduleProgram() {
 
   events.forEach(function(ev, idx) {
     const eventName = ev.EventName || '';
+    const eventId   = ev.EventID || '';
     const heat      = ev.Heat || '';
 
     google.script.run
@@ -6744,11 +6744,8 @@ function printScheduleProgram() {
           return laneA - laneB;
         });
 
-        // จำนวนที่สมัครดึงจาก column I (TeamCount) เท่านั้น
-        let teamCount = '';
-        if (ev.TeamCount != null && ev.TeamCount !== '') {
-          teamCount = ev.TeamCount;
-        }
+        // Counts and names refer to the same registration data.
+        const teamCount = Number(ev.RegisteredTeams || 0);
 
         programItems.push({
           index: idx + 1,
@@ -6756,7 +6753,7 @@ function printScheduleProgram() {
           Heat: heat,
           Remark: ev.Remark || '',  // F
           Stage: ev.Stage  || '',   // K
-          TeamCount: teamCount,     // I
+          RegisteredTeams: teamCount,
           schools: list.map(d => ({
             SchoolName: d.SchoolName || '',
             Lane: d.Lane || '',
