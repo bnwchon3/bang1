@@ -6308,11 +6308,13 @@ function loadSchedule() {
       tbody.innerHTML = '';
       rows = rows || [];
 
-      // --- กรอง: ถ้า column I (TeamCount) = 0 → ไม่ต้องแสดงในตาราง ---
+      // Actual registrations are authoritative even when the original plan
+      // listed zero participating teams.
       rows = rows.filter(function (r) {
-        const v = r.TeamCount;
-        if (v === null || v === undefined || v === '') return true; // ถ้าเว้นว่าง ให้แสดง
-        return Number(v) !== 0; // ตัดเฉพาะที่เป็น 0 ออก
+        if (Number(r.RegisteredTeams || 0) > 0) return true;
+        const planned = r.TeamCount;
+        return planned === null || planned === undefined ||
+          planned === '' || Number(planned) !== 0;
       });
 
       if (!rows.length) {
@@ -6331,22 +6333,21 @@ function loadSchedule() {
         tr.className         = 'schedule-main-row';
         tr.dataset.rowId     = rowId;
         tr.dataset.eventName = r.EventName || '';
+        tr.dataset.eventId   = String(r.EventID || '');
         tr.dataset.heat      = r.Heat      || '';
         tr.dataset.open      = '0';
 
         const roundF   = (r.Remark || '').toString().trim(); // F
         const stageK   = (r.Stage  || '').toString().trim(); // K
-        const totalStr = (r.TotalTeams == null)
-          ? ''
-          : String(r.TotalTeams).trim();                     // J
+        const registered = Number(r.RegisteredTeams ?? 0);
+        const actualTeams = Number.isFinite(registered) ? registered : 0;
 
-        // ---------- คอลัมน์ "จำนวนโรงเรียนที่แข่งขัน" ----------
+        // Both the detail rows and the team count come from real registrations.
         let teamText = '';
         if (roundF === 'คัดเลือก' && stageK === 'ชิงชนะเลิศ') {
-          // F = คัดเลือก และ K = ชิงชนะเลิศ → แสดงข้อความแทนตัวเลข J
           teamText = 'รอผลการแข่งขันรอบคัดเลือก';
         } else {
-          teamText = totalStr;
+          teamText = String(actualTeams);
         }
 
         // ---------- คอลัมน์ "หมายเหตุ" ----------
@@ -6399,6 +6400,7 @@ function onScheduleRowClick(e) {
   const rowId     = tr.dataset.rowId;
   const isOpen    = tr.dataset.open === '1';
   const eventName = tr.dataset.eventName;
+  const eventId   = tr.dataset.eventId;
   const heat      = tr.dataset.heat;
 
   if (!eventName) return;
@@ -6460,7 +6462,7 @@ function onScheduleRowClick(e) {
         emptyTr.dataset.parentId = rowId;
         emptyTr.innerHTML = `
           <td></td>
-          <td colspan="9" style="text-align:center;">ไม่มีโรงเรียนที่สมัครในรายการนี้</td>
+          <td colspan="9" style="text-align:center;">ยังไม่มีใบสมัครในระบบสำหรับรายการหรือฮีทนี้</td>
         `;
         tbody.insertBefore(emptyTr, tr.nextElementSibling);
         return;
@@ -6535,7 +6537,7 @@ function onScheduleRowClick(e) {
       `;
       tbody.insertBefore(errTr, tr.nextElementSibling);
     })
-    .getEventRunnersForSchedule(eventName, heat);
+    .getEventRunnersForSchedule(eventName, heat, eventId);
 }
 
 /*************** พิมพ์สูจิบัตร (ใช้ scheduleEventsData) ***************/
@@ -6793,7 +6795,7 @@ function printScheduleProgram() {
           alert('โหลดข้อมูลบางรายการไม่สำเร็จ ไม่สามารถพิมพ์สูจิบัตรได้');
         }
       })
-      .getEventRunnersForSchedule(eventName, heat);
+      .getEventRunnersForSchedule(eventName, heat, eventId);
   });
 }
 
