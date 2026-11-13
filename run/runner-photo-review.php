@@ -13,7 +13,7 @@ function runner_photo_review_mode(array $runner): string {
     $verified=trim((string)($runner['verified_photo_url']??''));
     $status=trim((string)($runner['status']??''));
     return $verified!=='' && $current!=='' && $current!==$verified &&
-        $status!=='ผ่านการตรวจสอบ' ? 'face' : 'document';
+        $status==='รอตรวจภาพอีกครั้ง' ? 'face' : 'document';
 }
 function runner_photo_can_approve(array $runner): bool {
     if(trim((string)($runner['photo_url']??''))==='')return false;
