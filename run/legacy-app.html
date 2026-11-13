@@ -5568,8 +5568,16 @@ const proofBtnExtraClass = hasProof
       dl.innerHTML = '';
 
       const { gender: eventGender, ageLimit } = getCurrentEventFilters();
+      if (!window.Bang1RunnerEligibility || !window.Bang1RunnerEligibility.check) {
+        console.error('Athlete age/level eligibility module was not loaded');
+        return;
+      }
+      const schoolScope = isRunnerGlobalAdmin()
+        ? String(document.getElementById('regSchool')?.value || '').trim()
+        : String(currentUser?.schoolName || '').trim();
 
       (runnersData || []).forEach(r => {
+        if (schoolScope && String(r.SchoolName || '') !== schoolScope) return;
         const name = `${r.FirstName || ''} ${r.LastName || ''}`.trim();
         if (!name) return;
 
@@ -5587,20 +5595,22 @@ const proofBtnExtraClass = hasProof
 
         if (!runnerGender || !ageNum) return;
         if (eventGender && runnerGender !== eventGender) return;
-        if (ageLimit != null && ageNum > ageLimit) return;
+        const eligibility = window.Bang1RunnerEligibility.check(r.Level,ageNum,ageLimit);
+        if (!eligibility.allowed) return;
 
-        const extra = [];
-        if (ageNum) extra.push(`อายุ ${ageNum} ปี`);
-        const extraText = extra.length ? ` (${extra.join(' / ')})` : '';
-
+        const extra = [r.Level || 'ไม่ระบุระดับ', `อายุ ${ageNum} ปี`];
         const opt = document.createElement('option');
-        opt.value = `${name}${extraText}`;
+        opt.value = `${name} (${extra.join(' / ')}) [ID:${r.RunnerID}]`;
         dl.appendChild(opt);
       });
     }
 
     function findRunnerFromInputValue(raw) {
       if (!raw) return null;
+      const runnerId = parseRunnerIdFromInput(String(raw));
+      if (runnerId) {
+        return (runnersData || []).find(r=>String(r.RunnerID)===String(runnerId)) || null;
+      }
       let baseName = raw;
       const cut = baseName.indexOf(' (');
       if (cut >= 0) baseName = baseName.slice(0, cut).trim();
@@ -5694,6 +5704,12 @@ const proofBtnExtraClass = hasProof
 
       const inputs = document.querySelectorAll('#runnerSelectArea input[data-runner-index]');
       const runnerIds = [];
+      const filters = getCurrentEventFilters();
+      const eligibilityApi = window.Bang1RunnerEligibility;
+      if (!eligibilityApi?.check) {
+        alert('ยังไม่สามารถตรวจสอบสิทธิ์รุ่นอายุได้ กรุณารีเฟรชหน้าเว็บ');
+        return null;
+      }
 
       const nameMap = {};
       (runnersData || []).forEach(rr => {
@@ -5719,6 +5735,25 @@ const proofBtnExtraClass = hasProof
       if (!runnerIds.length) {
         alert('กรุณาเลือกนักวิ่งอย่างน้อย 1 คน');
         return null;
+      }
+
+      for (const id of runnerIds) {
+        const athlete = (runnersData || []).find(r=>String(r.RunnerID)===String(id));
+        if (!athlete) {
+          alert('ไม่พบข้อมูลนักวิ่งที่เลือก กรุณาค้นหาชื่อใหม่');
+          return null;
+        }
+        const athleteName = `${athlete.FirstName || ''} ${athlete.LastName || ''}`.trim();
+        const genderName = String(athlete.Gender || '').trim();
+        if (filters.gender && filters.gender !== genderName) {
+          alert(athleteName + ': เพศไม่ตรงกับรายการแข่งขัน');
+          return null;
+        }
+        const eligibility = eligibilityApi.check(athlete.Level,Number(getRunnerAge(athlete)),filters.ageLimit);
+        if (!eligibility.allowed) {
+          alert(athleteName + ': ' + eligibility.reason);
+          return null;
+        }
       }
 
       let schoolName = currentUser ? currentUser.schoolName : '';
@@ -6205,13 +6240,8 @@ const proofBtnExtraClass = hasProof
         if (id && runnerMap[id]) {
           const rr = runnerMap[id];
           const fullName = `${rr.FirstName || ''} ${rr.LastName || ''}`.trim() || nameSheet || '';
-          const levelR   = rr.Level || '';
-          const ageR     = rr.Age || rr.AGE || '';
-          const extra = [];
-          if (levelR) extra.push(levelR);
-          if (ageR)   extra.push(`อายุ ${ageR} ปี`);
-          const extraText = extra.length ? ` (${extra.join(' / ')})` : '';
-          displayVal = `${fullName}${extraText}`;
+          const ageR = rr.Age || rr.AGE || '';
+          displayVal = `${fullName} (${rr.Level || 'ไม่ระบุระดับ'} / อายุ ${ageR} ปี) [ID:${id}]`;
         }
         inputs[i].value = displayVal;
       }
