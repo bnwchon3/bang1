@@ -3,6 +3,7 @@
 <head>
   <!-- Original Apps Script UI preserved; only the backend transport is changed. -->
   <script src="legacy-adapter.js?v=20261108-login-staff-nonblocking"></script>
+  <script src="runner-eligibility.js?v=20261113-school-age-12-exception"></script>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
   <meta name="theme-color" content="#0a366b">
@@ -1818,14 +1819,21 @@ document.addEventListener('DOMContentLoaded',function(){
       <div class="runner-form-col">
         <input id="runnerId" type="hidden">
 
-        <!-- Keep a legacy education-level value on edit, but stop requiring a
-             grade group to enter an AGE-based running competition. -->
-        <input id="runnerLevel" type="hidden" value="">
+        <div class="field">
+          <label for="runnerLevel">ระดับที่กำลังศึกษาอยู่จริง</label>
+          <select id="runnerLevel" required>
+            <option value="">-- เลือกระดับปัจจุบัน --</option>
+            <option value="อนุบาล">อนุบาล</option>
+            <option value="ประถม">ประถม</option>
+            <option value="มัธยม">มัธยม</option>
+          </select>
+          <small style="color:#93c5fd;">ใช้ระดับที่เรียนจริง ไม่ใช่ระดับของรุ่นแข่งขัน</small>
+        </div>
         <div class="field">
           <label for="runnerAgePreview">อายุจากปี พ.ศ. เกิด (คำนวณอัตโนมัติ)</label>
           <input id="runnerAgePreview" type="text" readonly
             placeholder="กรอกปีเกิดเพื่อแสดงอายุ">
-          <small style="color:#93c5fd;">สมัครตามรุ่นอายุและเพศ ไม่ต้องแยกอนุบาล ประถม หรือมัธยม</small>
+          <small style="color:#93c5fd;">อนุบาลรุ่น 6 ปี · ประถมรุ่น 8–12 ปี (ข้ามไป 14–16 ปีได้) · มัธยมรุ่น 14–16 ปี (อายุ 12 ปีลงรุ่น 12 ปีได้)</small>
         </div>
 
         <div class="field">
@@ -1924,6 +1932,7 @@ document.addEventListener('DOMContentLoaded',function(){
               <th>#</th>
               <th>ชื่อ - สกุล</th>
               <th class="runner-admin-only-col">โรงเรียน</th>
+              <th>ระดับที่เรียน</th>
               <th>เพศ</th>
               <th>อายุ</th>
               <th>สถานะ</th>
@@ -1933,7 +1942,7 @@ document.addEventListener('DOMContentLoaded',function(){
             </tr>
           </thead>
           <tbody id="runnerTableBody">
-            <tr><td colspan="9">ยังไม่มีข้อมูล</td></tr>
+            <tr><td colspan="10">ยังไม่มีข้อมูล</td></tr>
           </tbody>
         </table>
       </div>
@@ -4829,7 +4838,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateRunnerInputHighlight() {
-      ['runnerFirstName','runnerLastName','runnerCitizen','runnerBirthYear','runnerGender'].forEach(id => {
+      ['runnerLevel','runnerFirstName','runnerLastName','runnerCitizen','runnerBirthYear','runnerGender'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         if (!el.value) el.classList.add('input-empty');
@@ -5004,7 +5013,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       tbody.innerHTML = '';
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="' + (admin ? '9' : '7') + '">ไม่พบนักวิ่งตามเงื่อนไขที่เลือก</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="' + (admin ? '10' : '8') + '">ไม่พบนักวิ่งตามเงื่อนไขที่เลือก</td></tr>';
         return;
       }
 
@@ -5067,6 +5076,7 @@ const proofBtnExtraClass = hasProof
             </div>
           </td>
           <td class="runner-admin-only-col">${escapeRunnerCell(r.SchoolName || '')}</td>
+          <td style="text-align:center;">${escapeRunnerCell(r.Level || 'ยังไม่ระบุ')}</td>
           <td style="text-align:center;">${r.Gender || ''}</td>
           <td style="text-align:center;">${age}</td>
           <td style="text-align:center;">
@@ -5177,7 +5187,7 @@ const proofBtnExtraClass = hasProof
         document.getElementById('runnerAdminSchoolFilter')?.focus();
         return;
       }
-      if (!form.FirstName || !form.LastName || !form.CitizenID || !form.BirthYear || !form.Gender) {
+      if (!form.Level || !form.FirstName || !form.LastName || !form.CitizenID || !form.BirthYear || !form.Gender) {
         alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
         return;
       }
