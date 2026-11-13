@@ -133,10 +133,21 @@
    deleteRegistration:(id)=>request('delete_registration',{id}).then(r=>({...r,message:'ลบรายการสมัครเรียบร้อยแล้ว'})),
    getAvailableEventsForDropdown:(user,school)=>availableEvents(user,school),
    getEventsForSchedule:()=>sessionUser?request('schedule').then(r=>toList(r)):Promise.resolve([]),
-   getEventRunnersForSchedule:(eventName,heat)=>request('schedule').then(r=>
-     toList(r).filter(e=>e.EventName===eventName&&String(e.Heat||'')===String(heat||''))
-      .flatMap(e=>e.entries||[]).map(x=>({SchoolName:x.SchoolName,RunnerName:x.RunnerName,Lane:x.Lane}))
-      .sort((a,b)=>Number(a.Lane)-Number(b.Lane))),
+   getEventRunnersForSchedule:(eventName,heat,eventId)=>request('schedule').then(r=>{
+     const events=toList(r);
+     // Always use the unique source event ID: equal event names appear in
+     // several heats and can have different eligible entrants.
+     const matches=eventId!=null&&String(eventId)!==''
+       ? events.filter(e=>String(e.EventID)===String(eventId))
+       : events.filter(e=>e.EventName===eventName&&String(e.Heat||'')===String(heat||''));
+     return matches.flatMap(e=>e.entries||[])
+       .map(x=>({SchoolName:x.SchoolName,RunnerName:x.RunnerName,
+         Heat:x.Heat,Lane:x.Lane}))
+       .sort((a,b)=>{
+         const la=Number(a.Lane)||9999, lb=Number(b.Lane)||9999;
+         return la-lb;
+       });
+   }),
    autoAssignHeatsAndLanes:()=>request('auto_heats',{}).then(r=>({...r,message:'จัดฮีทและลู่เรียบร้อย'})),
    getAdminConfig:config,
    getUploadSystemStatus:()=>config().then(r=>({photo:r.features.photoEdit?.isOpen!==false,idproof:r.features.proofEdit?.isOpen!==false})),
