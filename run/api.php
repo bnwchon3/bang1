@@ -5,6 +5,7 @@ session_open();
 $action=(string)($_GET['action']??'');
 $input=body();
 require_once __DIR__.'/runner-photo-review.php';
+require_once __DIR__.'/runner-rules.php';
 require_once __DIR__.'/drive-bridge-error.php';
 function rows(string $sql,array $params=[]):array{$s=db()->prepare($sql);$s->execute($params);return $s->fetchAll();}
 function single(string $sql,array $params=[]):?array{$x=rows($sql,$params);return $x[0]??null;}
@@ -123,10 +124,10 @@ if($action==='save_runner'){
  if($id&&!$old)json_out(['success'=>false,'message'=>'ไม่พบนักวิ่ง'],404);
  if($old){school_access($u,$old['school_name']);if(in_array($old['status'],['ผ่านการตรวจสอบ','รอตรวจภาพอีกครั้ง'],true))json_out(['success'=>false,'message'=>'ไม่สามารถแก้ไขนักวิ่งที่อยู่ในสถานะผ่านการตรวจสอบหรือรอตรวจภาพอีกครั้งแล้ว'],403);}
  $first=trim((string)($input['FirstName']??''));$last=trim((string)($input['LastName']??''));
- $citizen=preg_replace('/\\D/','',(string)($input['CitizenID']??''));
+ $citizen=bang1_normalize_citizen_id((string)($input['CitizenID']??''));
  $year=(int)($input['BirthYear']??0);
  $level=trim((string)($input['Level']??''));$gender=trim((string)($input['Gender']??''));
- if(!$first||!$last||!in_array($level,['อนุบาล','ประถม','มัธยม'],true)||!in_array($gender,['ชาย','หญิง'],true)||!preg_match('/^\\d{13}$/',$citizen)||$year<2400||$year>(int)date('Y')+543)json_out(['success'=>false,'message'=>'กรอกข้อมูลนักวิ่งให้ถูกต้อง'],422);
+ if(!$first||!$last||!in_array($level,['อนุบาล','ประถม','มัธยม'],true)||!in_array($gender,['ชาย','หญิง'],true)||!bang1_valid_citizen_id($citizen)||$year<2400||$year>(int)date('Y')+543)json_out(['success'=>false,'message'=>'กรอกข้อมูลนักวิ่งให้ถูกต้อง'],422);
  // Preserve Google Apps Script rule: a citizen ID belongs to only one runner.
  $duplicate=single('SELECT id FROM runners WHERE citizen_id=? AND id<>? LIMIT 1',[$citizen,$id]);
  if($duplicate)json_out(['success'=>false,'message'=>'ไม่สามารถบันทึกได้: เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนนักวิ่งแล้ว'],409);
@@ -140,14 +141,56 @@ if($action==='save_runner'){
  json_out(['success'=>true,'id'=>$id]);
 }
 if($action==='delete_runner'){
- must_post();require_editor($u);require_feature('รับลงทะเบียนนักวิ่ง');
- $id=(int)($input['id']??0);$r=single('SELECT * FROM runners WHERE id=?',[$id]);
- if(!$r)json_out(['success'=>false,'message'=>'ไม่พบข้อมูล'],404);
- school_access($u,$r['school_name']);
- if(in_array($r['status'],['ผ่านการตรวจสอบ','รอตรวจภาพอีกครั้ง'],true))json_out(['success'=>false,'message'=>'นักวิ่งอยู่ในสถานะที่ล็อกการแก้ไขแล้ว'],403);
- $check=single('SELECT COUNT(*) c FROM registrations WHERE FIND_IN_SET(?,REPLACE(runner_ids," ",""))>0',[$id]);
- if((int)$check['c'])json_out(['success'=>false,'message'=>'มีการสมัครแข่งขันอยู่ กรุณาลบรายการสมัครก่อน'],409);
- db()->prepare('DELETE FROM runners WHERE id=?')->execute([$id]);log_action('RUNNER_DELETE',$u,'Runner',(string)$id);json_out(['success'=>true]);
+  must_post();require_editor($u);require_feature('รับลงทะเบียนนักวิ่ง');
+  $id=(int)($input['id']??0);
+  if($id<=0)json_out(['success'=>false,'message'=>'กรุณาเลือกนักวิ่งก่อนลบ'],422);
+  try {
+    db()->beginTransaction();
+    $r=single('SELECT * FROM runners WHERE id=? FOR UPDATE',[$id]);
+    if(!$r)throw new DomainException('ไม่พบนักวิ่งที่ต้องการลบ');
+    school_access($u,$r['school_name']);
+    // Approved athletes can be deleted, but never erase an active race result.
+    // Current single-athlete entries without results may be cancelled together.
+    $regs=rows('SELECT id,event_id,event_name,category,level,runner_ids FROM registrations WHERE FIND_IN_SET(?,REPLACE(runner_ids," ",""))>0 FOR UPDATE',[$id]);
+    foreach($regs as $reg){
+      $hasResult=single('SELECT er.id FROM event_results er LEFT JOIN events e ON e.id=er.event_id
+        WHERE er.event_id=? OR (e.name=? AND e.category <=> ? AND e.level <=> ?) LIMIT 1',
+        [$reg['event_id'],$reg['event_name'],$reg['category'],$reg['level']])!==null;
+      if(!$hasResult){
+        // Legacy rankings in events also represent published current results.
+        $hasResult=single("SELECT id FROM events WHERE (id=? OR (name=? AND category <=> ? AND level <=> ?))
+          AND ranking_json IS NOT NULL AND TRIM(ranking_json) NOT IN ('','{}','[]','null') LIMIT 1",
+          [$reg['event_id'],$reg['event_name'],$reg['category'],$reg['level']])!==null;
+      }
+      $hasCheckin=single('SELECT registration_id FROM race_checkins WHERE registration_id=? LIMIT 1',[$reg['id']])!==null
+          ||single('SELECT registration_id FROM race_athlete_checkins WHERE registration_id=? LIMIT 1',[$reg['id']])!==null;
+      $block=bang1_runner_delete_block_reason($hasResult,$hasCheckin,
+          bang1_runner_registration_member_count((string)$reg['runner_ids']));
+      if($block!==null)throw new DomainException($block.' (รายการ: '.$reg['event_name'].')');
+    }
+    // Delete only unscored, unchecked single-athlete entries. Historical
+    // race_history_results / race_results remain untouched.
+    foreach($regs as $reg){
+      db()->prepare('DELETE FROM registrations WHERE id=?')->execute([$reg['id']]);
+      log_action('REG_DELETE_WITH_RUNNER',$u,'Registration',(string)$reg['id'],
+          'ยกเลิกใบสมัครเดี่ยวเนื่องจากนักวิ่งย้ายโรงเรียน');
+    }
+    db()->prepare('DELETE FROM runners WHERE id=?')->execute([$id]);
+    log_action('RUNNER_DELETE',$u,'Runner',(string)$id,
+        'ลบนักวิ่งจาก '.$r['school_name'].' ('.trim($r['first_name'].' '.$r['last_name']).')');
+    db()->commit();
+    json_out(['success'=>true,'deletedRegistrations'=>count($regs),
+      'message'=>count($regs)
+        ?'ลบนักวิ่งแล้ว และยกเลิกใบสมัครเดี่ยวที่ยังไม่มีผลการแข่งขัน '.count($regs).' รายการ'
+        :'ลบนักวิ่งเรียบร้อยแล้ว']);
+  }catch(DomainException $e){
+    if(db()->inTransaction())db()->rollBack();
+    json_out(['success'=>false,'message'=>$e->getMessage()],409);
+  }catch(Throwable $e){
+    if(db()->inTransaction())db()->rollBack();
+    error_log('Bang1 runner deletion failed: '.$e->getMessage());
+    json_out(['success'=>false,'message'=>'ไม่สามารถลบนักวิ่งได้ กรุณาลองอีกครั้ง'],500);
+  }
 }
 if($action==='update_status'){
  must_post();require_reviewer($u);
