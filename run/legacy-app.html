@@ -2120,6 +2120,9 @@ document.addEventListener('DOMContentLoaded',function(){
       allowEdit = true;
     }
 
+    // Admin can maintain school records even after the public registration window closes.
+    if (typeof currentUser !== 'undefined' && currentUser &&
+        ['Admin','TopAdmin'].includes(currentUser.role)) allowEdit = true;
     runnerAllowEdit = allowEdit;
 
     // ---- ปุ่มบันทึก / ลบ / ล้างฟอร์ม ----
