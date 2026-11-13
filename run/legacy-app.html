@@ -5687,6 +5687,10 @@ const proofBtnExtraClass = hasProof
       if (!overview) return;
       const admin = isGlobalRegistrationAdmin();
       overview.style.display = admin ? 'block' : 'none';
+      const printBtn = document.getElementById('btnPrintRegSummary');
+      if (printBtn) printBtn.textContent = admin
+        ? '🖨️ พิมพ์รายการสมัครตามตัวกรอง'
+        : '🖨️ พิมพ์รายการสมัครกรีฑาของโรงเรียน';
       if (!admin) return;
 
       const populate = (id, allLabel, values) => {
