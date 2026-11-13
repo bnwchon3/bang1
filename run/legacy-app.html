@@ -4469,6 +4469,7 @@ function printRegSummary() {
           btn.classList.toggle('active', mode === 'all');
         });
         loadRunners();
+        loadRunnerAdminSchoolOptions();
 
       } else if (pageName === 'register' && currentUser) {
         resetRegistrationForm();
@@ -4751,7 +4752,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Counts are calculated from the full school roster, not the currently filtered/search result.
     // This keeps the numbers stable when users switch between filter pills.
     function updateRunnerFilterCounts() {
-      const roster = Array.isArray(runnersData) ? runnersData : [];
+      const roster = getVisibleRunnerRoster();
       const counts = { all: roster.length, male: 0, female: 0, pass: 0, pending: 0, recheckphoto: 0, fail: 0 };
       const labels = {
         all: 'ทั้งหมด',
@@ -4858,7 +4859,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const schoolEl = document.getElementById('runnerSchool');
-      if (schoolEl && currentUser) schoolEl.value = currentUser.schoolName || '';
+      if (schoolEl && currentUser) schoolEl.value = getSelectedRunnerSchool();
 
       setRunnerEditMode(false);
       updateRunnerInputHighlight();
@@ -4875,11 +4876,15 @@ document.addEventListener('DOMContentLoaded', () => {
       setTableLoading('runnerTableWrap', true);
       google.script.run.withSuccessHandler(data => {
         setTableLoading('runnerTableWrap', false);
-        runnersData = data || [];
+        runnersData = Array.isArray(data) ? data : [];
+        refreshRunnerAdminSchoolOptions();
         renderRunnerTable();
         buildBirthYearDatalist();
         initRunnerFormUI();
-      }).getRunnersForSchool(currentUser.schoolName, currentUser.role);
+      }).withFailureHandler(err => {
+        setTableLoading('runnerTableWrap', false);
+        alert('ไม่สามารถโหลดรายชื่อนักวิ่งได้: ' + (err?.message || 'เกิดข้อผิดพลาด'));
+      }).getRunnersForSchool(isRunnerGlobalAdmin() ? '' : currentUser.schoolName, currentUser.role);
     }
 
     // tooltip กลาง
@@ -4935,11 +4940,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const tbody = document.getElementById('runnerTableBody');
       if (!tbody) return;
 
+      const admin = isRunnerGlobalAdmin();
+      document.getElementById('page-runners')?.classList.toggle('runner-admin-roster', admin);
       updateRunnerFilterCounts();
       const searchInput = document.getElementById('runnerSearchInput');
       const q = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-      let list = (runnersData || []).slice();
+      let list = getVisibleRunnerRoster().slice();
 
       list = list.filter(r => {
         const gender = (r.Gender || '').toString().trim();
@@ -4959,22 +4966,34 @@ document.addEventListener('DOMContentLoaded', () => {
         list = list.filter(r => {
           const fullName = `${r.FirstName || ''} ${r.LastName || ''}`.toLowerCase();
           const level    = (r.Level || '').toLowerCase();
-          return fullName.includes(q) || level.includes(q);
+          const school   = (r.SchoolName || '').toLowerCase();
+          return fullName.includes(q) || level.includes(q) || school.includes(q);
         });
       }
 
       list.sort((a, b) => (Number(getRunnerAge(a) || 0) - Number(getRunnerAge(b) || 0)));
 
       const titleEl = document.getElementById('runnerTableTitle');
+      const schoolName = getSelectedRunnerSchool();
+      const visibleRoster = getVisibleRunnerRoster();
       if (titleEl && currentUser) {
-        const total = (runnersData || []).length;
-        const schoolName = currentUser.schoolName || '';
-        titleEl.textContent = `รายการนักวิ่งของ${schoolName} ลงทะเบียนแล้วจำนวน ${total} คน`;
+        if (admin && !schoolName) {
+          const schools = new Set(visibleRoster.map(r=>String(r.SchoolName || '').trim()).filter(Boolean));
+          titleEl.textContent = `นักวิ่งจากทุกโรงเรียน ลงทะเบียนแล้ว ${visibleRoster.length} คน (${schools.size} โรงเรียน)`;
+        } else {
+          titleEl.textContent = `รายการนักวิ่งของ${schoolName} ลงทะเบียนแล้วจำนวน ${visibleRoster.length} คน`;
+        }
+      }
+      const stats = document.getElementById('runnerAdminSchoolStats');
+      if (admin && stats) {
+        stats.textContent = schoolName
+          ? `โรงเรียนที่เลือกมีนักวิ่ง ${visibleRoster.length} คน จากทั้งหมด ${runnersData.length} คน`
+          : `รวมทั้งหมด ${runnersData.length} คน · เลือกโรงเรียนเพื่อเพิ่มนักวิ่งใหม่`;
       }
 
       tbody.innerHTML = '';
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="8">ไม่พบนักวิ่งตามเงื่อนไขที่เลือก</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="' + (admin ? '10' : '8') + '">ไม่พบนักวิ่งตามเงื่อนไขที่เลือก</td></tr>';
         return;
       }
 
@@ -5036,6 +5055,7 @@ const proofBtnExtraClass = hasProof
               ${avatarHTML}<span>${displayName}</span>
             </div>
           </td>
+          <td class="runner-admin-only-col">${escapeRunnerCell(r.SchoolName || '')}</td>
           <td style="text-align:center;">${r.Level || ''}</td>
           <td style="text-align:center;">${r.Gender || ''}</td>
           <td style="text-align:center;">${age}</td>
@@ -5055,7 +5075,28 @@ const proofBtnExtraClass = hasProof
               onclick="event.stopPropagation(); openUploadDialog(${r.RunnerID}, 'idproof');">
               ${hasProof ? '📎 แก้ไขหลักฐาน' : '📎 แนบหลักฐาน'}
             </button>
+          </td>
+          <td class="runner-admin-only-col runner-admin-action-cell">
+            <button type="button" class="btn btn-outline btn-xs" data-athlete-admin-edit>แก้ไข</button>
+            <button type="button" class="btn btn-outline btn-xs" data-athlete-admin-delete>ลบ</button>
           </td>`;
+
+        if (admin) {
+          const edit = tr.querySelector('[data-athlete-admin-edit]');
+          const remove = tr.querySelector('[data-athlete-admin-delete]');
+          edit?.addEventListener('click', event => {
+            event.stopPropagation();
+            fillRunnerForm(r);
+            setActiveRow(tr);
+            document.getElementById('runnerFirstName')?.scrollIntoView({behavior:'smooth',block:'center'});
+          });
+          remove?.addEventListener('click', event => {
+            event.stopPropagation();
+            fillRunnerForm(r);
+            setActiveRow(tr);
+            deleteSelectedRunner();
+          });
+        }
 
         if (tooltipText) {
           tr.classList.add('runner-row-has-fail');
@@ -5065,6 +5106,11 @@ const proofBtnExtraClass = hasProof
 
         tbody.appendChild(tr);
       });
+    }
+
+    function escapeRunnerCell(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, char =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
     }
 
     function fillRunnerForm(r) {
@@ -5093,6 +5139,7 @@ const proofBtnExtraClass = hasProof
       const get = id => (document.getElementById(id) || {}).value || '';
       return {
         RunnerID:  get('runnerId').trim(),
+        SchoolName: get('runnerSchool').trim(),
         Level:     get('runnerLevel').trim(),
         FirstName: get('runnerFirstName').trim(),
         LastName:  get('runnerLastName').trim(),
@@ -5114,6 +5161,11 @@ const proofBtnExtraClass = hasProof
       }
 
       const form = collectRunnerForm();
+      if (isRunnerGlobalAdmin() && !form.RunnerID && !form.SchoolName) {
+        alert('กรุณาเลือกโรงเรียนจากตัวกรองก่อนเพิ่มนักวิ่งใหม่');
+        document.getElementById('runnerAdminSchoolFilter')?.focus();
+        return;
+      }
       if (!form.Level || !form.FirstName || !form.LastName || !form.CitizenID || !form.BirthYear || !form.Gender) {
         alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
         return;
