@@ -24,8 +24,10 @@ jobs:
         run: node .github/scripts/test_runner_admin_school.js
       - name: Schedule registration and heat mapping regression
         run: php .github/scripts/test_schedule_entries.php
-      - name: Athlete age-category (not school grade) regression
+      - name: Athlete age/category and actual school-grade eligibility regression
         run: php .github/scripts/test_runner_age_groups.php
+      - name: Browser athlete eligibility and server guard regression
+        run: node .github/scripts/test_runner_eligibility_client.js
       - name: Drive upload diagnostic regression
         run: php .github/scripts/test_drive_bridge_errors.php
       - name: Historical champion persistence and official final selection
