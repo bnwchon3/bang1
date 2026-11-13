@@ -1789,8 +1789,8 @@ document.addEventListener('DOMContentLoaded',function(){
         </div>
 
         <div class="field">
-          <label>เลขบัตรประชาชน (13 หลัก)</label>
-          <input id="runnerCitizen" type="text">
+          <label>เลขประจำตัวนักวิ่ง (เลข 13 หลัก หรือ G + เลข 12 หลัก)</label>
+          <input id="runnerCitizen" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="13" placeholder="เช่น G123456789012">
         </div>
 
         <div class="field">
@@ -4650,7 +4650,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (citizen) {
         citizen.setAttribute('maxlength', '13');
         citizen.addEventListener('input', () => {
-          citizen.value = citizen.value.replace(/\D/g, '').slice(0, 13);
+          const value = citizen.value.trim().toUpperCase();
+          citizen.value = (value.startsWith('G')
+            ? 'G' + value.slice(1).replace(/\D/g, '')
+            : value.replace(/\D/g, '')).slice(0, 13);
         });
       }
       const birth = document.getElementById('runnerBirthYear');
@@ -4943,7 +4946,7 @@ const proofBtnExtraClass = hasProof
         Level:     get('runnerLevel').trim(),
         FirstName: get('runnerFirstName').trim(),
         LastName:  get('runnerLastName').trim(),
-        CitizenID: get('runnerCitizen').trim(),
+        CitizenID: get('runnerCitizen').trim().toUpperCase(),
         BirthYear: get('runnerBirthYear').trim(),
         Gender:    get('runnerGender')
       };
@@ -4965,8 +4968,8 @@ const proofBtnExtraClass = hasProof
         alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
         return;
       }
-      if (!/^\d{13}$/.test(form.CitizenID)) {
-        alert('กรุณากรอกเลขบัตรประชาชนให้เป็นตัวเลข 13 หลัก');
+      if (!/^(?:\d{13}|G\d{12})$/.test(form.CitizenID)) {
+        alert('กรุณากรอกเลขประจำตัว 13 หลัก หรือ G ตามด้วยตัวเลข 12 หลัก');
         return;
       }
       if (!/^\d{4}$/.test(form.BirthYear)) {
@@ -5022,13 +5025,8 @@ const proofBtnExtraClass = hasProof
   }
 
   const r = runnersData.find(rr => String(rr.RunnerID) === String(id));
-  if (r) {
-    const st = (r.Status || '').trim();
-    if (st === 'ผ่านการตรวจสอบ' || st === 'รอตรวจภาพอีกครั้ง') {
-      alert('ไม่สามารถลบนักวิ่งที่อยู่ในสถานะผ่านการตรวจสอบหรือรอตรวจภาพอีกครั้งแล้ว');
-      return;
-    }
-  }
+  // อนุญาตให้ลบผู้ที่ผ่านการตรวจสอบแล้วได้; ฝั่งเซิร์ฟเวอร์
+  // ตรวจผลการแข่งขัน/เช็กชื่อ และป้องกันการกระทบเพื่อนร่วมทีมผลัด
 
   // เตรียมข้อความเป็น "ชื่อนักวิ่ง"
   let displayName = '';
@@ -5043,7 +5041,9 @@ const proofBtnExtraClass = hasProof
     displayName = 'รหัส ' + id;
   }
 
-  const msg = 'ยืนยันการลบชื่อ ' + displayName + ' ?';
+  const msg = 'ยืนยันการลบชื่อ ' + displayName + ' ?\n\n'
+    + 'ถ้ามีใบสมัครเดี่ยวที่ยังไม่มีผลการแข่งขัน ระบบจะยกเลิกใบสมัครนั้นด้วย\n'
+    + 'หากมีผลการแข่งขัน เช็กชื่อแล้ว หรืออยู่ในทีมผลัด ระบบจะแจ้งให้แก้ไขรายการที่เกี่ยวข้องก่อน';
 
   showConfirmDialog(msg, () => {
     setTableLoading('runnerTableWrap', true);
@@ -5054,6 +5054,7 @@ const proofBtnExtraClass = hasProof
           alert(res && res.message ? res.message : 'ลบไม่สำเร็จ');
           return;
         }
+        alert(res.message || 'ลบนักวิ่งเรียบร้อยแล้ว');
         resetRunnerForm();
         loadRunners();
       })
