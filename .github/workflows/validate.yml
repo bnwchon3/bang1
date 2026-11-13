@@ -20,6 +20,8 @@ jobs:
         run: php .github/scripts/test_runner_rules.php
       - name: Verified athlete photo comparison regression
         run: php .github/scripts/test_runner_photo_review.php
+      - name: Admin multi-school runner management regression
+        run: node .github/scripts/test_runner_admin_school.js
       - name: Drive upload diagnostic regression
         run: php .github/scripts/test_drive_bridge_errors.php
       - name: Historical champion persistence and official final selection
