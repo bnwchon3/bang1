@@ -117,9 +117,17 @@ if($action==='runners'){
  json_out(['success'=>true,'data'=>$data]);
 }
 if($action==='save_runner'){
- must_post();require_editor($u);require_feature('รับลงทะเบียนนักวิ่ง');
+ must_post();require_editor($u);if(!is_admin($u))require_feature('รับลงทะเบียนนักวิ่ง');
  $id=(int)($input['RunnerID']??0);
- $school=$u['schoolName'];if(is_admin($u)&&!empty($input['SchoolName']))$school=trim((string)$input['SchoolName']);
+ $school=$u['schoolName'];
+ // Admin must choose an actual school for a new athlete; existing athletes
+ // remain in their original school while being edited.
+ if(is_admin($u)&&$id===0){
+   $school=trim((string)($input['SchoolName']??''));
+   if($school==='')json_out(['success'=>false,'message'=>'กรุณาเลือกโรงเรียนก่อนเพิ่มนักวิ่ง'],422);
+   if(!single('SELECT name FROM schools WHERE name=? LIMIT 1',[$school]))
+     json_out(['success'=>false,'message'=>'ไม่พบโรงเรียนที่เลือกในระบบ'],422);
+ }
  $old=$id?single('SELECT * FROM runners WHERE id=?',[$id]):null;
  if($id&&!$old)json_out(['success'=>false,'message'=>'ไม่พบนักวิ่ง'],404);
  // Authorized editors may correct athlete records regardless of current review status.
@@ -142,7 +150,7 @@ if($action==='save_runner'){
  json_out(['success'=>true,'id'=>$id,'status'=>'รอตรวจสอบ']);
 }
 if($action==='delete_runner'){
-  must_post();require_editor($u);require_feature('รับลงทะเบียนนักวิ่ง');
+  must_post();require_editor($u);if(!is_admin($u))require_feature('รับลงทะเบียนนักวิ่ง');
   $id=(int)($input['id']??0);
   if($id<=0)json_out(['success'=>false,'message'=>'กรุณาเลือกนักวิ่งก่อนลบ'],422);
   try {
@@ -359,7 +367,7 @@ if($action==='upload'){
  must_post();require_editor($u);
  $id=(int)($_POST['runnerId']??0);$type=(string)($_POST['type']??'');
  if(!in_array($type,['photo','idproof'],true))json_out(['success'=>false,'message'=>'ชนิดไฟล์ไม่ถูกต้อง'],422);
- require_feature($type==='photo'?'แก้ไขรูปภาพ':'แก้ไขหลักฐาน');
+ if(!is_admin($u))require_feature($type==='photo'?'แก้ไขรูปภาพ':'แก้ไขหลักฐาน');
  $r=single('SELECT * FROM runners WHERE id=?',[$id]);
  if(!$r)json_out(['success'=>false,'message'=>'ไม่พบนักวิ่ง'],404);
  school_access($u,$r['school_name']);
