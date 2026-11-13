@@ -122,7 +122,8 @@ if($action==='save_runner'){
  $school=$u['schoolName'];if(is_admin($u)&&!empty($input['SchoolName']))$school=trim((string)$input['SchoolName']);
  $old=$id?single('SELECT * FROM runners WHERE id=?',[$id]):null;
  if($id&&!$old)json_out(['success'=>false,'message'=>'ไม่พบนักวิ่ง'],404);
- if($old){school_access($u,$old['school_name']);if(in_array($old['status'],['ผ่านการตรวจสอบ','รอตรวจภาพอีกครั้ง'],true))json_out(['success'=>false,'message'=>'ไม่สามารถแก้ไขนักวิ่งที่อยู่ในสถานะผ่านการตรวจสอบหรือรอตรวจภาพอีกครั้งแล้ว'],403);}
+ // Authorized editors may correct athlete records regardless of current review status.
+ if($old)school_access($u,$old['school_name']);
  $first=trim((string)($input['FirstName']??''));$last=trim((string)($input['LastName']??''));
  $citizen=bang1_normalize_citizen_id((string)($input['CitizenID']??''));
  $year=(int)($input['BirthYear']??0);
@@ -132,13 +133,13 @@ if($action==='save_runner'){
  $duplicate=single('SELECT id FROM runners WHERE citizen_id=? AND id<>? LIMIT 1',[$citizen,$id]);
  if($duplicate)json_out(['success'=>false,'message'=>'ไม่สามารถบันทึกได้: เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนนักวิ่งแล้ว'],409);
  if($old) {
-  db()->prepare('UPDATE runners SET level=?,first_name=?,last_name=?,citizen_id=?,birth_year=?,gender=? WHERE id=?')->execute([$level,$first,$last,$citizen,$year,$gender,$id]);
+  db()->prepare('UPDATE runners SET level=?,first_name=?,last_name=?,citizen_id=?,birth_year=?,gender=?,status="รอตรวจสอบ",fail_reason="" WHERE id=?')->execute([$level,$first,$last,$citizen,$year,$gender,$id]);
   $code='RUNNER_UPDATE';
  } else {
   db()->prepare('INSERT INTO runners(school_name,level,first_name,last_name,citizen_id,birth_year,gender,status,created_by,created_at) VALUES(?,?,?,?,?,?,?,"รอตรวจสอบ",?,NOW())')->execute([$school,$level,$first,$last,$citizen,$year,$gender,$u['name']]);$id=(int)db()->lastInsertId();$code='RUNNER_CREATE';
  }
- log_action($code,$u,'Runner',(string)$id);
- json_out(['success'=>true,'id'=>$id]);
+ log_action($code,$u,'Runner',(string)$id,$old?'Runner edited; review reset':'Runner created; pending review');
+ json_out(['success'=>true,'id'=>$id,'status'=>'รอตรวจสอบ']);
 }
 if($action==='delete_runner'){
   must_post();require_editor($u);require_feature('รับลงทะเบียนนักวิ่ง');
@@ -362,7 +363,6 @@ if($action==='upload'){
  $r=single('SELECT * FROM runners WHERE id=?',[$id]);
  if(!$r)json_out(['success'=>false,'message'=>'ไม่พบนักวิ่ง'],404);
  school_access($u,$r['school_name']);
- if($type==='idproof'&&in_array($r['status'],['ผ่านการตรวจสอบ','รอตรวจภาพอีกครั้ง'],true))json_out(['success'=>false,'message'=>'ไม่สามารถแนบหลักฐานได้ เนื่องจากสถานะผ่านการตรวจสอบหรือรอตรวจภาพอีกครั้งแล้ว'],403);
  if(!isset($_FILES['file'])||!is_uploaded_file($_FILES['file']['tmp_name']))json_out(['success'=>false,'message'=>'ไม่พบไฟล์'],422);
  $file=$_FILES['file'];if($file['size']>6*1024*1024||$file['size']<1)json_out(['success'=>false,'message'=>'ไฟล์ต้องไม่เกิน 6 MB'],422);
  $mime=(new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
@@ -411,14 +411,11 @@ if($action==='upload'){
               ->execute([$verified,$id]);
       }
       $oldStatus=(string)$latest['status'];
-      $newStatus=$oldStatus;
-      if($url!==$oldPhoto){
-          if($verified!=='')$newStatus='รอตรวจภาพอีกครั้ง';
-          elseif(in_array($oldStatus,['ผ่านการตรวจสอบ','ไม่ผ่านการตรวจสอบ'],true))
-              $newStatus='รอตรวจสอบ'; // No trusted old image => full proof review.
-      }
-      db()->prepare('UPDATE runners SET photo_url=?,status=?,fail_reason=? WHERE id=?')
-          ->execute([$url,$newStatus,$newStatus==='ไม่ผ่านการตรวจสอบ'?(string)($r['fail_reason']??''):'',$id]);
+      // A replacement always enters review. A pending identity correction
+      // cannot use the shorter face-only route.
+      $newStatus=bang1_runner_status_after_edit('photo',$oldStatus,$verified!=='',$url!==$oldPhoto);
+      db()->prepare('UPDATE runners SET photo_url=?,status=?,fail_reason="" WHERE id=?')
+          ->execute([$url,$newStatus,$id]);
       db()->commit();
     }catch(Throwable $e){
       if(db()->inTransaction())db()->rollBack();
@@ -426,7 +423,7 @@ if($action==='upload'){
       json_out(['success'=>false,'message'=>'บันทึกรูปใหม่ไม่สำเร็จ กรุณาลองอีกครั้ง'],500);
     }
  }else{
-    db()->prepare('UPDATE runners SET proof_url=? WHERE id=?')->execute([$url,$id]);
+    db()->prepare('UPDATE runners SET proof_url=?,status="รอตรวจสอบ",fail_reason="" WHERE id=?')->execute([$url,$id]);
  }
  log_action($type==='photo'?'RUNNER_UPLOAD_PHOTO':'RUNNER_UPLOAD_IDPROOF',$u,'Runner',(string)$id,
    $type==='photo'?'Photo uploaded; trusted reference preserved':'ID document uploaded');
