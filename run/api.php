@@ -259,7 +259,9 @@ if($action==='save_registration'){
  if(count($runners)!==count($ids))json_out(['success'=>false,'message'=>'ไม่พบนักวิ่งบางราย'],422);
  foreach($runners as $r){
   school_access($u,$r['school_name']);
-  if($r['status']!=='ผ่านการตรวจสอบ')json_out(['success'=>false,'message'=>'กรุณาตรวจสอบนักวิ่งให้ผ่านก่อนสมัคร'],422);
+  // Registration is allowed while identity/photo review is pending or awaiting another photo check.
+  // A confirmed rejection still needs to be corrected before entering a competition.
+  if($r['status']==='ไม่ผ่านการตรวจสอบ')json_out(['success'=>false,'message'=>'นักวิ่งไม่ผ่านการตรวจสอบ กรุณาแก้ไขข้อมูลและส่งตรวจอีกครั้งก่อนสมัคร'],422);
   if($ev['level']&&$r['level']!==$ev['level'])json_out(['success'=>false,'message'=>'ระดับชั้นนักวิ่งไม่ตรงรายการ'],422);
   if($ev['gender']&&$r['gender']!==$ev['gender'])json_out(['success'=>false,'message'=>'เพศนักวิ่งไม่ตรงรายการ'],422);
  }
