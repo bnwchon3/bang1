@@ -26,4 +26,7 @@ assert_review(runner_photo_review_mode($unknown)==='document','Legacy missing ba
 assert_review(!runner_photo_can_approve($unknown),'No photo-only approval without trusted baseline');
 $same=$changed;$same['photo_url']=$same['verified_photo_url'];
 assert_review(runner_photo_review_mode($same)==='document','Same image is not a replacement');
-echo "PASS approved photo reference, first proof, face-only replacement, and legacy safety\n";
+$identityEdited=$changed;
+$identityEdited['status']='รอตรวจสอบ';
+assert_review(runner_photo_review_mode($identityEdited)==='document','Any identity correction must force document re-review even if photographs differ');
+echo "PASS approved reference, identity re-review, face-only replacement, and legacy safety\n";
