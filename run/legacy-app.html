@@ -772,6 +772,28 @@ td.actions {
   background: #e5f2ff;
   cursor: pointer;
 }
+#page-register .admin-reg-overview{
+  display:none;
+  border:1px solid rgba(96,165,250,.35);
+  border-radius:16px;
+  background:linear-gradient(130deg,rgba(30,64,175,.16),rgba(15,23,42,.18));
+  padding:16px;
+  margin:14px 0;
+}
+#page-register .admin-reg-overview-title{font-weight:700;color:#dbeafe;margin-bottom:5px;}
+#page-register .admin-reg-overview-summary{font-size:.9rem;color:#bfdbfe;margin-bottom:12px;}
+#page-register .admin-reg-filters{display:grid;grid-template-columns:repeat(3,minmax(160px,1fr)) auto;gap:10px;align-items:end;}
+#page-register .admin-reg-filters label{display:block;font-size:.78rem;color:#cbd5e1;margin-bottom:5px;}
+#page-register .admin-reg-filters select,#page-register .admin-reg-filters input{
+  width:100%;box-sizing:border-box;min-height:39px;border-radius:9px;padding:8px 10px;
+  border:1px solid #64748b;background:#f8fafc;color:#0f172a;
+}
+@media (max-width:900px){
+  #page-register .admin-reg-filters{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:550px){
+  #page-register .admin-reg-filters{grid-template-columns:minmax(0,1fr);}
+}
 
 /* ============================
    Animations & Media
@@ -2321,6 +2343,27 @@ document.addEventListener('DOMContentLoaded',function(){
 
     </div>
 
+    <!-- ภาพรวมการสมัครจากทุกโรงเรียน เฉพาะ Admin / TopAdmin -->
+    <div id="adminRegistrationOverview" class="admin-reg-overview">
+      <div class="admin-reg-overview-title">ภาพรวมใบสมัครแข่งขันจากทุกโรงเรียน</div>
+      <div id="adminRegSummary" class="admin-reg-overview-summary" role="status" aria-live="polite"></div>
+      <div class="admin-reg-filters">
+        <div>
+          <label for="adminRegSchoolFilter">กรองตามโรงเรียน</label>
+          <select id="adminRegSchoolFilter"><option value="">ทุกโรงเรียน</option></select>
+        </div>
+        <div>
+          <label for="adminRegEventFilter">กรองตามรายการแข่งขัน</label>
+          <select id="adminRegEventFilter"><option value="">ทุกรายการแข่งขัน</option></select>
+        </div>
+        <div>
+          <label for="adminRegSearch">ค้นหาใบสมัคร</label>
+          <input id="adminRegSearch" type="search" placeholder="ชื่อผู้สมัคร / รหัสใบสมัคร / โรงเรียน">
+        </div>
+        <button type="button" class="btn btn-outline" onclick="clearAdminRegistrationFilters()">ล้างตัวกรอง</button>
+      </div>
+    </div>
+
     <!-- แท็บ -->
     <div class="reg-tabs">
       <button type="button" class="active" data-reg-tab="events">
@@ -2712,6 +2755,7 @@ function buildRegSummaryHtml(list, schoolName, printedAt) {
             <div class="reg-summary-event">
               รายการ${escHtml(reg.EventName || '')}${heatLaneText}
             </div>
+            ${schoolName === 'ทุกโรงเรียน' ? '<div style="font-size:12px;color:#475569;">โรงเรียน: ' + escHtml(reg.SchoolName || '-') + '</div>' : ''}
           </td>
         </tr>
         <tr>
@@ -2780,15 +2824,17 @@ function printRegSummary() {
 
   ensureRegs(() => {
     ensureRunners(() => {
-      const schoolName = currentUser.schoolName || '';
+      const admin = isGlobalRegistrationAdmin();
+      const filteredSchool = document.getElementById('adminRegSchoolFilter')?.value || '';
+      const schoolName = admin ? (filteredSchool || 'ทุกโรงเรียน') : (currentUser.schoolName || '');
 
-      // ถ้า API ฝั่ง .gs คืนมาเฉพาะของโรงเรียนนี้อยู่แล้ว filter นี้จะไม่กระทบ
-      let myRegs = (regsData || []).filter(r =>
-        (r.SchoolName || '') === schoolName
-      );
+      // Admin พิมพ์รายการตามตัวกรองได้; บัญชีโรงเรียนพิมพ์เฉพาะของตน
+      let myRegs = admin
+        ? getVisibleRegistrations()
+        : (regsData || []).filter(r => (r.SchoolName || '') === schoolName);
 
       if (!myRegs.length) {
-        alert('ยังไม่มีรายการสมัครวิ่งของโรงเรียนนี้');
+        alert('ไม่มีรายการสมัครวิ่งตามเงื่อนไขที่เลือก');
         return;
       }
 
@@ -4211,6 +4257,12 @@ function printRegSummary() {
       document.querySelectorAll('[data-reg-tab]').forEach(btn => {
         btn.addEventListener('click', () => setRegTab(btn.getAttribute('data-reg-tab') || 'events'));
       });
+      ['adminRegSchoolFilter', 'adminRegEventFilter'].forEach(id => {
+        const control = document.getElementById(id);
+        if (control) control.addEventListener('change', renderRegistrationViews);
+      });
+      const adminSearch = document.getElementById('adminRegSearch');
+      if (adminSearch) adminSearch.addEventListener('input', renderRegistrationViews);
 
       resetRegistrationForm();
     });
@@ -5611,16 +5663,102 @@ const proofBtnExtraClass = hasProof
     }
 
     /*************** ตารางรายการสมัครวิ่ง + แท็บ ***************/
+    function isGlobalRegistrationAdmin() {
+      return !!(currentUser && ['Admin', 'TopAdmin'].includes(currentUser.role));
+    }
+
+    function getVisibleRegistrations() {
+      const all = Array.isArray(regsData) ? regsData : [];
+      if (!isGlobalRegistrationAdmin()) return all;
+      const school = document.getElementById('adminRegSchoolFilter')?.value || '';
+      const eventName = document.getElementById('adminRegEventFilter')?.value || '';
+      const query = (document.getElementById('adminRegSearch')?.value || '').trim().toLowerCase();
+      return all.filter(r => {
+        if (school && String(r.SchoolName || '') !== school) return false;
+        if (eventName && String(r.EventName || '') !== eventName) return false;
+        if (query && ![r.RegID, r.EventName, r.SchoolName, r.FirstName]
+          .map(value => String(value == null ? '' : value)).join(' ').toLowerCase().includes(query)) return false;
+        return true;
+      });
+    }
+
+    function refreshAdminRegistrationFilters() {
+      const overview = document.getElementById('adminRegistrationOverview');
+      if (!overview) return;
+      const admin = isGlobalRegistrationAdmin();
+      overview.style.display = admin ? 'block' : 'none';
+      if (!admin) return;
+
+      const populate = (id, allLabel, values) => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const previous = select.value;
+        select.replaceChildren();
+        const allOption = document.createElement('option');
+        allOption.value = '';
+        allOption.textContent = allLabel;
+        select.appendChild(allOption);
+        values.sort((a,b) => a.localeCompare(b,'th',{numeric:true})).forEach(value => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = value;
+          select.appendChild(option);
+        });
+        select.value = values.includes(previous) ? previous : '';
+      };
+      const all = Array.isArray(regsData) ? regsData : [];
+      populate('adminRegSchoolFilter','ทุกโรงเรียน',
+        [...new Set(all.map(r => String(r.SchoolName || '').trim()).filter(Boolean))]);
+      populate('adminRegEventFilter','ทุกรายการแข่งขัน',
+        [...new Set(all.map(r => String(r.EventName || '').trim()).filter(Boolean))]);
+    }
+
+    function updateAdminRegistrationStats() {
+      if (!isGlobalRegistrationAdmin()) return;
+      const summary = document.getElementById('adminRegSummary');
+      if (!summary) return;
+      const all = Array.isArray(regsData) ? regsData : [];
+      const visible = getVisibleRegistrations();
+      const schools = new Set(visible.map(r => String(r.SchoolName || '')).filter(Boolean));
+      const athletes = new Set();
+      visible.forEach(reg => {
+        String(reg.RunnerID || '').split(',').map(id => id.trim()).filter(Boolean)
+          .forEach(id => athletes.add(String(reg.SchoolName || '') + ':' + id));
+      });
+      summary.textContent =
+        'แสดง ' + visible.length.toLocaleString('th-TH') + ' จาก ' +
+        all.length.toLocaleString('th-TH') + ' ใบสมัคร · ' +
+        schools.size.toLocaleString('th-TH') + ' โรงเรียน · ' +
+        athletes.size.toLocaleString('th-TH') + ' นักวิ่ง';
+    }
+
+    function renderRegistrationViews() {
+      renderRegTable('regTableBody', false);
+      renderRegByRunnerTable();
+      updateRegCardTitle();
+      updateAdminRegistrationStats();
+    }
+
+    function clearAdminRegistrationFilters() {
+      ['adminRegSchoolFilter','adminRegEventFilter','adminRegSearch'].forEach(id => {
+        const control = document.getElementById(id);
+        if (control) control.value = '';
+      });
+      renderRegistrationViews();
+    }
+
     function loadMyRegistrations() {
       if (!currentUser) return;
       setTableLoading('regTableWrap', true);
       google.script.run.withSuccessHandler(data => {
         setTableLoading('regTableWrap', false);
-        regsData = data || [];
-        renderRegTable('regTableBody', false);
-        renderRegByRunnerTable();
-        updateRegCardTitle();
+        regsData = Array.isArray(data) ? data : [];
+        refreshAdminRegistrationFilters();
+        renderRegistrationViews();
         buildEventDropdown();
+      }).withFailureHandler(err => {
+        setTableLoading('regTableWrap', false);
+        alert('โหลดใบสมัครไม่สำเร็จ: ' + (err?.message || 'เกิดข้อผิดพลาด'));
       }).getRegistrationsForSchool(currentUser);
     }
 
@@ -5645,7 +5783,7 @@ const proofBtnExtraClass = hasProof
   });
 
   // 🔥 เรียงตาม: EventName > Heat > Lane
-  const list = (regsData || []).slice().sort((a, b) => {
+  const list = (forPrintPage ? (regsData || []) : getVisibleRegistrations()).slice().sort((a, b) => {
     const aName = (a.EventName || '').toString();
     const bName = (b.EventName || '').toString();
 
@@ -5719,7 +5857,7 @@ const proofBtnExtraClass = hasProof
       } else {
         // โค้ดฝั่งตารางธรรมดา (แก้ไขได้) ให้คงไว้เหมือนเดิม
         tr.innerHTML = `
-          <td>${idx + 1}</td>
+          <td>${r.RegID || ''}</td>
           <td>${r.EventName || ''}</td>
           <td>${r.SchoolName || ''}</td>
           <td>${namesDisplay}</td>
@@ -5741,7 +5879,7 @@ const proofBtnExtraClass = hasProof
       const tbody = document.getElementById('regByRunnerBody');
       if (!tbody) return;
 
-      const list = regsData || [];
+      const list = getVisibleRegistrations();
       if (!list.length) {
         tbody.innerHTML = '<tr><td colspan="4">ยังไม่มีข้อมูล</td></tr>';
         return;
@@ -5753,8 +5891,10 @@ const proofBtnExtraClass = hasProof
         if (!eventName) return;
         const rawNamesArr = (r.FirstName || '').toString().split(',').map(s => s.trim()).filter(Boolean);
         rawNamesArr.forEach(name => {
-          if (!map[name]) map[name] = [];
-          map[name].push(eventName);
+          const key = isGlobalRegistrationAdmin()
+            ? name + ' (' + (r.SchoolName || 'ไม่ระบุโรงเรียน') + ')' : name;
+          if (!map[key]) map[key] = [];
+          map[key].push(eventName);
         });
       });
 
@@ -5796,8 +5936,12 @@ const proofBtnExtraClass = hasProof
     function updateRegCardTitle() {
       const titleEl = document.getElementById('regCardTitle');
       if (!titleEl || !currentUser) return;
-      const schoolName = currentUser.schoolName || '';
       const total = (regsData || []).length;
+      if (isGlobalRegistrationAdmin()) {
+        titleEl.textContent = 'รายการสมัครวิ่งทุกโรงเรียน (' + total.toLocaleString('th-TH') + ' รายการ)';
+        return;
+      }
+      const schoolName = currentUser.schoolName || '';
       titleEl.textContent = schoolName
         ? `${schoolName} ได้ทำการสมัครวิ่งแล้ว ${total} รายการ`
         : `ได้ทำการสมัครวิ่งแล้ว ${total} รายการ`;
