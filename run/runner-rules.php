@@ -14,6 +14,23 @@ function bang1_valid_citizen_id(string $value): bool {
     return preg_match('/\\A(?:[0-9]{13}|G[0-9]{12})\\z/D', $value) === 1;
 }
 
+/**
+ * Athletics age categories are expressed in event titles, e.g. "(6 ปี ชาย)".
+ * They are NOT the pupil's school education level (อนุบาล/ประถม/มัธยม).
+ * Calculate the age at the end of the competition calendar year, consistent
+ * with the existing UI that uses Buddhist birth years.
+ */
+function bang1_event_age_limit(string $eventName): ?int {
+    if(preg_match('/[\\(（]\\s*([0-9]{1,2})\\s*ปี(?:\\s|[\\)）])/u', $eventName, $m)!==1)
+        return null;
+    $age=(int)$m[1];
+    return $age>0 && $age<100 ? $age : null;
+}
+function bang1_runner_age_at_year(int $birthYear, int $competitionYearBE): ?int {
+    $age=$competitionYearBE-$birthYear;
+    return $birthYear>0 && $age>=1 && $age<=100 ? $age : null;
+}
+
 /** Counts every registered athlete, including relays, without trusting a form. */
 function bang1_runner_registration_member_count(string $csv): int {
     $ids = array_filter(array_map('trim', explode(',', $csv)),
