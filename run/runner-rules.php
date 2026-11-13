@@ -16,9 +16,9 @@ function bang1_valid_citizen_id(string $value): bool {
 
 /**
  * Athletics age categories are expressed in event titles, e.g. "(6 ปี ชาย)".
- * They are NOT the pupil's school education level (อนุบาล/ประถม/มัธยม).
- * Calculate the age at the end of the competition calendar year, consistent
- * with the existing UI that uses Buddhist birth years.
+ * The bracket is an AGE limit, while actual school enrollment level is a
+ * separate compulsory eligibility constraint (checked below).
+ * Calculate age from Buddhist birth year against the competition calendar year.
  */
 function bang1_event_age_limit(string $eventName): ?int {
     if(preg_match('/[\\(（]\\s*([0-9]{1,2})\\s*ปี(?:\\s|[\\)）])/u', $eventName, $m)!==1)
