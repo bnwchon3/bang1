@@ -4872,9 +4872,7 @@ const proofBtnExtraClass = hasProof
 
 
         const disabledPhotoAttr = '';
-        const disabledProofAttr =
-          (statusText === 'ผ่านการตรวจสอบ' || statusText === 'รอตรวจภาพอีกครั้ง')
-            ? 'disabled' : '';
+        const disabledProofAttr = '';
 
         const displayName = getRunnerDisplayName(r);
         const avatarHTML  = `<div class="runner-avatar">${photoSrc ? `<img src="${photoSrc}" alt="">` : ''}</div>`;
@@ -4977,16 +4975,7 @@ const proofBtnExtraClass = hasProof
         return;
       }
 
-      if (form.RunnerID) {
-        const r = runnersData.find(rr => String(rr.RunnerID) === String(form.RunnerID));
-        if (r) {
-          const st = (r.Status || '').trim();
-          if (st === 'ผ่านการตรวจสอบ' || st === 'รอตรวจภาพอีกครั้ง') {
-            alert('ไม่สามารถแก้ไขข้อมูลนักวิ่งที่อยู่ในสถานะผ่านการตรวจสอบหรือรอตรวจภาพอีกครั้งได้ (ยกเว้นแนบรูปใหม่)');
-            return;
-          }
-        }
-      }
+      // Allow correction in any review state; the server restarts review on save.
 
       setTableLoading('runnerTableWrap', true);
       google.script.run
@@ -4996,6 +4985,7 @@ const proofBtnExtraClass = hasProof
             alert(res && res.message ? res.message : 'บันทึกนักวิ่งไม่สำเร็จ');
             return;
           }
+          if (form.RunnerID) alert(res.message || 'บันทึกการแก้ไขแล้ว นักวิ่งกลับเข้าสู่การตรวจสอบอีกครั้ง');
           resetRunnerForm();
           loadRunners();
         })
@@ -5078,14 +5068,7 @@ const proofBtnExtraClass = hasProof
         return;
       }
 
-      const r = runnersData.find(rr => String(rr.RunnerID) === String(runnerId));
-      if (r) {
-        const st = (r.Status || '').trim();
-        if (fileType === 'idproof' && (st === 'ผ่านการตรวจสอบ' || st === 'รอตรวจภาพอีกครั้ง')) {
-          alert('ไม่สามารถแนบหลักฐานได้ เนื่องจากสถานะผ่านการตรวจสอบหรือรอตรวจภาพอีกครั้งแล้ว');
-          return;
-        }
-      }
+      // Permit photo and identity-document replacements for every review state.
 
       uploadRunnerId = runnerId;
       uploadFileType = fileType;
