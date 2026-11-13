@@ -1746,6 +1746,24 @@ document.addEventListener('DOMContentLoaded',function(){
 #page-schedule .detail-school{font-weight:600;font-size:.9rem}
 #page-schedule .detail-runner{font-size:.75rem;line-height:1.3}
 #page-schedule .detail-lane{font-weight:600;white-space:nowrap;text-align:center;font-size:.85rem}
+#page-runners .runner-admin-school-toolbar{
+  display:none;align-items:center;gap:12px;flex-wrap:wrap;
+  border:1px solid rgba(56,189,248,.28);border-radius:12px;
+  background:rgba(15,45,89,.65);padding:14px 16px;margin:12px 0;
+}
+#page-runners .runner-admin-school-toolbar label{font-weight:700;color:#dbeafe;}
+#page-runners .runner-admin-school-toolbar select{
+  min-width:240px;max-width:100%;border-radius:10px;padding:9px 12px;
+  background:#f8fafc;color:#0f172a;border:1px solid #93c5fd;
+}
+#page-runners .runner-admin-school-stats{font-size:.86rem;color:#a5d8ff;}
+#page-runners .runner-admin-only-col{display:none;}
+#page-runners.runner-admin-roster .runner-admin-only-col{display:table-cell;}
+#page-runners .runner-admin-action-cell{white-space:nowrap;}
+#page-runners .runner-admin-action-cell button{margin:2px;font-size:.78rem;}
+@media(max-width:600px){
+  #page-runners .runner-admin-school-toolbar select{width:100%;}
+}
 </style>
       <section class="page" id="page-runners">
   <div class="runner-header">
@@ -1870,6 +1888,14 @@ document.addEventListener('DOMContentLoaded',function(){
       </div>
     </div>
 
+    <div id="runnerAdminSchoolToolbar" class="runner-admin-school-toolbar">
+      <label for="runnerAdminSchoolFilter">เลือกดูรายชื่อโรงเรียน</label>
+      <select id="runnerAdminSchoolFilter" aria-label="เลือกโรงเรียนที่ต้องการจัดการ">
+        <option value="">ทุกโรงเรียน</option>
+      </select>
+      <span id="runnerAdminSchoolStats" class="runner-admin-school-stats"></span>
+    </div>
+
     <div class="runner-table-toolbar">
       <div class="pill-tabs">
         <button data-runner-filter="all" class="active">ทั้งหมด (0)</button>
@@ -1897,16 +1923,18 @@ document.addEventListener('DOMContentLoaded',function(){
             <tr>
               <th>#</th>
               <th>ชื่อ - สกุล</th>
+              <th class="runner-admin-only-col">โรงเรียน</th>
               <th>ระดับ</th>
               <th>เพศ</th>
               <th>อายุ</th>
               <th>สถานะ</th>
               <th>รูปนักวิ่ง</th>
               <th>หลักฐานบัตรประชาชน</th>
+              <th class="runner-admin-only-col">จัดการ</th>
             </tr>
           </thead>
           <tbody id="runnerTableBody">
-            <tr><td colspan="8">ยังไม่มีข้อมูล</td></tr>
+            <tr><td colspan="10">ยังไม่มีข้อมูล</td></tr>
           </tbody>
         </table>
       </div>
@@ -4250,6 +4278,8 @@ function printRegSummary() {
 
       const runnerSearchInput = document.getElementById('runnerSearchInput');
       if (runnerSearchInput) runnerSearchInput.addEventListener('input', renderRunnerTable);
+      const runnerAdminSchoolFilter = document.getElementById('runnerAdminSchoolFilter');
+      if (runnerAdminSchoolFilter) runnerAdminSchoolFilter.addEventListener('change', onRunnerAdminSchoolChange);
       document.querySelectorAll('[data-runner-filter]').forEach(btn => {
         btn.addEventListener('click', () => setRunnerFilter(btn.getAttribute('data-runner-filter') || 'all'));
       });
@@ -4618,6 +4648,76 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /*********************** RUNNERS PAGE *********************/
+    let runnerAdminKnownSchools = [];
+
+    function isRunnerGlobalAdmin() {
+      return !!(currentUser && ['Admin','TopAdmin'].includes(currentUser.role));
+    }
+
+    function getSelectedRunnerSchool() {
+      if (!isRunnerGlobalAdmin()) return currentUser?.schoolName || '';
+      return document.getElementById('runnerAdminSchoolFilter')?.value || '';
+    }
+
+    function getVisibleRunnerRoster() {
+      const all = Array.isArray(runnersData) ? runnersData : [];
+      const school = getSelectedRunnerSchool();
+      return school ? all.filter(r => String(r.SchoolName || '') === school) : all;
+    }
+
+    function refreshRunnerAdminSchoolOptions() {
+      const toolbar = document.getElementById('runnerAdminSchoolToolbar');
+      const page = document.getElementById('page-runners');
+      const select = document.getElementById('runnerAdminSchoolFilter');
+      const admin = isRunnerGlobalAdmin();
+      if (page) page.classList.toggle('runner-admin-roster', admin);
+      if (toolbar) toolbar.style.display = admin ? 'flex' : 'none';
+      if (!admin || !select) return;
+
+      const previous = select.value;
+      const names = [...new Set([
+        ...runnerAdminKnownSchools,
+        ...(runnersData || []).map(r => String(r.SchoolName || '').trim())
+      ].filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th', {numeric:true}));
+      select.replaceChildren();
+      const allOption = document.createElement('option');
+      allOption.value = '';
+      allOption.textContent = 'ทุกโรงเรียน';
+      select.appendChild(allOption);
+      names.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      });
+      select.value = names.includes(previous) ? previous : '';
+    }
+
+    function loadRunnerAdminSchoolOptions() {
+      if (!isRunnerGlobalAdmin()) return;
+      google.script.run.withSuccessHandler(names => {
+        runnerAdminKnownSchools = Array.isArray(names) ? names.filter(Boolean) : [];
+        refreshRunnerAdminSchoolOptions();
+        renderRunnerTable();
+      }).withFailureHandler(err => {
+        console.warn('Cannot load school directory; using registered schools', err);
+        refreshRunnerAdminSchoolOptions();
+        renderRunnerTable();
+      }).getSchoolNamesForRunnerAdmin();
+    }
+
+    function onRunnerAdminSchoolChange() {
+      if (!isRunnerGlobalAdmin()) return;
+      runnerFilterMode = 'all';
+      document.querySelectorAll('#page-runners [data-runner-filter]').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-runner-filter') === 'all');
+      });
+      const search = document.getElementById('runnerSearchInput');
+      if (search) search.value = '';
+      resetRunnerForm();
+      renderRunnerTable();
+    }
+
     function initRunnerFormUI() {
       setRunnerEditMode(false);
       setupRunnerInputsValidation();
