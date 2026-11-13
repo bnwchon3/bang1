@@ -1818,14 +1818,14 @@ document.addEventListener('DOMContentLoaded',function(){
       <div class="runner-form-col">
         <input id="runnerId" type="hidden">
 
+        <!-- Keep a legacy education-level value on edit, but stop requiring a
+             grade group to enter an AGE-based running competition. -->
+        <input id="runnerLevel" type="hidden" value="">
         <div class="field">
-          <label>ระดับชั้น</label>
-          <select id="runnerLevel">
-            <option value="">-- เลือกระดับชั้น --</option>
-            <option value="อนุบาล">อนุบาล</option>
-            <option value="ประถม">ประถม</option>
-            <option value="มัธยม">มัธยม</option>
-          </select>
+          <label for="runnerAgePreview">อายุจากปี พ.ศ. เกิด (คำนวณอัตโนมัติ)</label>
+          <input id="runnerAgePreview" type="text" readonly
+            placeholder="กรอกปีเกิดเพื่อแสดงอายุ">
+          <small style="color:#93c5fd;">สมัครตามรุ่นอายุและเพศ ไม่ต้องแยกอนุบาล ประถม หรือมัธยม</small>
         </div>
 
         <div class="field">
@@ -1924,7 +1924,6 @@ document.addEventListener('DOMContentLoaded',function(){
               <th>#</th>
               <th>ชื่อ - สกุล</th>
               <th class="runner-admin-only-col">โรงเรียน</th>
-              <th>ระดับ</th>
               <th>เพศ</th>
               <th>อายุ</th>
               <th>สถานะ</th>
@@ -1934,7 +1933,7 @@ document.addEventListener('DOMContentLoaded',function(){
             </tr>
           </thead>
           <tbody id="runnerTableBody">
-            <tr><td colspan="10">ยังไม่มีข้อมูล</td></tr>
+            <tr><td colspan="9">ยังไม่มีข้อมูล</td></tr>
           </tbody>
         </table>
       </div>
@@ -2306,10 +2305,8 @@ document.addEventListener('DOMContentLoaded',function(){
         <input type="text" id="regCategory" disabled>
       </div>
 
-      <div class="field">
-        <label>ระดับชั้น</label>
-        <input type="text" id="regLevel" disabled>
-      </div>
+      <!-- Legacy event level remains available internally for reports. -->
+      <input type="hidden" id="regLevel">
 
       <div class="field" style="display:none;">
         <label>เพศ</label>
@@ -4817,12 +4814,22 @@ document.addEventListener('DOMContentLoaded', () => {
         birth.setAttribute('maxlength', '4');
         birth.addEventListener('input', () => {
           birth.value = birth.value.replace(/\D/g, '').slice(0, 4);
+          updateRunnerAgePreview();
         });
       }
     }
 
+    function updateRunnerAgePreview() {
+      const preview = document.getElementById('runnerAgePreview');
+      if (!preview) return;
+      const year = Number(document.getElementById('runnerBirthYear')?.value || 0);
+      const age = new Date().getFullYear() + 543 - year;
+      preview.value = year >= 2400 && age >= 1 && age <= 100
+        ? age + ' ปี' : '';
+    }
+
     function updateRunnerInputHighlight() {
-      ['runnerLevel','runnerFirstName','runnerLastName','runnerCitizen','runnerBirthYear','runnerGender'].forEach(id => {
+      ['runnerFirstName','runnerLastName','runnerCitizen','runnerBirthYear','runnerGender'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         if (!el.value) el.classList.add('input-empty');
@@ -4866,6 +4873,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       setRunnerEditMode(false);
       updateRunnerInputHighlight();
+      updateRunnerAgePreview();
       updateRunnerPreview('', '', true);
       updateRunnerFileStatus(null);
     }
@@ -4996,7 +5004,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       tbody.innerHTML = '';
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="' + (admin ? '10' : '8') + '">ไม่พบนักวิ่งตามเงื่อนไขที่เลือก</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="' + (admin ? '9' : '7') + '">ไม่พบนักวิ่งตามเงื่อนไขที่เลือก</td></tr>';
         return;
       }
 
@@ -5059,7 +5067,6 @@ const proofBtnExtraClass = hasProof
             </div>
           </td>
           <td class="runner-admin-only-col">${escapeRunnerCell(r.SchoolName || '')}</td>
-          <td style="text-align:center;">${r.Level || ''}</td>
           <td style="text-align:center;">${r.Gender || ''}</td>
           <td style="text-align:center;">${age}</td>
           <td style="text-align:center;">
@@ -5129,6 +5136,7 @@ const proofBtnExtraClass = hasProof
       setVal('runnerCitizen', r.CitizenID);
       setVal('runnerBirthYear', r.BirthYear);
       setVal('runnerGender', r.Gender);
+      updateRunnerAgePreview();
 
       setRunnerEditMode(true);
       updateRunnerInputHighlight();
@@ -5169,7 +5177,7 @@ const proofBtnExtraClass = hasProof
         document.getElementById('runnerAdminSchoolFilter')?.focus();
         return;
       }
-      if (!form.Level || !form.FirstName || !form.LastName || !form.CitizenID || !form.BirthYear || !form.Gender) {
+      if (!form.FirstName || !form.LastName || !form.CitizenID || !form.BirthYear || !form.Gender) {
         alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
         return;
       }
@@ -5555,7 +5563,6 @@ const proofBtnExtraClass = hasProof
         const name = `${r.FirstName || ''} ${r.LastName || ''}`.trim();
         if (!name) return;
 
-        const level        = r.Level || '';
         const runnerGender = (r.Gender || '').trim();
 
         let ageNum = 0;
@@ -5573,7 +5580,6 @@ const proofBtnExtraClass = hasProof
         if (ageLimit != null && ageNum > ageLimit) return;
 
         const extra = [];
-        if (level)  extra.push(level);
         if (ageNum) extra.push(`อายุ ${ageNum} ปี`);
         const extraText = extra.length ? ` (${extra.join(' / ')})` : '';
 
