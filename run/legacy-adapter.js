@@ -117,7 +117,7 @@
    getRunnersForSchool:(school,role)=>request('runners').then(r=>toRunners(toList(r)).filter(x=>!school||!(['Admin','TopAdmin'].includes(sessionUser?.role))||x.SchoolName===school)),
    getRunnersForRegistration:()=>request('runners').then(r=>toRunners(toList(r))),
    saveRunner:(form)=>request('save_runner',form).then(r=>({...r,message:'บันทึกข้อมูลนักวิ่งเรียบร้อยแล้ว'})),
-   deleteRunner:(id)=>request('delete_runner',{id}).then(r=>({...r,message:'ลบนักวิ่งเรียบร้อยแล้ว'})),
+   deleteRunner:(id)=>request('delete_runner',{id}).then(r=>({...r,message:r.message||'ลบนักวิ่งเรียบร้อยแล้ว'})),
    uploadRunnerFile:async(payload)=>{
      const bytes=Uint8Array.from(atob(payload.base64Data),c=>c.charCodeAt(0));
      const data=new FormData();
