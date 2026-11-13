@@ -305,14 +305,24 @@ if($action==='delete_registration'){
  log_action('REG_DELETE',$u,'Registration',(string)$id);json_out(['success'=>true]);
 }
 if($action==='schedule'){
+ require_once __DIR__.'/schedule-registration.php';
  $events=rows('SELECT id EventID,name EventName,category Category,level Level,gender Gender,remark Remark,heat Heat,heat_plan HeatPlan,team_count TeamCount,total_teams TotalTeams,stage Stage FROM events ORDER BY source_order,id');
- $res=[];
- foreach($events as $e) {
+ $visible=[];
+ foreach($events as $e){
   if($e['Remark']==='ชิงชนะเลิศ'&&$e['Stage']==='ชิงชนะเลิศ'&&$e['HeatPlan']!=='ชิง'&&$e['TotalTeams']>0&&$e['TotalTeams']<9)continue;
-  $e['entries']=rows('SELECT school_name SchoolName,runner_names RunnerName,heat Heat,lane Lane FROM registrations WHERE event_name=? ORDER BY heat,lane',[$e['EventName']]);
-  $res[]=$e;
+  $visible[]=$e;
  }
- json_out(['success'=>true,'data'=>$res]);
+ // Current registration records, not imported fixture totals, drive both
+ // the number of schools and the expanded list of school/runner names.
+ $regs=rows('SELECT event_id,event_name,category,level,school_name,runner_names,heat,lane FROM registrations ORDER BY id');
+ $mapped=bang1_schedule_resolve($visible,$regs);
+ foreach($visible as &$e){
+  $current=$mapped[(string)$e['EventID']]??['entries'=>[],'RegisteredTeams'=>0];
+  $e['entries']=$current['entries'];
+  $e['RegisteredTeams']=$current['RegisteredTeams'];
+ }
+ unset($e);
+ json_out(['success'=>true,'data'=>$visible]);
 }
 if($action==='auto_heats'){
  must_post();require_admin($u);
