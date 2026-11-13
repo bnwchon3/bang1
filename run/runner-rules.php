@@ -41,3 +41,16 @@ function bang1_runner_delete_block_reason(
     }
     return null;
 }
+
+/** Any correction invalidates prior review status.
+ * Only a photo-only replacement with a trusted approved image may use face review.
+ */
+function bang1_runner_status_after_edit(
+    string $type, string $previousStatus, bool $hasVerifiedPhoto=false, bool $photoChanged=true
+): string {
+    if ($type === 'photo' && $photoChanged && $hasVerifiedPhoto &&
+        in_array($previousStatus, ['ผ่านการตรวจสอบ', 'รอตรวจภาพอีกครั้ง'], true)) {
+        return 'รอตรวจภาพอีกครั้ง';
+    }
+    return 'รอตรวจสอบ';
+}
