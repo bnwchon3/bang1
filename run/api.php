@@ -136,10 +136,12 @@ if($action==='save_runner'){
  $citizen=bang1_normalize_citizen_id((string)($input['CitizenID']??''));
  $year=(int)($input['BirthYear']??0);
  $level=trim((string)($input['Level']??''));$gender=trim((string)($input['Gender']??''));
- // Education level is optional legacy metadata, not a sports age group.
- // Keep old level on correction even when the new UI no longer asks for it.
- if($old&&$level==='')$level=trim((string)($old['level']??''));
- if(!$first||!$last||($level!==''&&!in_array($level,['อนุบาล','ประถม','มัธยม'],true))||!in_array($gender,['ชาย','หญิง'],true)||!bang1_valid_citizen_id($citizen)||$year<2400||$year>(int)date('Y')+543)json_out(['success'=>false,'message'=>'กรอกข้อมูลนักวิ่งให้ถูกต้อง'],422);
+ // School level is the actual enrolled level, and is mandatory because it
+ // distinguishes primary from secondary students of the same age.
+ if(!in_array($level,['อนุบาล','ประถม','มัธยม'],true))
+   json_out(['success'=>false,'message'=>'กรุณาเลือกระดับที่นักเรียนกำลังศึกษาอยู่จริง'],422);
+ if(!$first||!$last||!in_array($gender,['ชาย','หญิง'],true)||!bang1_valid_citizen_id($citizen)||$year<2400||$year>(int)date('Y')+543)
+   json_out(['success'=>false,'message'=>'กรอกข้อมูลนักวิ่งให้ถูกต้อง'],422);
  // Preserve Google Apps Script rule: a citizen ID belongs to only one runner.
  $duplicate=single('SELECT id FROM runners WHERE citizen_id=? AND id<>? LIMIT 1',[$citizen,$id]);
  if($duplicate)json_out(['success'=>false,'message'=>'ไม่สามารถบันทึกได้: เลขบัตรประชาชนนี้ถูกใช้ลงทะเบียนนักวิ่งแล้ว'],409);
@@ -274,13 +276,13 @@ if($action==='save_registration'){
   // Registration is allowed while identity/photo review is pending or awaiting another photo check.
   // A confirmed rejection still needs to be corrected before entering a competition.
   if($r['status']==='ไม่ผ่านการตรวจสอบ')json_out(['success'=>false,'message'=>'นักวิ่งไม่ผ่านการตรวจสอบ กรุณาแก้ไขข้อมูลและส่งตรวจอีกครั้งก่อนสมัคร'],422);
-  // Competitors are admitted by age and gender, not their education level.
+  // Never trust the browser's candidate filtering: always enforce level,
+  // age and gender for every starter and substitute on the server.
   $ageLimit=bang1_event_age_limit((string)$ev['name']);
-  if($ageLimit!==null){
-   $age=bang1_runner_age_at_year((int)$r['birth_year'],(int)date('Y')+543);
-   if($age===null||$age>$ageLimit)
-    json_out(['success'=>false,'message'=>'อายุนักวิ่งไม่ตรงรุ่นแข่งขัน (รุ่นอายุไม่เกิน '.$ageLimit.' ปี)'],422);
-  }
+  $age=bang1_runner_age_at_year((int)$r['birth_year'],(int)date('Y')+543);
+  $denial=bang1_runner_eligibility_reason((string)($r['level']??''),$age,$ageLimit);
+  if($denial!==null)
+    json_out(['success'=>false,'message'=>'นักวิ่ง '.trim($r['first_name'].' '.$r['last_name']).': '.$denial],422);
   if($ev['gender']&&$r['gender']!==$ev['gender'])json_out(['success'=>false,'message'=>'เพศนักวิ่งไม่ตรงรายการ'],422);
  }
  $school=$runners[0]['school_name'];foreach($runners as $r)if($r['school_name']!==$school)json_out(['success'=>false,'message'=>'นักวิ่งต้องมาจากโรงเรียนเดียวกัน'],422);
