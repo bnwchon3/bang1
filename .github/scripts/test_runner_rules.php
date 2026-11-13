@@ -20,4 +20,13 @@ runner_assert(bang1_runner_delete_block_reason(false, false, 1) === null, 'Unsco
 runner_assert(bang1_runner_delete_block_reason(true, false, 1) !== null, 'Do not erase scored athlete');
 runner_assert(bang1_runner_delete_block_reason(false, true, 1) !== null, 'Do not erase checked-in athlete');
 runner_assert(bang1_runner_delete_block_reason(false, false, 4) !== null, 'Do not cancel teammate entries');
-echo "Runner ID and deletion rules passed\n";
+foreach (['รอตรวจสอบ', 'ผ่านการตรวจสอบ', 'รอตรวจภาพอีกครั้ง', 'ไม่ผ่านการตรวจสอบ'] as $status) {
+    runner_assert(bang1_runner_status_after_edit('details',$status,true)==='รอตรวจสอบ','Athlete corrections must re-enter review');
+    runner_assert(bang1_runner_status_after_edit('idproof',$status,true)==='รอตรวจสอบ','Identity-proof updates must re-enter review');
+}
+runner_assert(bang1_runner_status_after_edit('photo','ผ่านการตรวจสอบ',true,true)==='รอตรวจภาพอีกครั้ง','Previously approved photo replacement requires face review');
+runner_assert(bang1_runner_status_after_edit('photo','รอตรวจภาพอีกครั้ง',true,true)==='รอตรวจภาพอีกครั้ง','Second replacement requires face review');
+runner_assert(bang1_runner_status_after_edit('photo','รอตรวจสอบ',true,true)==='รอตรวจสอบ','Full identity review cannot be bypassed by a new photo');
+runner_assert(bang1_runner_status_after_edit('photo','ไม่ผ่านการตรวจสอบ',true,true)==='รอตรวจสอบ','Rejected identity correction requires full review');
+runner_assert(bang1_runner_status_after_edit('photo','ผ่านการตรวจสอบ',false,true)==='รอตรวจสอบ','Missing trusted photo requires full verification');
+echo "Runner ID, deletion and edit-review rules passed\n";
