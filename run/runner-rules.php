@@ -36,8 +36,9 @@ function bang1_runner_age_at_year(int $birthYear, int $competitionYearBE): ?int 
  * maximum-age competition bracket, not by the fixture's old education tag.
  *
  * - Age 6: kindergarten only, only the 6-year bracket.
- * - Age 8–12 brackets: primary school pupils age 8–12, plus the express
- *   exception allowing a 12-year-old secondary pupil in the 12-year bracket.
+ * - Age 8–12 brackets: primary school pupils age 8–12, plus exceptions for
+ *   7-year-old primary pupils in the 8-year bracket and 12-year-old
+ *   secondary pupils in the 12-year bracket.
  * - Age 14–16 brackets: secondary pupils, or primary pupils age 8–12
  *   moving UP in age group. No kindergarten promotion.
  * A null age bracket means an open/other event that needs separate rules.
@@ -62,9 +63,9 @@ function bang1_runner_eligibility_reason(
             ? null : 'รุ่น 6 ปีสงวนสำหรับนักเรียนอนุบาล ไม่เปิดให้ประถมหรือมัธยมสมัคร';
 
     if($eventAgeLimit>=8&&$eventAgeLimit<=12){
-        if($schoolLevel==='ประถม'&&$age>=8&&$age<=12)return null;
+        if($schoolLevel==='ประถม'&&(($age>=8&&$age<=12)||($age===7&&$eventAgeLimit===8)))return null;
         if($schoolLevel==='มัธยม'&&$age===12&&$eventAgeLimit===12)return null;
-        return 'รุ่น 8–12 ปีสำหรับประถมอายุ 8–12 ปี (ยกเว้นมัธยมอายุ 12 ปีสมัครรุ่น 12 ปีได้)';
+        return 'รุ่น 8–12 ปีสำหรับประถมอายุ 8–12 ปี (ประถมอายุ 7 ปีสมัครรุ่น 8 ปีได้; ยกเว้นมัธยมอายุ 12 ปีสมัครรุ่น 12 ปีได้)';
     }
 
     if($eventAgeLimit>=14&&$eventAgeLimit<=16){
